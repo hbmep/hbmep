@@ -32,6 +32,12 @@ pip install -e src/hb-mep
 
 ```
 
+### Run inference
+```
+python -m hb_mep run
+
+```
+
 ### Install jupyter kernel
 ```
 python -m ipykernel install --user --name=hb-mep-ipython
@@ -45,6 +51,7 @@ jupyter notebook notebooks/
 ```
 
 You can now use the kernel `hb-mep-ipython` to run notebooks.
+
 
 ## To do
 
