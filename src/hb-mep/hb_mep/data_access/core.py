@@ -1,4 +1,5 @@
 import os
+import logging
 from pathlib import Path
 
 import numpy as np
@@ -8,6 +9,7 @@ from sklearn.preprocessing import LabelEncoder
 from hb_mep.config import HBMepConfig
 from hb_mep.utils.constants import (
     DATA_DIR,
+    REPORTS_DIR,
     INTENSITY,
     MEP_SIZE,
     PARTICIPANT,
@@ -17,8 +19,10 @@ from hb_mep.utils.constants import (
     NUM_PARTICIPANTS,
     NUM_SEGMENTS,
     SEGMENTS_PER_PARTICIPANT,
-    TOTAL_COMBINATIONS,
+    TOTAL_COMBINATIONS
 )
+
+logger = logging.getLogger(__name__)
 
 
 class DataClass:
@@ -26,6 +30,16 @@ class DataClass:
         self.config = config
         self.current_path = Path(os.getcwd()) if not config.CURRENT_PATH else config.CURRENT_PATH
         self.data_path = Path(os.path.join(self.current_path, DATA_DIR))
+        self.reports_path = Path(os.path.join(self.current_path, REPORTS_DIR))
+
+    def make_dirs(self):
+        dirs = {
+            DATA_DIR: self.data_path,
+            REPORTS_DIR: self.reports_path
+        }
+        for dir in dirs:
+            dirs[dir].mkdir(parents=True, exist_ok=True)
+            logger.info(f"Created {dir} directory {dirs[dir]}")
 
     def preprocess(
         self,
@@ -39,7 +53,8 @@ class DataClass:
 
         Args:
             df (pd.DataFrame): Data to be preprocessed.
-            min_observations (int, optional): (participant, segment) combinations with less than min_observations observations will be removed. Defaults to 25.
+            min_observations (int, optional): (participant, segment) combinations with less than
+            min_observations observations will be removed. Defaults to 25.
             scalar_intensity (float, optional): Scaling constant for intensity column. Defaults to 1000.
             scalar_mep (float, optional): Scaling constant for mep size. Defaults to 1.
 
@@ -112,8 +127,10 @@ class DataClass:
         return df, data_dict, encoders_dict
 
     def build(self):
+        logger.info('Reading data ....')
         df = pd.read_csv(os.path.join(self.data_path, self.config.FNAME))
         df = df[[INTENSITY, MEP_SIZE, PARTICIPANT, SEGMENT]]
         df[MEP_SIZE] = df[MEP_SIZE].apply(lambda x: (x,))
+        logger.info('Processing data ...')
         df, data_dict, encoders_dict = self.preprocess(df, **self.config.PREPROCESS_PARAMS)
         return df, data_dict, encoders_dict
