@@ -9,9 +9,21 @@ class HBMepConfig():
     # Segment feature to compare
     SEGMENT_FEATURE = 'level'
 
-    # Preprocess settings
+    # Preprocess parameters
     PREPROCESS_PARAMS = {
-        'min_observations': 25,
-        'scalar_intensity': 1000,
-        'scalar_mep': 1
+        'min_observations': 20,
+        'scalar_intensity': 1/30,
+        'scalar_mep': 1e7
     }
+
+    # MCMC parameters
+    MCMC_PARAMS = {
+        'num_warmup': 10000,
+        'num_samples': 10000
+    }
+
+    # File name to save model fit plot
+    MODEL_FIT_FNAME = 'fitted.png'
+
+    # Render model filename
+    RENDER_FNAME = 'rendered_model.png'
