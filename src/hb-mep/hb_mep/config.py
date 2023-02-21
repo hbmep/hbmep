@@ -22,5 +22,8 @@ class HBMepConfig():
         'num_samples': 10000
     }
 
+    # File name to save model fit plot
+    MODEL_FIT_FNAME = 'fitted.png'
+
     # Render model filename
     RENDER_FNAME = 'rendered_model.png'
