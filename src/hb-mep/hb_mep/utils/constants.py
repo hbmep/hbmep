@@ -5,7 +5,7 @@ DATA_DIR = 'data'
 
 PARTICIPANT = 'participant'
 INTENSITY = 'intensity'
-MEP_SIZE = 'mep_size'
+MEP_SIZE = 'Biceps'
 SEGMENT = config.SEGMENT_FEATURE
 
 PARTICIPANT_ENCODER = 'participant_encoder'

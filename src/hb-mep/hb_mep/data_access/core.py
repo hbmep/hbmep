@@ -26,7 +26,6 @@ class DataClass:
         self.config = config
         self.current_path = Path(os.getcwd()) if not config.CURRENT_PATH else config.CURRENT_PATH
         self.data_path = Path(os.path.join(self.current_path, DATA_DIR))
-        self.fname = config.FNAME
 
     def preprocess(
         self,
@@ -94,7 +93,7 @@ class DataClass:
         intensity = df[INTENSITY].to_numpy().reshape(-1,)
 
         # Dictionary of encoders
-        encoder_dict = {
+        encoders_dict = {
             PARTICIPANT_ENCODER: participant_encoder,
             SEGMENT_ENCODER: segment_encoder
         }
@@ -110,10 +109,11 @@ class DataClass:
             PARTICIPANT: participant,
             SEGMENT: segment
         }
-        return df, data_dict, encoder_dict
+        return df, data_dict, encoders_dict
 
     def build(self):
-        df = pd.read_csv(os.path.join(self.data_path, self.fname))
+        df = pd.read_csv(os.path.join(self.data_path, self.config.FNAME))
         df = df[[INTENSITY, MEP_SIZE, PARTICIPANT, SEGMENT]]
-        df, data_dict, encoder_dict = self.preprocess(df, **self.config.PREPROCESS_PARAMS)
-        return df, data_dict, encoder_dict
+        df[MEP_SIZE] = df[MEP_SIZE].apply(lambda x: (x,))
+        df, data_dict, encoders_dict = self.preprocess(df, **self.config.PREPROCESS_PARAMS)
+        return df, data_dict, encoders_dict
