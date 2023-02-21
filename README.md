@@ -45,3 +45,9 @@ jupyter notebook notebooks/
 ```
 
 You can now use the kernel `hb-mep-ipython` to run notebooks.
+
+## To do
+
+- Add About section
+- Add pytest
+- Make code publish-ready
