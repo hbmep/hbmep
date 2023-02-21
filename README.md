@@ -49,6 +49,6 @@ You can now use the kernel `hb-mep-ipython` to run notebooks.
 ## To do
 
 - Add About section
-- Add pytest
+- Add tests
 - Make code publish-ready
 - Create docs with usage instructions
