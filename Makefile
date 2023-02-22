@@ -11,6 +11,10 @@ build: build-base
 	pip install -r requirements.txt && \
 	pip install -e src/hb-mep
 
+run:
+	@source .venv/bin/activate && \
+	python -m hb_mep run
+
 .PHONY: kernel
 kernel:
 	@source .venv/bin/activate && \
