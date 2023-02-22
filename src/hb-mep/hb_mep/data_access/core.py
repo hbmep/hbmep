@@ -7,6 +7,7 @@ import pandas as pd
 from sklearn.preprocessing import LabelEncoder
 
 from hb_mep.config import HBMepConfig
+from hb_mep.utils import timing
 from hb_mep.utils.constants import (
     DATA_DIR,
     REPORTS_DIR,
@@ -126,6 +127,7 @@ class DataClass:
         }
         return df, data_dict, encoders_dict
 
+    @timing
     def build(self):
         logger.info('Reading data ....')
         df = pd.read_csv(os.path.join(self.data_path, self.config.FNAME))
