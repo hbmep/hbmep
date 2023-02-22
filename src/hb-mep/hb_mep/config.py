@@ -23,8 +23,10 @@ class HBMepConfig():
         'num_samples': 10000
     }
 
-    # File name to save model fit plot
-    MODEL_FIT_FNAME = 'fitted.png'
+    # File name to save fit plot
+    PLOT_FIT = 'fitted.png'
+    # File name to save kde plot
+    PLOT_KDE = 'kde.png'
 
     # Render model filename
     RENDER_FNAME = 'rendered_model.png'
