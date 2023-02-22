@@ -57,7 +57,7 @@ def timing(f):
         return result
     return wrap
 
-def plot(
+def plot_fitted(
     df: pd.DataFrame,
     data_dict: dict,
     encoders_dict: dict[str, LabelEncoder],
@@ -147,4 +147,14 @@ def plot(
             k += n_muscles
 
     plt.subplots_adjust(left=None, bottom=None, right=None, top=None, wspace=None, hspace=0.4)
+    return fig
+
+def plot_kde(data_dict: dict, posterior_samples: dict):
+    fig, ax = plt.subplots(data_dict[NUM_PARTICIPANTS], 1)
+
+    for participant in range(data_dict[NUM_PARTICIPANTS]):
+        for segment in range(data_dict[NUM_SEGMENTS]):
+            sns.kdeplot(posterior_samples['a'][:, segment, 0, 0], label=f'{segment}', ax=ax)
+        ax.set_title(f'Participant: {participant} - {MEP_SIZE}')
+    plt.legend();
     return fig
