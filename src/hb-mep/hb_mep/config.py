@@ -18,6 +18,7 @@ class HBMepConfig():
 
     # MCMC parameters
     MCMC_PARAMS = {
+        'num_chains': 4,
         'num_warmup': 10000,
         'num_samples': 10000
     }
