@@ -19,6 +19,9 @@ from hb_mep.utils.constants import (
     SEGMENT
 )
 
+numpyro.set_platform('cpu')
+numpyro.set_host_device_count(4)
+
 logger = logging.getLogger(__name__)
 
 

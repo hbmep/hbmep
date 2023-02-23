@@ -8,6 +8,7 @@ build-base:
 .PHONY: build
 build: build-base
 	@source .venv/bin/activate && \
+	pip install --upgrade pip && \
 	pip install -r requirements.txt && \
 	pip install -e src/hb-mep
 
