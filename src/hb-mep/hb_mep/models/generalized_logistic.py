@@ -1,36 +1,19 @@
-import os
 import logging
-from pathlib import Path
-from operator import itemgetter
 
 import jax
 import numpy as np
 import numpyro
 import numpyro.distributions as dist
-from numpyro.infer import MCMC, NUTS
-import graphviz
 
 from hb_mep.config import HBMepConfig
-from hb_mep.utils.constants import (
-    REPORTS_DIR,
-    INTENSITY,
-    MEP_SIZE,
-    PARTICIPANT,
-    SEGMENT
-)
+from hb_mep.models.baseline import Baseline
 
 logger = logging.getLogger(__name__)
 
 
-class Baseline():
+class Logistic(Baseline):
     def __init__(self, config: HBMepConfig):
-        self.config = config
-        self.current_path = Path(os.getcwd()) if not config.CURRENT_PATH else config.CURRENT_PATH
-        self.reports_path = Path(os.path.join(self.current_path, REPORTS_DIR))
-
-        self.random_state = 0
-        numpyro.set_platform('cpu')
-        numpyro.set_host_device_count(4)
+        super(Logistic, self).__init__(config=config)
 
     def model(self, intensity, participant, segment, mep_size_obs=None):
         a_level_scale_global_scale = numpyro.sample('a_global_scale', dist.HalfNormal(2.0))
@@ -72,57 +55,8 @@ class Baseline():
                 sigma_offset = numpyro.sample('sigma_offset', dist.HalfCauchy(sigma_offset_level_scale))
                 sigma_slope = numpyro.sample('sigma_slope', dist.HalfCauchy(sigma_slope_level_scale))
 
-        mean = jax.nn.relu(b[segment, participant] * (intensity - a[segment, participant]))
+        mean = jax.nn.sigmoid(b[segment, participant] * (intensity - a[segment, participant]))
         sigma = sigma_offset[segment, participant] + sigma_slope[segment, participant] * mean
 
         with numpyro.plate("data", len(intensity)):
             return numpyro.sample("obs", dist.TruncatedNormal(mean, sigma, low=0), obs=mep_size_obs)
-
-    def render(
-        self,
-        data_dict: dict
-        ) -> graphviz.graphs.Digraph:
-        """
-        Render NumPyro model and save resultant graph.
-
-        Args:
-            model (model): NumPyro model for rendering.
-            data_dict (dict): Data dictionary containing model parameters for rendering.
-            filename (Optional[Path], optional): Target destination for saving rendered graph. Defaults to None.
-
-        Returns:
-            graphviz.graphs.Digraph: Rendered graph.
-        """
-        logger.info('Rendering model ...')
-        # Retrieve data from data dictionary for rendering model
-        intensity, mep_size, participant, segment  = \
-            itemgetter(INTENSITY, MEP_SIZE, PARTICIPANT, SEGMENT)(data_dict)
-        return numpyro.render_model(
-            self.model,
-            model_args=(intensity, participant, segment, mep_size),
-            filename=os.path.join(self.reports_path, self.config.RENDER_FNAME)
-        )
-
-    def sample(self, data_dict: dict) -> tuple[numpyro.infer.mcmc.MCMC, dict]:
-        """
-        Run MCMC inference
-
-        Args:
-            data_dict (dict): Data dictionary containing input and observations
-
-        Returns:
-            tuple[numpyro.infer.mcmc.MCMC, dict]: MCMC inference results and posterior samples.
-        """
-        # Retrieve data from data dictionary
-        intensity, mep_size, participant, segment  = \
-            itemgetter(INTENSITY, MEP_SIZE, PARTICIPANT, SEGMENT)(data_dict)
-
-        # MCMC
-        nuts_kernel = NUTS(self.model)
-        mcmc = MCMC(nuts_kernel, **self.config.MCMC_PARAMS)
-        rng_key = jax.random.PRNGKey(self.random_state)
-        logger.info('Running inference ...')
-        mcmc.run(rng_key, intensity, participant, segment, mep_size)
-        posterior_samples = mcmc.get_samples()
-
-        return mcmc, posterior_samples

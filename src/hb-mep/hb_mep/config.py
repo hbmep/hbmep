@@ -15,6 +15,7 @@ class HBMepConfig():
         'scalar_intensity': 1/30,
         'scalar_mep': 1e7
     }
+    ZERO_ONE = True
 
     # MCMC parameters
     MCMC_PARAMS = {

@@ -121,7 +121,7 @@ def plot_fitted(
                     axes[k+m, 0].set_title(f'Actual: Participant:{i+1}, Level:{j+1}')
                     axes[k+m, 1].set_title(f'Fitted: Participant:{i}, Level:{j}')
 
-                sns.scatterplot(data=df[(df.participant==i) & (df.level==j)], x='intensity', y=col, ax=axes[k+m, 0])
+                sns.scatterplot(data=df[(df.participant==i) & (df.level==j)], x='intensity', y='raw_mep_size', ax=axes[k+m, 0])
                 sns.scatterplot(data=df[(df.participant==i) & (df.level==j)], x='intensity', y=col, ax=axes[k+m, 1], alpha=.4)
 
                 x_val = np.linspace(0, 15, 100)
