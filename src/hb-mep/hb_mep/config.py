@@ -15,7 +15,7 @@ class HBMepConfig():
         'scalar_intensity': 1/30,
         'scalar_mep': 1e7
     }
-    ZERO_ONE = True
+    ZERO_ONE = False
 
     # MCMC parameters
     MCMC_PARAMS = {
@@ -24,9 +24,8 @@ class HBMepConfig():
         'num_samples': 10000
     }
 
-    # File name to save fit plot
-    PLOT_FIT = 'fitted.png'
-    # File name to save kde plot
+    # Figure names
+    PLOT_FIT = 'fit.png'
     PLOT_KDE = 'kde.png'
 
     # Render model filename

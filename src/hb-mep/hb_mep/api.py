@@ -4,33 +4,32 @@ import logging
 from hb_mep.config import HBMepConfig
 from hb_mep.data_access import DataClass
 from hb_mep.models.baseline import Baseline
-from hb_mep.models.generalized_logistic import Logistic
-from hb_mep.utils import (timing, plot_fitted, plot_kde)
+from hb_mep.utils import timing
 
 logger = logging.getLogger(__name__)
 
 
 @timing
-def run_inference(config: HBMepConfig = HBMepConfig) -> None:
+def run_inference(
+    model: Baseline,
+    config: HBMepConfig = HBMepConfig
+) -> None:
     # Load data and preprocess
     data = DataClass(config)
     data.make_dirs()
     df, data_dict, encoders_dict = data.build()
 
-    # Initialize model
-    model = Logistic(config)
     # Run MCMC inference
     mcmc, posterior_samples = model.sample(data_dict=data_dict)
 
-    # Plot fitted curves
-    fit_fig = plot_fitted(
+    # Plots
+    fit_fig = model.plot_fit(
         df=df,
         data_dict=data_dict,
         encoders_dict=encoders_dict,
-        posterior_samples=posterior_samples,
-        model_function='sigmoid'
+        posterior_samples=posterior_samples
     )
-    kde_fig = plot_kde(
+    kde_fig = model.plot_kde(
         data_dict=data_dict, posterior_samples=posterior_samples
     )
 

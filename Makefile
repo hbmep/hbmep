@@ -1,6 +1,8 @@
 SHELL := /bin/bash
 CWD := $(dir $(abspath $(lastword $(MAKEFILE_LIST))))
 
+model ?= baseline
+
 .PHONY: build-base
 build-base:
 	@python3 -m venv .venv
@@ -14,7 +16,7 @@ build: build-base
 
 run:
 	@source .venv/bin/activate && \
-	python -m hb_mep run
+	python -m hb_mep run --model=$(model)
 
 .PHONY: kernel
 kernel:
