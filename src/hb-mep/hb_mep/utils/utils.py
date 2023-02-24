@@ -156,5 +156,6 @@ def plot_kde(data_dict: dict, posterior_samples: dict):
         for segment in range(data_dict[NUM_SEGMENTS]):
             sns.kdeplot(posterior_samples['a'][:, segment, 0, 0], label=f'{segment}', ax=ax)
         ax.set_title(f'Participant: {participant} - {MEP_SIZE}')
+        ax.set_xlim(left=0)
     plt.legend();
     return fig
