@@ -68,6 +68,10 @@ class DataClass:
         df[INTENSITY] = df[INTENSITY].apply(lambda x: x * scalar_intensity)
         df[MEP_SIZE] = df[MEP_SIZE].apply(lambda x: tuple(scalar_mep * np.array(list(x))))
 
+        # Zero-One transformation
+        if self.config.ZERO_ONE:
+            df[MEP_SIZE] = df[MEP_SIZE].apply(lambda x: tuple([0 if y < 2.5 else 1 for y in list(x)]))
+
         # Mininum observations constraint
         temp = df \
                 .groupby(by=[PARTICIPANT, SEGMENT]) \
@@ -132,6 +136,7 @@ class DataClass:
         logger.info('Reading data ....')
         df = pd.read_csv(os.path.join(self.data_path, self.config.FNAME))
         df = df[[INTENSITY, MEP_SIZE, PARTICIPANT, SEGMENT]]
+        df['raw_mep_size'] = df[MEP_SIZE]
         df[MEP_SIZE] = df[MEP_SIZE].apply(lambda x: (x,))
         logger.info('Processing data ...')
         df, data_dict, encoders_dict = self.preprocess(df, **self.config.PREPROCESS_PARAMS)

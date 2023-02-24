@@ -1,6 +1,8 @@
 SHELL := /bin/bash
 CWD := $(dir $(abspath $(lastword $(MAKEFILE_LIST))))
 
+model ?= baseline
+
 .PHONY: build-base
 build-base:
 	@python3 -m venv .venv
@@ -8,12 +10,13 @@ build-base:
 .PHONY: build
 build: build-base
 	@source .venv/bin/activate && \
+	pip install --upgrade pip && \
 	pip install -r requirements.txt && \
 	pip install -e src/hb-mep
 
 run:
 	@source .venv/bin/activate && \
-	python -m hb_mep run
+	python -m hb_mep run --model=$(model)
 
 .PHONY: kernel
 kernel:
