@@ -51,10 +51,13 @@ class Baseline():
 
     def model(self, intensity, participant, segment, mep_size_obs=None):
         a_level_scale_global_scale = numpyro.sample('a_global_scale', dist.HalfNormal(2.0))
+        a_level_mean_global_scale = numpyro.sample('a_level_mean_global_scale', dist.HalfNormal(5.0))
+
+        b_level_mean_global_scale = numpyro.sample('b_level_mean_global_scale', dist.HalfNormal(5.0))
         b_level_scale_global_scale = numpyro.sample('b_global_scale', dist.HalfNormal(2.0))
 
-        a_level_mean_global_scale = numpyro.sample('a_level_mean_global_scale', dist.HalfNormal(5.0))
-        b_level_mean_global_scale = numpyro.sample('b_level_mean_global_scale', dist.HalfNormal(5.0))
+        lo_level_mean_global_scale = numpyro.sample('lo_level_mean_global_scale', dist.HalfNormal(2.0))
+        lo_level_scale_global_scale = numpyro.sample('lo_level_scale_global_scale', dist.HalfNormal(2.0))
 
         sigma_offset_level_scale_global_scale = \
             numpyro.sample('sigma_offset_level_scale_global_scale', dist.HalfCauchy(5.0))
@@ -70,6 +73,9 @@ class Baseline():
 
             a_level_scale = numpyro.sample("a_level_scale", dist.HalfNormal(a_level_scale_global_scale))
             b_level_scale = numpyro.sample("b_level_scale", dist.HalfNormal(b_level_scale_global_scale))
+
+            lo_level_mean = numpyro.sample("lo_level_mean", dist.HalfNormal(lo_level_mean_global_scale))
+            lo_level_scale = numpyro.sample("lo_level_scale", dist.HalfNormal(lo_level_scale_global_scale))
 
             sigma_offset_level_scale = \
                 numpyro.sample(
@@ -89,7 +95,7 @@ class Baseline():
                 sigma_offset = numpyro.sample('sigma_offset', dist.HalfCauchy(sigma_offset_level_scale))
                 sigma_slope = numpyro.sample('sigma_slope', dist.HalfCauchy(sigma_slope_level_scale))
 
-        mean = self.link(b[segment, participant] * (intensity - a[segment, participant]))
+        mean = lo[segment, participant] + self.link(b[segment, participant] * (intensity - a[segment, participant]))
         sigma = sigma_offset[segment, participant] + sigma_slope[segment, participant] * mean
 
         with numpyro.plate("data", len(intensity)):
@@ -198,6 +204,10 @@ class Baseline():
         mean_a = posterior_samples['a'].mean(axis=0)
         mean_b = posterior_samples['b'].mean(axis=0)
 
+        if 'lo' in posterior_samples:
+            posterior_samples['lo'] = posterior_samples['lo'].reshape(-1, n_levels, n_participants, n_muscles)
+            mean_lo = posterior_samples['lo'].mean(axis=0)
+
         k = 0
         for i in range(n_participants):
             for j in levels_per_participant[i]:
@@ -214,6 +224,9 @@ class Baseline():
 
                     x_val = np.linspace(0, 15, 100)
                     y_val = self.link(mean_b[j,i,m] * (x_val - mean_a[j,i,m]))
+
+                    if 'lo' in posterior_samples:
+                        y_val += mean_lo[j,i,m]
 
                     sns.lineplot(x=x_val, y=y_val, ax=axes[k+m, 1], color=colors[m], alpha=0.4, label=f'Mean Posterior {col}')
 
