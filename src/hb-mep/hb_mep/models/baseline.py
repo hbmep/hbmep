@@ -92,6 +92,8 @@ class Baseline():
                 a = numpyro.sample("a", dist.Normal(a_level_mean, a_level_scale))
                 b = numpyro.sample("b", dist.Normal(b_level_mean, b_level_scale))
 
+                lo = numpyro.sample("lo", dist.Normal(lo_level_mean, lo_level_scale))
+
                 sigma_offset = numpyro.sample('sigma_offset', dist.HalfCauchy(sigma_offset_level_scale))
                 sigma_slope = numpyro.sample('sigma_slope', dist.HalfCauchy(sigma_slope_level_scale))
 
