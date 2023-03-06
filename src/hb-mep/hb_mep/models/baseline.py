@@ -1,8 +1,6 @@
 import os
 import logging
 from pathlib import Path
-from operator import itemgetter
-from typing import Optional
 
 import jax
 import numpy as np
@@ -13,7 +11,6 @@ from numpyro.infer import MCMC, NUTS
 import h5py
 import graphviz
 import pandas as pd
-import matplotlib
 import matplotlib.pyplot as plt
 import seaborn as sns
 from sklearn.preprocessing import LabelEncoder
@@ -21,16 +18,10 @@ from sklearn.preprocessing import LabelEncoder
 from hb_mep.config import HBMepConfig
 from hb_mep.utils.constants import (
     REPORTS_DIR,
-    NUM_PARTICIPANTS,
-    NUM_SEGMENTS,
-    TOTAL_COMBINATIONS,
-    SEGMENTS_PER_PARTICIPANT,
     INTENSITY,
     RESPONSE_MUSCLES,
     PARTICIPANT,
-    INDEPENDENT_FEATURES,
-    PARTICIPANT_ENCODER,
-    SEGMENT_ENCODER
+    INDEPENDENT_FEATURES
 )
 
 logger = logging.getLogger(__name__)
@@ -46,8 +37,6 @@ class Baseline():
         self.link = jax.nn.relu
 
         self.random_state = 0
-        numpyro.set_platform('cpu')
-        numpyro.set_host_device_count(4)
 
     def model(self, intensity, participant, indepedent, response_obs=None):
         a_level_scale_global_scale = numpyro.sample('a_global_scale', dist.HalfNormal(2.0))
@@ -243,7 +232,7 @@ class Baseline():
         combinations = combinations[[PARTICIPANT] + INDEPENDENT_FEATURES].apply(tuple, axis=1).tolist()
 
         for i, c in enumerate(combinations):
-            sns.kdeplot(posterior_samples['a'][:,c[-1],c[-2]], label=f'{INDEPENDENT_FEATURES[0]}', ax=ax)
+            sns.kdeplot(posterior_samples['a'][:,c[-1],c[-2]], label=f'{c[-1]}', ax=ax)
             ax.set_title(f'Participant: {c[0]} - {RESPONSE_MUSCLES[0]}')
             ax.set_xlim(left=0)
         plt.legend();
