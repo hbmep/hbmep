@@ -12,9 +12,9 @@ from hb_mep.utils.constants import (
     DATA_DIR,
     REPORTS_DIR,
     INTENSITY,
-    MEP_SIZE,
+    RESPONSE,
     PARTICIPANT,
-    SEGMENT,
+    INDEPENDENT,
     PARTICIPANT_ENCODER,
     SEGMENT_ENCODER,
     NUM_PARTICIPANTS,
@@ -66,7 +66,7 @@ class DataClass:
         """
         # Scale
         df[INTENSITY] = df[INTENSITY].apply(lambda x: x * scalar_intensity)
-        df[MEP_SIZE] = df[MEP_SIZE].apply(lambda x: tuple(scalar_mep * np.array(list(x))))
+        df[RESPONSE] = df[RESPONSE].apply(lambda x: x * scalar_mep)
 
         # Zero-One transformation
         if self.config.ZERO_ONE:
