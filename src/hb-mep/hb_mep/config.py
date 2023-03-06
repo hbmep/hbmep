@@ -1,6 +1,4 @@
-from xxlimited import Str
-
-
+from ast import Str
 from pathlib import Path
 
 
@@ -10,21 +8,21 @@ class HBMepConfig():
     CURRENT_PATH: Path = None
 
     # File (present in data folder) to use for modeling
-    FNAME: Str = 'rats_data_13.csv'
+    FNAME: str = 'rats_data_13.csv'
 
     # Independent feature to study
-    INDEPENDENT_FEATURES: list[str] = ['level']
+    INDEPENDENT_FEATURES: list[str] = ['ch_combination']
 
     # Response MEP
-    RESPONSE_MUSCLES: list[str] = ['AUC_Biceps', 'AUC_ECR']
+    RESPONSE_MUSCLES: list[str] = ['AUC_Biceps']
 
     # Preprocess parameters
     PREPROCESS_PARAMS: dict[str, int] = {
-        'min_observations': 20,
+        'min_observations': 0,
         'scalar_intensity': 1/10,
         'scalar_mep': 1e7
     }
-    ZERO_ONE: bool = False
+    ZERO_ONE_THRESHOLDS: list[int] = [0., 0.]
 
     # MCMC parameters
     MCMC_PARAMS: dict[str, int] = {
