@@ -38,7 +38,7 @@ class Baseline():
 
         self.random_state = 0
 
-    def model(self, intensity, participant, indepedent, response_obs=None):
+    def model(self, intensity, participant, independent, response_obs=None):
         a_level_scale_global_scale = numpyro.sample('a_global_scale', dist.HalfNormal(2.0))
         a_level_mean_global_scale = numpyro.sample('a_level_mean_global_scale', dist.HalfNormal(5.0))
 
@@ -54,7 +54,7 @@ class Baseline():
             numpyro.sample('sigma_slope_level_scale_global_scale', dist.HalfCauchy(5.0))
 
         n_participants = np.unique(participant).shape[0]
-        n_levels = np.unique(indepedent).shape[0]
+        n_levels = np.unique(independent).shape[0]
 
         with numpyro.plate("n_levels", n_levels, dim=-2):
             a_level_mean = numpyro.sample("a_level_mean", dist.HalfNormal(a_level_mean_global_scale))
