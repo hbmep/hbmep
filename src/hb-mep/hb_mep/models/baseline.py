@@ -3,6 +3,7 @@ import logging
 from pathlib import Path
 
 import jax
+import jax.numpy as jnp
 import numpy as np
 import numpyro
 import numpyro.distributions as dist
@@ -13,9 +14,9 @@ import graphviz
 import pandas as pd
 import matplotlib.pyplot as plt
 import seaborn as sns
-from sklearn.preprocessing import LabelEncoder
 
 from hb_mep.config import HBMepConfig
+from hb_mep.utils import timing
 from hb_mep.utils.constants import (
     REPORTS_DIR,
     INTENSITY,
@@ -86,7 +87,9 @@ class Baseline():
                 sigma_offset = numpyro.sample('sigma_offset', dist.HalfCauchy(sigma_offset_level_scale))
                 sigma_slope = numpyro.sample('sigma_slope', dist.HalfCauchy(sigma_slope_level_scale))
 
-        mean = lo[independent, participant] + self.link(b[independent, participant] * (intensity - a[independent, participant]))
+        mean = lo[independent, participant] + self.link(
+            jnp.multiply(b[independent, participant], intensity - a[independent, participant])
+        )
         sigma = sigma_offset[independent, participant] + sigma_slope[independent, participant] * mean
 
         with numpyro.plate("data", len(intensity)):
@@ -117,6 +120,7 @@ class Baseline():
     #         filename=os.path.join(self.reports_path, self.config.RENDER_FNAME)
     #     )
 
+    @timing
     def sample(self, df: pd.DataFrame) -> tuple[numpyro.infer.mcmc.MCMC, dict]:
         """
         Run MCMC inference
@@ -187,7 +191,7 @@ class Baseline():
                 hi = mean_hi[c[::-1]]
 
             axes[i, 0].set_title(f'Actual: Combination:{c}, {RESPONSE_MUSCLES[0]}')
-            axes[i, 0].set_title(f'Actual: Combination:{c}, {RESPONSE_MUSCLES[0]}')
+            axes[i, 1].set_title(f'Fitted: Combination:{c}, {RESPONSE_MUSCLES[0]}')
 
             sns.scatterplot(data=temp, x=INTENSITY, y=RESPONSE_MUSCLES[0], ax=axes[i, 0])
             sns.scatterplot(data=temp, x=INTENSITY, y=RESPONSE_MUSCLES[0], ax=axes[i, 1], alpha=.4)
