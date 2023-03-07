@@ -86,8 +86,8 @@ class Baseline():
                 sigma_offset = numpyro.sample('sigma_offset', dist.HalfCauchy(sigma_offset_level_scale))
                 sigma_slope = numpyro.sample('sigma_slope', dist.HalfCauchy(sigma_slope_level_scale))
 
-        mean = lo[indepedent, participant] + self.link(b[indepedent, participant] * (intensity - a[indepedent, participant]))
-        sigma = sigma_offset[indepedent, participant] + sigma_slope[indepedent, participant] * mean
+        mean = lo[independent, participant] + self.link(b[independent, participant] * (intensity - a[independent, participant]))
+        sigma = sigma_offset[independent, participant] + sigma_slope[independent, participant] * mean
 
         with numpyro.plate("data", len(intensity)):
             return numpyro.sample("obs", dist.TruncatedNormal(mean, sigma, low=0), obs=response_obs)
