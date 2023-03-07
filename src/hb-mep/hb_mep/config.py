@@ -14,7 +14,7 @@ class HBMepConfig():
     INDEPENDENT_FEATURES: list[str] = ['ch_combination']
 
     # Response MEP
-    RESPONSE_MUSCLES: list[str] = ['AUC_FCR']
+    RESPONSE_MUSCLES: list[str] = ['AUC_Biceps']
 
     # Preprocess parameters
     PREPROCESS_PARAMS: dict[str, int] = {

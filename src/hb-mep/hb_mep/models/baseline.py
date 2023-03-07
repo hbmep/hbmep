@@ -59,9 +59,9 @@ class Baseline():
 
         with numpyro.plate("n_independent", n_independent, dim=-1):
             a_level_mean = numpyro.sample("a_level_mean", dist.HalfNormal(a_level_mean_global_scale))
-            b_level_mean = numpyro.sample("b_level_mean", dist.HalfNormal(b_level_mean_global_scale))
-
             a_level_scale = numpyro.sample("a_level_scale", dist.HalfNormal(a_level_scale_global_scale))
+
+            b_level_mean = numpyro.sample("b_level_mean", dist.HalfNormal(b_level_mean_global_scale))
             b_level_scale = numpyro.sample("b_level_scale", dist.HalfNormal(b_level_scale_global_scale))
 
             lo_level_mean = numpyro.sample("lo_level_mean", dist.HalfNormal(lo_level_mean_global_scale))
@@ -152,7 +152,6 @@ class Baseline():
             posterior_samples: dict
     ):
         n_muscles = 1
-
         combinations = \
             df \
             .groupby(by=[PARTICIPANT] + INDEPENDENT_FEATURES) \
