@@ -5,6 +5,7 @@ import argparse
 
 from hb_mep.config import HBMepConfig
 from hb_mep.models.baseline import Baseline
+from hb_mep.models.saturated_exponential import SaturatedExponential
 # from hb_mep.models.logistic_regression import LogisticRegression
 from hb_mep.api import run_inference
 
@@ -19,6 +20,8 @@ def main(args):
         if sys.argv[1] == "run":
             if model_name == 'baseline':
                 model = Baseline(config)
+            elif model_name == 'saturated-exponential':
+                model = SaturatedExponential(config)
             elif model_name == 'logistic-regression':
                 config.ZERO_ONE = True
                 model = LogisticRegression(config)
