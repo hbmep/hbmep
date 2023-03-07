@@ -14,7 +14,7 @@ class HBMepConfig():
     INDEPENDENT_FEATURES: list[str] = ['ch_combination']
 
     # Response MEP
-    RESPONSE_MUSCLES: list[str] = ['AUC_Biceps', 'AUC_ECR']
+    RESPONSE_MUSCLES: list[str] = ['AUC_FCR']
 
     # Preprocess parameters
     PREPROCESS_PARAMS: dict[str, int] = {
@@ -22,7 +22,7 @@ class HBMepConfig():
         'scalar_intensity': 1/10,
         'scalar_mep': 1e7
     }
-    ZERO_ONE_THRESHOLDS: list[int] = [0., 0.]
+    ZERO_ONE_THRESHOLDS: list[int] = [0.]
 
     # MCMC parameters
     MCMC_PARAMS: dict[str, int] = {

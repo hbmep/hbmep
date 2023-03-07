@@ -54,10 +54,10 @@ class Baseline():
         sigma_slope_level_scale_global_scale = \
             numpyro.sample('sigma_slope_level_scale_global_scale', dist.HalfCauchy(5.0))
 
-        n_participant = np.unique(participant).shape[0]
-        n_independent = np.unique(independent).shape[0]
+        n_participants = np.unique(participant).shape[0]
+        n_levels = np.unique(independent).shape[0]
 
-        with numpyro.plate("n_independent", n_independent, dim=-1):
+        with numpyro.plate("n_levels", n_levels, dim=-2):
             a_level_mean = numpyro.sample("a_level_mean", dist.HalfNormal(a_level_mean_global_scale))
             b_level_mean = numpyro.sample("b_level_mean", dist.HalfNormal(b_level_mean_global_scale))
 
@@ -78,7 +78,7 @@ class Baseline():
                     dist.HalfCauchy(sigma_slope_level_scale_global_scale)
                 )
 
-            with numpyro.plate("n_participant", n_participant, dim=-2):
+            with numpyro.plate("n_participants", n_participants, dim=-1):
                 a = numpyro.sample("a", dist.Normal(a_level_mean, a_level_scale))
                 b = numpyro.sample("b", dist.Normal(b_level_mean, b_level_scale))
 
@@ -87,13 +87,13 @@ class Baseline():
                 sigma_offset = numpyro.sample('sigma_offset', dist.HalfCauchy(sigma_offset_level_scale))
                 sigma_slope = numpyro.sample('sigma_slope', dist.HalfCauchy(sigma_slope_level_scale))
 
-        mean = lo[participant, independent] + self.link(
-            jnp.multiply(b[participant, independent], intensity - a[participant, independent])
+        mean = lo[independent, participant] + self.link(
+            jnp.multiply(b[independent, participant], intensity - a[independent, participant])
         )
-        sigma = sigma_offset[participant, independent] + sigma_slope[participant, independent] * mean
+        sigma = sigma_offset[independent, participant] + sigma_slope[independent, participant] * mean
 
         with numpyro.plate("data", len(intensity)):
-            return numpyro.sample("obs", dist.TruncatedNormal(mean, sigma, low=0), obs=response_obs)
+            return numpyro.sample("obs", dist.MultivariateNormal(mean, jnp.diag(sigma)), obs=response_obs)
 
     # def render(
     #     self,
@@ -181,14 +181,14 @@ class Baseline():
                 .reset_index(drop=True) \
                 .copy()
 
-            a = mean_a[c[::]]
-            b = mean_b[c[::]]
+            a = mean_a[c[::-1]]
+            b = mean_b[c[::-1]]
 
             if 'lo' in posterior_samples:
-                lo = mean_lo[c[::]]
+                lo = mean_lo[c[::-1]]
 
             if 'hi' in posterior_samples:
-                hi = mean_hi[c[::]]
+                hi = mean_hi[c[::-1]]
 
             axes[i, 0].set_title(f'Actual: Combination:{c}, {RESPONSE_MUSCLES[0]}')
             axes[i, 1].set_title(f'Fitted: Combination:{c}, {RESPONSE_MUSCLES[0]}')
@@ -203,7 +203,7 @@ class Baseline():
             if 'lo' in posterior_samples:
                 y_val += lo
 
-            sns.kdeplot(x=posterior_samples['a'][:,c[-2],c[-1]], ax=axes[i, 1], color='green')
+            sns.kdeplot(x=posterior_samples['a'][:,c[-1],c[-2]], ax=axes[i, 1], color='green')
             sns.lineplot(
                 x=x_val,
                 y=y_val,
@@ -220,8 +220,6 @@ class Baseline():
                 alpha=0.4,
                 label=f'Mean Posterior {RESPONSE_MUSCLES[0]}'
             )
-            axes[i, 1].set_ylim(bottom=0, top=temp[RESPONSE_MUSCLES[0]].max() + 5)
-            axes[i, 2].set_ylim(bottom=0, top=temp[RESPONSE_MUSCLES[0]].max() + 5)
 
         plt.subplots_adjust(left=None, bottom=None, right=None, top=None, wspace=None, hspace=0.4)
         return fig
@@ -238,7 +236,7 @@ class Baseline():
         combinations = combinations[[PARTICIPANT] + INDEPENDENT_FEATURES].apply(tuple, axis=1).tolist()
 
         for i, c in enumerate(combinations):
-            sns.kdeplot(posterior_samples['a'][:,c[-2],c[-1]], label=f'{c[-1]}', ax=ax)
+            sns.kdeplot(posterior_samples['a'][:,c[-1],c[-2]], label=f'{c[-1]}', ax=ax)
             ax.set_title(f'Participant: {c[0]} - {RESPONSE_MUSCLES[0]}')
             ax.set_xlim(left=0)
         plt.legend();
