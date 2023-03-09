@@ -40,8 +40,8 @@ class Baseline():
         self.random_state = 0
 
     def model(self, intensity, participant, independent, response_obs=None):
-        a_level_scale_global_scale = numpyro.sample('a_global_scale', dist.HalfNormal(2.0))
         a_level_mean_global_scale = numpyro.sample('a_level_mean_global_scale', dist.HalfNormal(5.0))
+        a_level_scale_global_scale = numpyro.sample('a_global_scale', dist.HalfNormal(2.0))
 
         b_level_mean_global_scale = numpyro.sample('b_level_mean_global_scale', dist.HalfNormal(5.0))
         b_level_scale_global_scale = numpyro.sample('b_global_scale', dist.HalfNormal(2.0))
