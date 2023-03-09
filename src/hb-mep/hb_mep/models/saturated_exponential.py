@@ -1,24 +1,18 @@
-import os
 import logging
-from pathlib import Path
 
 import jax
 import jax.numpy as jnp
 import numpy as np
 import numpyro
 import numpyro.distributions as dist
-from numpyro.infer import MCMC, NUTS
 
-import h5py
-import graphviz
 import pandas as pd
 import matplotlib.pyplot as plt
 import seaborn as sns
 
 from hb_mep.config import HBMepConfig
-from hb_mep.utils import timing
+from hb_mep.models.baseline import Baseline
 from hb_mep.utils.constants import (
-    REPORTS_DIR,
     INTENSITY,
     RESPONSE_MUSCLES,
     PARTICIPANT,
@@ -28,26 +22,24 @@ from hb_mep.utils.constants import (
 logger = logging.getLogger(__name__)
 
 
-class Baseline():
+class SaturatedExponential(Baseline):
     def __init__(self, config: HBMepConfig):
-        self.config = config
-        self.current_path = Path(os.getcwd()) if not config.CURRENT_PATH else config.CURRENT_PATH
-        self.reports_path = Path(os.path.join(self.current_path, REPORTS_DIR))
-
-        self.name = 'baseline'
-        self.link = jax.nn.relu
-
-        self.random_state = 0
+        super(SaturatedExponential, self).__init__(config=config)
+        self.name = 'saturated_exponential'
+        self.link = jax.nn.sigmoid
 
     def model(self, intensity, participant, independent, response_obs=None):
-        a_level_mean_global_scale = numpyro.sample('a_level_mean_global_scale', dist.HalfNormal(5.0))
         a_level_scale_global_scale = numpyro.sample('a_global_scale', dist.HalfNormal(2.0))
+        a_level_mean_global_scale = numpyro.sample('a_level_mean_global_scale', dist.HalfNormal(5.0))
 
         b_level_mean_global_scale = numpyro.sample('b_level_mean_global_scale', dist.HalfNormal(5.0))
         b_level_scale_global_scale = numpyro.sample('b_global_scale', dist.HalfNormal(2.0))
 
         lo_level_mean_global_scale = numpyro.sample('lo_level_mean_global_scale', dist.HalfNormal(2.0))
         lo_level_scale_global_scale = numpyro.sample('lo_level_scale_global_scale', dist.HalfNormal(2.0))
+
+        hi_level_mean_global_scale = numpyro.sample('hi_level_mean_global_scale', dist.HalfNormal(5.0))
+        hi_level_scale_global_scale = numpyro.sample('hi_level_scale_global_scale', dist.HalfNormal(2.0))
 
         sigma_offset_level_scale_global_scale = \
             numpyro.sample('sigma_offset_level_scale_global_scale', dist.HalfCauchy(5.0))
@@ -67,6 +59,9 @@ class Baseline():
             lo_level_mean = numpyro.sample("lo_level_mean", dist.HalfNormal(lo_level_mean_global_scale))
             lo_level_scale = numpyro.sample("lo_level_scale", dist.HalfNormal(lo_level_scale_global_scale))
 
+            hi_level_mean = numpyro.sample("hi_level_mean", dist.HalfNormal(hi_level_mean_global_scale))
+            hi_level_scale = numpyro.sample("hi_level_scale", dist.HalfNormal(hi_level_scale_global_scale))
+
             sigma_offset_level_scale = \
                 numpyro.sample(
                     'sigma_offset_level_scale',
@@ -80,71 +75,25 @@ class Baseline():
 
             with numpyro.plate("n_participant", n_participant, dim=-2):
                 a = numpyro.sample("a", dist.Normal(a_level_mean, a_level_scale))
-                b = numpyro.sample("b", dist.Normal(b_level_mean, b_level_scale))
+                b = 5 + numpyro.sample("b", dist.Normal(b_level_mean, b_level_scale))
 
                 lo = numpyro.sample("lo", dist.Normal(lo_level_mean, lo_level_scale))
+                hi = numpyro.sample("hi", dist.Normal(hi_level_mean, hi_level_scale))
 
                 sigma_offset = numpyro.sample('sigma_offset', dist.HalfCauchy(sigma_offset_level_scale))
                 sigma_slope = numpyro.sample('sigma_slope', dist.HalfCauchy(sigma_slope_level_scale))
 
-        mean = lo[participant, independent] + self.link(
-            jnp.multiply(b[participant, independent], intensity - a[participant, independent])
+        mean = jnp.maximum(
+            hi[participant, independent] - \
+            (hi[participant, independent] - lo[participant, independent]) * jax.numpy.exp(
+                - b[participant, independent] * (intensity - a[participant, independent])
+            ),
+            lo[participant, independent]
         )
         sigma = sigma_offset[participant, independent] + sigma_slope[participant, independent] * mean
 
         with numpyro.plate("data", len(intensity)):
             return numpyro.sample("obs", dist.TruncatedNormal(mean, sigma, low=0), obs=response_obs)
-
-    # def render(
-    #     self,
-    #     data_dict: dict
-    #     ) -> graphviz.graphs.Digraph:
-    #     """
-    #     Render NumPyro model and save resultant graph.
-
-    #     Args:
-    #         model (model): NumPyro model for rendering.
-    #         data_dict (dict): Data dictionary containing model parameters for rendering.
-    #         filename (Optional[Path], optional): Target destination for saving rendered graph. Defaults to None.
-
-    #     Returns:
-    #         graphviz.graphs.Digraph: Rendered graph.
-    #     """
-    #     logger.info('Rendering model ...')
-    #     # Retrieve data from data dictionary for rendering model
-    #     intensity, mep_size, participant, segment  = \
-    #         itemgetter(INTENSITY, MEP_SIZE, PARTICIPANT, SEGMENT)(data_dict)
-    #     return numpyro.render_model(
-    #         self.model,
-    #         model_args=(intensity, participant, segment, mep_size),
-    #         filename=os.path.join(self.reports_path, self.config.RENDER_FNAME)
-    #     )
-
-    @timing
-    def sample(self, df: pd.DataFrame) -> tuple[numpyro.infer.mcmc.MCMC, dict]:
-        """
-        Run MCMC inference
-
-        Args:
-            data_dict (dict): Data dictionary containing input and observations
-
-        Returns:
-            tuple[numpyro.infer.mcmc.MCMC, dict]: MCMC inference results and posterior samples.
-        """
-        response = df[RESPONSE_MUSCLES].to_numpy().reshape(-1,)
-        participant = df[PARTICIPANT].to_numpy().reshape(-1,)
-        independent = df[INDEPENDENT_FEATURES].to_numpy().reshape(-1,)
-        intensity = df[INTENSITY].to_numpy().reshape(-1,)
-
-        # MCMC
-        nuts_kernel = NUTS(self.model)
-        mcmc = MCMC(nuts_kernel, **self.config.MCMC_PARAMS)
-        rng_key = jax.random.PRNGKey(self.random_state)
-        logger.info(f'Running inference with model {self.name}...')
-        mcmc.run(rng_key, intensity, participant, independent, response)
-        posterior_samples = mcmc.get_samples()
-
-        return mcmc, posterior_samples
 
     def plot_fit(
             self,
@@ -181,7 +130,7 @@ class Baseline():
                 .copy()
 
             a = mean_a[c[::]]
-            b = mean_b[c[::]]
+            b = 5 + mean_b[c[::]]
 
             if 'lo' in posterior_samples:
                 lo = mean_lo[c[::]]
@@ -197,10 +146,7 @@ class Baseline():
             sns.scatterplot(data=temp, x=INTENSITY, y=RESPONSE_MUSCLES[0], ax=axes[i, 2])
 
             x_val = np.linspace(0, 15, 100)
-            y_val = self.link(b * (x_val - a))
-
-            if 'lo' in posterior_samples:
-                y_val += lo
+            y_val = jnp.maximum(hi - (hi - lo) * jax.numpy.exp(-b * (x_val - a)), lo)
 
             sns.kdeplot(x=posterior_samples['a'][:,c[-2],c[-1]], ax=axes[i, 1], color='green')
             sns.lineplot(
@@ -223,30 +169,4 @@ class Baseline():
             axes[i, 2].set_ylim(bottom=0, top=temp[RESPONSE_MUSCLES[0]].max() + 5)
 
         plt.subplots_adjust(left=None, bottom=None, right=None, top=None, wspace=None, hspace=0.4)
-        return fig
-
-    def plot_kde(self, df: pd.DataFrame, posterior_samples: dict):
-        n_participants = df[PARTICIPANT].nunique()
-        fig, ax = plt.subplots(n_participants + 1, 1, figsize=(8,(n_participants + 1)*4))
-
-        for i, p in enumerate(df[PARTICIPANT].unique().tolist()):
-            combinations = \
-                df[df[PARTICIPANT] == p] \
-                .reset_index(drop=True) \
-                .groupby(by=[PARTICIPANT] + INDEPENDENT_FEATURES) \
-                .size() \
-                .to_frame('counts') \
-                .reset_index().copy()
-            combinations = combinations[[PARTICIPANT] + INDEPENDENT_FEATURES].apply(tuple, axis=1).tolist()
-
-            for _, c in enumerate(combinations):
-                sns.kdeplot(posterior_samples['a'][:,c[-2],c[-1]], label=f'{c[-1]}', ax=ax[i])
-                ax[i].set_title(f'Participant: {c[0]} - {RESPONSE_MUSCLES[0]}')
-                ax[i].set_xlim(left=0)
-
-        for _, i in enumerate(df[INDEPENDENT_FEATURES[0]].unique().tolist()):
-            sns.kdeplot(posterior_samples['a_level_mean'][:,i], label=f'{i}', ax=ax[-1])
-        ax[-1].set_title(f'{INDEPENDENT_FEATURES[0]} means - {RESPONSE_MUSCLES[0]}')
-
-        plt.legend();
         return fig

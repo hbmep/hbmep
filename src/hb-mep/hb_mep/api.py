@@ -1,10 +1,15 @@
 import os
 import logging
 
+import numpyro
+
 from hb_mep.config import HBMepConfig
 from hb_mep.data_access import DataClass
 from hb_mep.models.baseline import Baseline
 from hb_mep.utils import timing
+
+numpyro.set_platform('cpu')
+numpyro.set_host_device_count(4)
 
 logger = logging.getLogger(__name__)
 
@@ -17,21 +22,14 @@ def run_inference(
     # Load data and preprocess
     data = DataClass(config)
     data.make_dirs()
-    df, data_dict, encoders_dict = data.build()
+    df, encoder_dict = data.build()
 
     # Run MCMC inference
-    mcmc, posterior_samples = model.sample(data_dict=data_dict)
+    mcmc, posterior_samples = model.sample(df=df)
 
     # Plots
-    fit_fig = model.plot_fit(
-        df=df,
-        data_dict=data_dict,
-        encoders_dict=encoders_dict,
-        posterior_samples=posterior_samples
-    )
-    kde_fig = model.plot_kde(
-        data_dict=data_dict, posterior_samples=posterior_samples
-    )
+    fit_fig = model.plot_fit(df=df, posterior_samples=posterior_samples)
+    kde_fig = model.plot_kde(df=df, posterior_samples=posterior_samples)
 
     # Save artefacts
     fit_fig.savefig(
