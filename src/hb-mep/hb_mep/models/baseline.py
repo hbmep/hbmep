@@ -226,19 +226,27 @@ class Baseline():
         return fig
 
     def plot_kde(self, df: pd.DataFrame, posterior_samples: dict):
-        fig, ax = plt.subplots(df[PARTICIPANT].nunique(), 1)
+        n_participants = df[PARTICIPANT].nunique()
+        fig, ax = plt.subplots(n_participants + 1, 1, figsize=(8,(n_participants + 1)*4))
 
-        combinations = \
-            df \
-            .groupby(by=[PARTICIPANT] + INDEPENDENT_FEATURES) \
-            .size() \
-            .to_frame('counts') \
-            .reset_index().copy()
-        combinations = combinations[[PARTICIPANT] + INDEPENDENT_FEATURES].apply(tuple, axis=1).tolist()
+        for i, p in enumerate(df[PARTICIPANT].unique().tolist()):
+            combinations = \
+                df[df[PARTICIPANT] == p] \
+                .reset_index(drop=True) \
+                .groupby(by=[PARTICIPANT] + INDEPENDENT_FEATURES) \
+                .size() \
+                .to_frame('counts') \
+                .reset_index().copy()
+            combinations = combinations[[PARTICIPANT] + INDEPENDENT_FEATURES].apply(tuple, axis=1).tolist()
 
-        for i, c in enumerate(combinations):
-            sns.kdeplot(posterior_samples['a'][:,c[-2],c[-1]], label=f'{c[-1]}', ax=ax)
-            ax.set_title(f'Participant: {c[0]} - {RESPONSE_MUSCLES[0]}')
-            ax.set_xlim(left=0)
+            for _, c in enumerate(combinations):
+                sns.kdeplot(posterior_samples['a'][:,c[-2],c[-1]], label=f'{c[-1]}', ax=ax[i])
+                ax[i].set_title(f'Participant: {c[0]} - {RESPONSE_MUSCLES[0]}')
+                ax[i].set_xlim(left=0)
+
+        for _, i in enumerate(df[INDEPENDENT_FEATURES[0]].unique().tolist()):
+            sns.kdeplot(posterior_samples['a_level_mean'][:,i], label=f'{i}', ax=ax[-1])
+        ax[-1].set_title(f'{INDEPENDENT_FEATURES[0]} means - {RESPONSE_MUSCLES[0]}')
+
         plt.legend();
         return fig

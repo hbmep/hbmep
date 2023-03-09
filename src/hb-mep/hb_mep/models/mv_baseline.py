@@ -1,41 +1,22 @@
-import os
 import logging
-from pathlib import Path
 
 import jax
 import jax.numpy as jnp
 import numpy as np
 import numpyro
 import numpyro.distributions as dist
-from numpyro.infer import MCMC, NUTS
-
-import pandas as pd
-import matplotlib.pyplot as plt
-import seaborn as sns
 
 from hb_mep.config import HBMepConfig
-from hb_mep.utils import timing
-from hb_mep.utils.constants import (
-    REPORTS_DIR,
-    INTENSITY,
-    RESPONSE_MUSCLES,
-    PARTICIPANT,
-    INDEPENDENT_FEATURES
-)
+from hb_mep.models.baseline import Baseline
 
 logger = logging.getLogger(__name__)
 
 
-class MVBaseline():
+class MVBaseline(Baseline):
     def __init__(self, config: HBMepConfig):
-        self.config = config
-        self.current_path = Path(os.getcwd()) if not config.CURRENT_PATH else config.CURRENT_PATH
-        self.reports_path = Path(os.path.join(self.current_path, REPORTS_DIR))
-
+        super(MVBaseline, self).__init__(config=config)
         self.name = 'mv_baseline'
         self.link = jax.nn.relu
-
-        self.random_state = 0
 
     def model(self, intensity, participant, independent, response_obs=None):
         a_level_mean_shared_mean = numpyro.sample('a_level_mean_shared_mean', dist.HalfNormal(10.0))
@@ -98,135 +79,3 @@ class MVBaseline():
 
         with numpyro.plate("data", len(intensity)):
             return numpyro.sample("obs", dist.TruncatedNormal(mean, sigma, low=0), obs=response_obs)
-
-    @timing
-    def sample(self, df: pd.DataFrame) -> tuple[numpyro.infer.mcmc.MCMC, dict]:
-        """
-        Run MCMC inference
-
-        Args:
-            data_dict (dict): Data dictionary containing input and observations
-
-        Returns:
-            tuple[numpyro.infer.mcmc.MCMC, dict]: MCMC inference results and posterior samples.
-        """
-        response = df[RESPONSE_MUSCLES].to_numpy().reshape(-1,)
-        participant = df[PARTICIPANT].to_numpy().reshape(-1,)
-        independent = df[INDEPENDENT_FEATURES].to_numpy().reshape(-1,)
-        intensity = df[INTENSITY].to_numpy().reshape(-1,)
-
-        # MCMC
-        nuts_kernel = NUTS(self.model)
-        mcmc = MCMC(nuts_kernel, **self.config.MCMC_PARAMS)
-        rng_key = jax.random.PRNGKey(self.random_state)
-        logger.info(f'Running inference with model {self.name}...')
-        mcmc.run(rng_key, intensity, participant, independent, response)
-        posterior_samples = mcmc.get_samples()
-
-        return mcmc, posterior_samples
-
-    def plot_fit(
-            self,
-            df: pd.DataFrame,
-            posterior_samples: dict
-    ):
-        n_muscles = 1
-        combinations = \
-            df \
-            .groupby(by=[PARTICIPANT] + INDEPENDENT_FEATURES) \
-            .size() \
-            .to_frame('counts') \
-            .reset_index().copy()
-        combinations = combinations[[PARTICIPANT] + INDEPENDENT_FEATURES].apply(tuple, axis=1).tolist()
-        total_combinations = len(combinations)
-
-        fig, axes = plt.subplots(total_combinations*n_muscles, 3, figsize=(12,total_combinations*n_muscles*5))
-
-        mean_a = posterior_samples['a'].mean(axis=0)
-        mean_b = posterior_samples['b'].mean(axis=0)
-
-        if 'lo' in posterior_samples:
-            mean_lo = posterior_samples['lo'].mean(axis=0)
-
-        if 'hi' in posterior_samples:
-            mean_hi = posterior_samples['hi'].mean(axis=0)
-
-        for i, c in enumerate(combinations):
-            temp = \
-                df[df[[PARTICIPANT] + INDEPENDENT_FEATURES] \
-                .apply(tuple, axis=1) \
-                .isin([c])] \
-                .reset_index(drop=True) \
-                .copy()
-
-            a = mean_a[c[::]]
-            b = mean_b[c[::]]
-
-            if 'lo' in posterior_samples:
-                lo = mean_lo[c[::]]
-
-            if 'hi' in posterior_samples:
-                hi = mean_hi[c[::]]
-
-            axes[i, 0].set_title(f'Actual: Combination:{c}, {RESPONSE_MUSCLES[0]}')
-            axes[i, 1].set_title(f'Fitted: Combination:{c}, {RESPONSE_MUSCLES[0]}')
-
-            sns.scatterplot(data=temp, x=INTENSITY, y=RESPONSE_MUSCLES[0], ax=axes[i, 0])
-            sns.scatterplot(data=temp, x=INTENSITY, y=RESPONSE_MUSCLES[0], ax=axes[i, 1], alpha=.4)
-            sns.scatterplot(data=temp, x=INTENSITY, y=RESPONSE_MUSCLES[0], ax=axes[i, 2])
-
-            x_val = np.linspace(0, 15, 100)
-            y_val = self.link(b * (x_val - a))
-
-            if 'lo' in posterior_samples:
-                y_val += lo
-
-            sns.kdeplot(x=posterior_samples['a'][:,c[-2],c[-1]], ax=axes[i, 1], color='green')
-            sns.lineplot(
-                x=x_val,
-                y=y_val,
-                ax=axes[i, 1],
-                color='red',
-                alpha=0.4,
-                label=f'Mean Posterior {RESPONSE_MUSCLES[0]}'
-            )
-            sns.lineplot(
-                x=x_val,
-                y=y_val,
-                ax=axes[i, 2],
-                color='red',
-                alpha=0.4,
-                label=f'Mean Posterior {RESPONSE_MUSCLES[0]}'
-            )
-            axes[i, 1].set_ylim(bottom=0, top=temp[RESPONSE_MUSCLES[0]].max() + 5)
-            axes[i, 2].set_ylim(bottom=0, top=temp[RESPONSE_MUSCLES[0]].max() + 5)
-
-        plt.subplots_adjust(left=None, bottom=None, right=None, top=None, wspace=None, hspace=0.4)
-        return fig
-
-    def plot_kde(self, df: pd.DataFrame, posterior_samples: dict):
-        fig, ax = plt.subplots(df[PARTICIPANT].nunique(), 1)
-
-        combinations = \
-            df \
-            .groupby(by=[PARTICIPANT] + INDEPENDENT_FEATURES) \
-            .size() \
-            .to_frame('counts') \
-            .reset_index().copy()
-        combinations = combinations[[PARTICIPANT] + INDEPENDENT_FEATURES].apply(tuple, axis=1).tolist()
-
-        for i, c in enumerate(combinations):
-            sns.kdeplot(posterior_samples['a'][:,c[-2],c[-1]], label=f'{c[-1]}', ax=ax)
-            ax.set_title(f'Participant: {c[0]} - {RESPONSE_MUSCLES[0]}')
-            ax.set_xlim(left=0)
-        plt.legend();
-        return fig
-
-    def plot_kde_independent(self, posterior_samples: dict):
-        fig, ax = plt.subplots(1, 1)
-        n_independent = posterior_samples['a_level_mean'].shape[1]
-        for i in range(n_independent):
-            sns.kdeplot(posterior_samples['a_level_mean'][:,i], label=f'{i}', ax=ax)
-            ax.set_title(f'{RESPONSE_MUSCLES[0]}')
-        plt.legend();
-        return fig
