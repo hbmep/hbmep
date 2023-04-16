@@ -4,25 +4,18 @@ from pathlib import Path
 
 import jax
 import jax.numpy as jnp
-import numpy as np
-import numpyro
-import numpyro.distributions as dist
-from numpyro.infer import MCMC, NUTS
-
-import h5py
-import graphviz
 import pandas as pd
-import matplotlib.pyplot as plt
-import seaborn as sns
+import numpyro.distributions as dist
 
 from hb_mep.config import HBMepConfig
 from hb_mep.utils import timing
 from hb_mep.utils.constants import (
+    DATA_DIR,
     REPORTS_DIR,
     INTENSITY,
-    RESPONSE_MUSCLES,
+    RESPONSE,
     PARTICIPANT,
-    INDEPENDENT_FEATURES
+    FEATURES
 )
 
 logger = logging.getLogger(__name__)
@@ -32,6 +25,7 @@ class Experiment():
     def __init__(self, config: HBMepConfig):
         self.config = config
         self.current_path = Path(os.getcwd()) if not config.CURRENT_PATH else config.CURRENT_PATH
+        self.data_path = Path(os.path.join(self.current_path, DATA_DIR))
         self.reports_path = Path(os.path.join(self.current_path, REPORTS_DIR))
 
         self.name = "Experiment"
@@ -45,7 +39,8 @@ class Experiment():
         n_segment: int = 3,
         sparse_factor: float = 0,
         xMax: int = 350,
-        n_points: int = 50
+        n_points: int = 50,
+        save_to_disk: bool = False
     ):
         seed = jax.random.PRNGKey(random_seed)
         logger.info(f"Random seed: {random_seed}")
@@ -95,4 +90,10 @@ class Experiment():
         df[PARTICIPANT] = df[PARTICIPANT].astype(int)
         df[FEATURES[0]] = df[FEATURES[0]].astype(int)
         logger.info(f"Finished simulating data ...")
+
+        if save_to_disk:
+            save_path = os.path.join(self.data_path, "simulated_data.csv")
+            df.to_csv(save_path, index=False)
+            logger.info(f"Saved to {save_path}")
+
         return df, a, a_mean
