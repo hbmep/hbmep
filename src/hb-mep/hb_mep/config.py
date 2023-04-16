@@ -9,20 +9,23 @@ class HBMepConfig():
     # File (present in data folder) to use for modeling
     FNAME: str = "rats_data_updated.csv"
 
-    # Study Features
-    FEATURES: list[str] = ["ch_combination", "method"]
-
-    # Independent Variable
+    # Independent variable
     INTENSITY: str = "intensity"
 
-    # Dependent Variable
-    RESPONSE: str = "auc_1"
+    # Participant variable
+    PARTICIPANT: str = "participant"
+
+    # Dependent variable
+    RESPONSE: str = "auc"
+
+    # Study Features
+    FEATURES: list[str] = ["segment"]
 
     # Preprocess parameters
     PREPROCESS_PARAMS: dict[str, int] = {
         "min_observations": 0,
         "scalar_intensity": 1,
-        "scalar_mep": 1
+        "scalar_response": 1
     }
     ZERO_ONE_THRESHOLDS: list[int] = [0.]
 

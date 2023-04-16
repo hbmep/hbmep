@@ -4,8 +4,8 @@ from hb_mep.config import HBMepConfig as config
 DATA_DIR = "data"
 REPORTS_DIR = "reports"
 
-PARTICIPANT = "participant"
-INTENSITY = "intensity"
+PARTICIPANT = config.PARTICIPANT
+INTENSITY = config.INTENSITY
 FEATURES = config.FEATURES
 RESPONSE = config.RESPONSE
 
