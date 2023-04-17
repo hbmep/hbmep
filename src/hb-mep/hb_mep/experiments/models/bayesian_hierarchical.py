@@ -36,7 +36,7 @@ class BayesianHierarchical(Baseline):
                     site.a,
                     dist.TruncatedDistribution(dist.Normal(a_mean, a_scale), low=0)
                 )
-                b = numpyro.sample(site.b, dist.HalfNormal(20))
+                b = numpyro.sample(site.b, dist.HalfNormal(.5))
 
                 lo = numpyro.sample(site.lo, dist.HalfNormal(0.1))
                 g = numpyro.sample(site.g, dist.Beta(1, 24))

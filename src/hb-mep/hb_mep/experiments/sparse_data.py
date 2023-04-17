@@ -62,19 +62,19 @@ class SparseDataExperiment(Experiment):
 
                 # HB Model
                 model = BayesianHierarchical(self.config)
-                _, posterior_samples = model.sample(df=df)
+                _, posterior_samples = model.run_inference(df=df)
                 error = posterior_samples["a"].mean(axis=0).reshape(-1,) - a.reshape(-1,)
                 hb_error = np.abs(error).mean()
 
                 # NHB Model
                 model = Bayesian(self.config)
-                _, posterior_samples = model.sample(df=df)
+                _, posterior_samples = model.run_inference(df=df)
                 error = posterior_samples["a"].mean(axis=0).reshape(-1,) - a.reshape(-1,)
                 nhb_error = np.abs(error).mean()
 
                 # MLE Model
                 model = MaximumLikelihood(self.config)
-                _, posterior_samples = model.sample(df=df)
+                _, posterior_samples = model.run_inference(df=df)
                 error = posterior_samples["a"].mean(axis=0).reshape(-1,) - a.reshape(-1,)
                 mle_error = np.abs(error).mean()
 

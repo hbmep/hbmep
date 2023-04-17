@@ -30,10 +30,10 @@ class MaximumLikelihood(Baseline):
                 # Uninformative prior
                 a = numpyro.sample(
                     site.a,
-                    dist.TruncatedDistribution(dist.Normal(0, 500), low=0)
+                    dist.TruncatedDistribution(dist.Normal(0, 1000), low=0)
                 )
                 # Priors
-                b = numpyro.sample(site.b, dist.HalfNormal(20))
+                b = numpyro.sample(site.b, dist.HalfNormal(.5))
 
                 lo = numpyro.sample(site.lo, dist.HalfNormal(0.1))
                 g = numpyro.sample(site.g, dist.Beta(1, 24))
