@@ -4,10 +4,10 @@ import logging
 import argparse
 
 from hb_mep.config import HBMepConfig
-from hb_mep.models.baseline import Baseline
-from hb_mep.models.saturated_exponential import SaturatedExponential
-# from hb_mep.models.logistic_regression import LogisticRegression
-from hb_mep.api import run_inference
+from hb_mep.models import Baseline, MixedEffects
+from hb_mep.experiments import Experiment, SparseDataExperiment
+from hb_mep.experiments.models import BayesianHierarchical
+from hb_mep.api import run_inference, run_experiment
 
 FORMAT = "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
 logging.basicConfig(format=FORMAT, level=logging.INFO)
@@ -16,37 +16,54 @@ logging.basicConfig(format=FORMAT, level=logging.INFO)
 def main(args):
     config = HBMepConfig()
     try:
-        model_name = args.model
-        if sys.argv[1] == "run":
-            if model_name == 'baseline':
+        job = args.job
+        name = args.name
+
+        if job == "inference":
+            assert name in ["baseline", "mixed-effects", "bayesian-hierarchical"]
+            if name == "baseline":
                 model = Baseline(config)
-            elif model_name == 'saturated-exponential':
-                model = SaturatedExponential(config)
-            elif model_name == 'logistic-regression':
-                config.ZERO_ONE = True
-                model = LogisticRegression(config)
-            else:
-                raise ValueError
-    except IndexError:
-        raise IndexError("Call to API requires an endpoint")
-    except AttributeError:
-        raise AttributeError("Required model name")
-    except ValueError:
-        raise ValueError(f"Model {model_name} does not exist")
-    config.PLOT_FIT = model.name + '_' + config.RESPONSE_MUSCLES[0] + '_' + config.PLOT_FIT
-    config.PLOT_KDE = model.name + '_' + config.RESPONSE_MUSCLES[0] + '_' + config.PLOT_KDE
-    run_inference(model=model, config=config)
+            elif name == "mixed-effects":
+                model = MixedEffects(config)
+            elif name == "bayesian-hierarchical":
+                model = BayesianHierarchical(config)
+
+        if job == "experiment":
+            assert name in ["sparse-data"]
+            if name == "sparse-data":
+                experiment = SparseDataExperiment(config)
+
+    except AssertionError:
+        raise AssertionError(f"Invalid instance {name} for {job} job")
+
+    if job == "inference":
+        run_inference(config, model)
+
+    if job == "experiment":
+        run_experiment(config, experiment)
+
     return
 
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(
-        description="HB MEP Inference"
+        description="Run HB-MEP"
     )
     parser.add_argument(
-        "--model",
-        default='baseline',
-        help="Model name"
+        "--job",
+        choices=["inference", "experiment"],
+        required=True,
+        help="Job to run"
     )
-    args = parser.parse_args(sys.argv[2:])
+    parser.add_argument(
+        "--name",
+        required=True,
+        help="Job to run"
+    )
+
+    try:
+        args = parser.parse_args(sys.argv[2:])
+    except IndexError:
+        IndexError("Call to API requires an endpoint")
+
     main(args)
