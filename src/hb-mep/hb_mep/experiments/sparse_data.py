@@ -7,6 +7,7 @@ import pandas as pd
 
 from hb_mep.config import HBMepConfig
 from hb_mep.experiments import Experiment
+from hb_mep.experiments.models import BayesianHierarchical, Bayesian, MaximumLikelihood
 from hb_mep.utils import timing
 
 logger = logging.getLogger(__name__)
@@ -19,11 +20,17 @@ class SparseDataExperiment(Experiment):
 
     @timing
     def run(self):
-        n_participant = 50
-        n_segment = 5
+        n_participant = 5
+        n_segment = 3
 
-        n_trials = 150
-        n_sparse_factors = 10
+        n_trials = 2
+        n_sparse_factors = 2
+
+        # n_participant = 50
+        # n_segment = 5
+
+        # n_trials = 150
+        # n_sparse_factors = 10
 
         sparse_factors = [i/10 for i in range(n_sparse_factors)]
         trials = jax.random.choice(
@@ -54,19 +61,19 @@ class SparseDataExperiment(Experiment):
                 )
 
                 # HB Model
-                model = SaturatedReLU_HB(config)
+                model = BayesianHierarchical(self.config)
                 _, posterior_samples = model.sample(df=df)
                 error = posterior_samples["a"].mean(axis=0).reshape(-1,) - a.reshape(-1,)
                 hb_error = np.abs(error).mean()
 
                 # NHB Model
-                model = SaturatedReLU_NHB(config)
+                model = Bayesian(self.config)
                 _, posterior_samples = model.sample(df=df)
                 error = posterior_samples["a"].mean(axis=0).reshape(-1,) - a.reshape(-1,)
                 nhb_error = np.abs(error).mean()
 
                 # MLE Model
-                model = SaturatedReLU_MLE(config)
+                model = MaximumLikelihood(self.config)
                 _, posterior_samples = model.sample(df=df)
                 error = posterior_samples["a"].mean(axis=0).reshape(-1,) - a.reshape(-1,)
                 mle_error = np.abs(error).mean()

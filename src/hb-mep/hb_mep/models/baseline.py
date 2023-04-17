@@ -183,7 +183,6 @@ class Baseline():
             ax[i, 2].axvline(hpdi_interval[1], linestyle="--", color="green")
 
             ax[i, 1].set_xlim(right=temp_df[INTENSITY].max() + 10)
-            ax[i, 1].set_ylim(bottom=0, top=temp_df[RESPONSE].max() + 5)
 
             ax[i, 0].set_title(f"{tuple(self.columns)} - {c}")
             ax[i, 1].set_title(f"Model Fit")

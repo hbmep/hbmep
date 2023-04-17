@@ -6,6 +6,7 @@ import argparse
 from hb_mep.config import HBMepConfig
 from hb_mep.models import Baseline, MixedEffects
 from hb_mep.experiments import Experiment, SparseDataExperiment
+from hb_mep.experiments.models import BayesianHierarchical
 from hb_mep.api import run_inference, run_experiment
 
 FORMAT = "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
@@ -19,11 +20,13 @@ def main(args):
         name = args.name
 
         if job == "inference":
-            assert name in ["baseline", "mixed-effects"]
+            assert name in ["baseline", "mixed-effects", "bayesian-hierarchical"]
             if name == "baseline":
                 model = Baseline(config)
             elif name == "mixed-effects":
                 model = MixedEffects(config)
+            elif name == "bayesian-hierarchical":
+                model = BayesianHierarchical(config)
 
         if job == "experiment":
             assert name in ["sparse-data"]

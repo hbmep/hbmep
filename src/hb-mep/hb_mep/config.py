@@ -6,8 +6,8 @@ class HBMepConfig():
     CURRENT_PATH: Path = None
 
     # File (present in data folder) to use for modeling
-    # FNAME: str = "simulated_data.csv"
-    FNAME: str = "rats_data_updated.csv"
+    FNAME: str = "simulated_data.csv"
+    # FNAME: str = "rats_data_updated.csv"
 
     # Independent variable
     INTENSITY: str = "intensity"
@@ -16,10 +16,11 @@ class HBMepConfig():
     PARTICIPANT: str = "participant"
 
     # Dependent variable
-    RESPONSE: str = "auc_1"
+    RESPONSE: str = "auc"
 
     # Study Features
-    FEATURES: list[str] = ["ch_combination", "method"]
+    FEATURES: list[str] = ["segment"]
+    # FEATURES: list[str] = ["ch_combination", "method"]
 
     # Preprocess parameters
     PREPROCESS_PARAMS: dict[str, int] = {
