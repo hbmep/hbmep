@@ -19,13 +19,13 @@ class HBMepConfig():
     RESPONSE: str = "auc"
 
     # Study Features
-    FEATURES: list[str] = ["segment"]
+    FEATURES: list[str] = ["segment", "method"]
     # FEATURES: list[str] = ["ch_combination", "method"]
 
     # Preprocess parameters
     PREPROCESS_PARAMS: dict[str, int] = {
         "min_observations": 0,
-        "scalar_intensity": 1,
+        "scalar_intensity": 1000,
         "scalar_response": 1
     }
     ZERO_ONE_THRESHOLDS: list[int] = [0.]

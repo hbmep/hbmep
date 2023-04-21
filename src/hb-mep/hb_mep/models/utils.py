@@ -35,6 +35,8 @@ class Site:
     Rho = "Rho"
 
     # Mixed Effects
+    baseline_mean_global_scale = "baseline_mean_global_scale"
+    baseline_scale_global_scale = "baseline_scale_global_scale"
     delta_mean = "delta_mean"
     delta_scale = "delta_scale"
     baseline_mean = "baseline_mean"

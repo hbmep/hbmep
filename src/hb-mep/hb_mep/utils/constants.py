@@ -9,7 +9,7 @@ INTENSITY = config.INTENSITY
 FEATURES = config.FEATURES
 RESPONSE = config.RESPONSE
 
-MUSCLE_TO_AUC_MAP = \
+AUC_MAP = \
         {
             "LTrapezius":'auc01', "LDeltoid":'auc02', "LBiceps":'auc03', "LTriceps":'auc04',
             "LECR":'auc05', "LFCR":'auc06', "LAPB":'auc07', "LADM":'auc08', "LTA":'auc09',

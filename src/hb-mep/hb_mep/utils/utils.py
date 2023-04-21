@@ -45,7 +45,7 @@ def timing(f):
 
 
 @timing
-def plot(df: pd.DataFrame):
+def plot(df: pd.DataFrame, encoder_dict: dict = None):
     columns = [PARTICIPANT] + FEATURES
     combinations = \
         df \
@@ -64,7 +64,15 @@ def plot(df: pd.DataFrame):
         idx = df[columns].apply(tuple, axis=1).isin([c])
         temp_df = df[idx].reset_index(drop=True).copy()
 
-        sns.scatterplot(data=temp_df, x=INTENSITY, y=RESPONSE, ax=axes[i])
-        axes[i].set_title(f'Actual: Combination:{c}, {RESPONSE}')
+        sns.scatterplot(data=temp_df, x=INTENSITY, y=RESPONSE, ax=axes[i], hue="sc_cluster_as")
+
+        if encoder_dict is None:
+            axes[i].set_title(f"{columns} - {c}")
+        else:
+            c0 = encoder_dict[columns[0]].inverse_transform(np.array([c[0]]))[0]
+            c1 = encoder_dict[columns[1]].inverse_transform(np.array([c[1]]))[0]
+            c2 = encoder_dict[columns[2]].inverse_transform(np.array([c[2]]))[0]
+
+            axes[i].set_title(f"{(c0, c1, c2)}")
 
     return fig
