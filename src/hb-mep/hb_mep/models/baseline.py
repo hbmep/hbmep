@@ -129,13 +129,12 @@ class Baseline():
         self,
         posterior_samples: dict,
         posterior_means: dict,
-        c: tuple,
-        x: np.ndarray
+        c: tuple
     ):
         a = posterior_means[site.a][c]
         b = posterior_means[site.b][c]
         lo = posterior_means[site.lo][c]
-        y = lo + self.link(b * (x - a))
+        y = lo + self.link(b * (self.x - a))
 
         threshold_samples = posterior_samples[site.a][:, c[0], c[1]]
         hpdi_interval = hpdi(threshold_samples, prob=0.95)
@@ -165,7 +164,7 @@ class Baseline():
             sns.scatterplot(data=temp_df, x=INTENSITY, y=RESPONSE, ax=ax[i, 1], alpha=.4)
 
             y, threshold_samples, hpdi_interval = self._get_estimates(
-                posterior_samples, posterior_means, c, self.x
+                posterior_samples, posterior_means, c
             )
 
             sns.kdeplot(x=threshold_samples, ax=ax[i, 1], color="blue")

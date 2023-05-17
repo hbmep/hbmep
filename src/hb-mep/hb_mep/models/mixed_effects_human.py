@@ -38,111 +38,45 @@ class MixedEffectsHuman(Baseline):
         n_participant = np.unique(participant).shape[0]
         n_feature1 = np.unique(feature1).shape[0]
 
+        """ Hyperpriors """
         delta_mean = numpyro.sample(site.delta_mean, dist.Normal(0, 10))
-        delta_scale = numpyro.sample(site.delta_scale, dist.HalfNormal(5.0))
+        delta_scale = numpyro.sample(site.delta_scale, dist.HalfNormal(2.0))
 
-        # Hyperriors
-        baseline_mean = numpyro.sample(
-            site.baseline_mean,
-            dist.TruncatedDistribution(dist.Normal(4, 5), low=0)
+        # Baseline threshold
+        baseline_mean_global_mean = numpyro.sample(
+            "baseline_mean_global_mean",
+            dist.HalfNormal(2.0)
         )
-        baseline_scale = numpyro.sample(site.baseline_scale, dist.HalfNormal(5.0))
-
-        b_scale = numpyro.sample(site.b_scale, dist.HalfNormal(5.0))
-
-        lo_scale = numpyro.sample(site.lo_scale, dist.HalfNormal(0.1))
-        g_shape = numpyro.sample(site.g_shape, dist.HalfNormal(20.0))
-
-        noise_offset_scale = numpyro.sample(
-            site.noise_offset_scale,
-            dist.HalfCauchy(3.0)
-        )
-        noise_slope_scale = numpyro.sample(
-            site.noise_slope_scale,
-            dist.HalfCauchy(3.0)
+        baseline_scale_global_scale = numpyro.sample(
+            site.baseline_scale_global_scale,
+            dist.HalfNormal(2.0)
         )
 
-        with numpyro.plate("n_participant", n_participant, dim=-1):
-            baseline = numpyro.sample(
-                site.baseline,
-                dist.TruncatedDistribution(dist.Normal(baseline_mean, baseline_scale), low=0)
-            )
-            delta = numpyro.sample(site.delta, dist.Normal(delta_mean, delta_scale))
-
-            with numpyro.plate("n_feature1", n_feature1, dim=-2):
-                # Priors
-                a = numpyro.deterministic(
-                    site.a,
-                    jnp.array([baseline, baseline + delta])
-                )
-                b = numpyro.sample(site.b, dist.HalfNormal(b_scale))
-
-                lo = numpyro.sample(site.lo, dist.HalfNormal(lo_scale))
-                g = numpyro.sample(site.g, dist.Beta(1, g_shape))
-
-                noise_offset = numpyro.sample(
-                    site.noise_offset,
-                    dist.HalfCauchy(noise_offset_scale)
-                )
-                noise_slope = numpyro.sample(
-                    site.noise_slope,
-                    dist.HalfCauchy(noise_slope_scale)
-                )
-
-        # Model
-        mean = \
-            lo[feature1, participant] - \
-            jnp.log(jnp.maximum(
-                g[feature1, participant],
-                jnp.exp(-jax.nn.relu(
-                    b[feature1, participant] * (intensity - a[feature1, participant])
-                ))
-            ))
-
-        # mean = \
-        #     lo[feature1, participant] + \
-        #     jax.nn.relu(
-        #         b[feature1, participant] * (intensity - a[feature1, participant])
-        #     )
-
-        # noise = numpyro.sample('sigma', dist.HalfCauchy(3.0))
-
-        noise = \
-            noise_offset[feature1, participant] + \
-            noise_slope[feature1, participant] * mean
-
-        # penalty = 5 * (jnp.fabs(baseline + delta) - (baseline + delta))
-        # numpyro.factor(site.penalty, -penalty)
-
-        with numpyro.plate("data", len(intensity)):
-            return numpyro.sample("obs", dist.TruncatedNormal(mean, noise, low=0), obs=response_obs)
-
-    def _model(self, intensity, participant, feature1, response_obs=None):
-        n_participant = np.unique(participant).shape[0]
-        n_feature1 = np.unique(feature1).shape[0]
-
-        baseline_mean_global_mean = numpyro.sample("baseline_mean_global_mean", dist.HalfNormal(2.0))
-        baseline_scale_global_scale = numpyro.sample(site.baseline_scale_global_scale, dist.HalfNormal(2.0))
-
-        baseline_scale = numpyro.sample(site.baseline_scale, dist.HalfNormal(baseline_scale_global_scale))
+        baseline_scale = numpyro.sample(
+            site.baseline_scale,
+            dist.HalfNormal(baseline_scale_global_scale)
+        )
         baseline_mean = numpyro.sample(
             site.baseline_mean,
             dist.TruncatedDistribution(dist.Normal(baseline_mean_global_mean, baseline_scale), low=0)
         )
 
+        # Slope
         b_mean_global_scale = numpyro.sample(site.b_mean_global_scale, dist.HalfNormal(5.0))
         b_scale_global_scale = numpyro.sample(site.b_scale_global_scale, dist.HalfNormal(2.0))
 
         b_mean = numpyro.sample(site.b_mean, dist.HalfNormal(b_mean_global_scale))
         b_scale = numpyro.sample(site.b_scale, dist.HalfNormal(b_scale_global_scale))
 
-        delta_mean = numpyro.sample(site.delta_mean, dist.Normal(0, 10))
-        delta_scale = numpyro.sample(site.delta_scale, dist.HalfNormal(2.0))
-
-        lo_scale_global_scale = numpyro.sample(site.lo_scale_global_scale, dist.HalfNormal(2))
+        # MEP at rest
+        lo_scale_global_scale = numpyro.sample(site.lo_scale_global_scale, dist.HalfNormal(2.0))
         lo_scale = numpyro.sample(site.lo_scale, dist.HalfNormal(lo_scale_global_scale))
 
+        # # Saturation
+        # g_shape = numpyro.sample(site.g_shape, dist.HalfNormal(20.0))
+
         with numpyro.plate("n_participant", n_participant, dim=-1):
+            """ Priors """
             baseline = numpyro.sample(
                 site.baseline,
                 dist.TruncatedDistribution(dist.Normal(baseline_mean, baseline_scale), low=0)
@@ -150,30 +84,41 @@ class MixedEffectsHuman(Baseline):
             delta = numpyro.sample(site.delta, dist.Normal(delta_mean, delta_scale))
 
             with numpyro.plate("n_feature1", n_feature1, dim=-2):
+                # Threshold
                 a = numpyro.deterministic(
                     site.a,
                     jnp.array([baseline, baseline + delta])
                 )
+
+                # Slope
                 b = numpyro.sample(
                     site.b,
                     dist.TruncatedDistribution(dist.Normal(b_mean, b_scale), low=0)
                 )
 
+                # MEP at rest
                 lo = numpyro.sample(site.lo, dist.HalfNormal(lo_scale))
+
+                # # Saturation
                 # g = numpyro.sample(site.g, dist.Beta(1, g_shape))
 
-                # noise_offset = numpyro.sample(
-                #     site.noise_offset,
-                #     dist.HalfCauchy(noise_offset_scale)
-                # )
-                # noise_slope = numpyro.sample(
-                #     site.noise_slope,
-                #     dist.HalfCauchy(noise_slope_scale)
-                # )
+                # Noise
+                noise = numpyro.sample(
+                    site.noise,
+                    dist.HalfCauchy(0.5)
+                )
 
-        sigma = numpyro.sample('sigma', dist.HalfCauchy(3.0))
-        mean = \
-            lo[feature1, participant] + jax.nn.relu(b[feature1, participant] * (intensity - a[feature1, participant]))
+        # Model
+        mean = numpyro.deterministic(
+            site.mean,
+            lo[feature1, participant] + \
+            jax.nn.relu(b[feature1, participant] * (intensity - a[feature1, participant]))
+        )
+
+        sigma = numpyro.deterministic("sigma", noise[feature1, participant])
+
+        penalty = 5 * (jnp.fabs(baseline + delta) - (baseline + delta))
+        numpyro.factor(site.penalty, -penalty)
 
         with numpyro.plate("data", len(intensity)):
             return numpyro.sample("obs", dist.TruncatedNormal(mean, sigma, low=0), obs=response_obs)
@@ -202,15 +147,14 @@ class MixedEffectsHuman(Baseline):
         self,
         posterior_samples: dict,
         posterior_means: dict,
-        c: tuple,
-        x: np.ndarray
+        c: tuple
     ):
         a = posterior_means[site.a][c[::-1]]
         b = posterior_means[site.b][c[::-1]]
         lo = posterior_means[site.lo][c[::-1]]
         # g = posterior_means[site.g][c[::-1]]
         # y = lo - jnp.log(jnp.maximum(g, jnp.exp(-jnp.maximum(0, b * (x - a)))))
-        y = lo + self.link(b * (x - a))
+        y = lo + jax.nn.relu(b * (self.xx - a))
 
         threshold_samples = posterior_samples[site.a][:, c[1], c[0]]
         hpdi_interval = hpdi(threshold_samples, prob=0.95)
@@ -221,15 +165,14 @@ class MixedEffectsHuman(Baseline):
     #     self,
     #     posterior_samples: dict,
     #     posterior_means: dict,
-    #     c: tuple,
-    #     x: np.ndarray
+    #     c: tuple
     # ):
     #     a = posterior_means[site.a][c[::-1]]
     #     b = posterior_means[site.b][c[::-1]]
     #     lo = posterior_means[site.lo][c[::-1]]
     #     g = posterior_means[site.g][c[::-1]]
-    #     y = lo - jnp.log(jnp.maximum(g, jnp.exp(-jnp.maximum(0, b * (x - a)))))
-    #     # y = lo + self.link(b * (x - a))
+    #     y = lo - jnp.log(jnp.maximum(g, jnp.exp(-jnp.maximum(0, b * (self.x - a)))))
+    #     # y = lo + self.link(b * (self.xx - a))
 
     #     threshold_samples = posterior_samples[site.a][:, c[1], c[0]]
     #     hpdi_interval = hpdi(threshold_samples, prob=0.95)
@@ -269,7 +212,7 @@ class MixedEffectsHuman(Baseline):
             sns.scatterplot(data=temp_df, x=INTENSITY, y=RESPONSE, ax=ax[i, 1], alpha=.4)
 
             y, threshold_samples, hpdi_interval = self._get_estimates(
-                posterior_samples, posterior_means, c, self.x
+                posterior_samples, posterior_means, c
             )
 
             sns.kdeplot(x=threshold_samples, ax=ax[i, 1], color="blue")

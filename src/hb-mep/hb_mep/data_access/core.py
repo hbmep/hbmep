@@ -211,7 +211,7 @@ class DataClass:
         self,
         df: pd.DataFrame,
         sc_approach: str = "posterior",
-        muscle: str = "APB"
+        muscle: str = "Triceps"
     ):
         """
         Clean human data

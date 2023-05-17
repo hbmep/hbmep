@@ -131,14 +131,13 @@ class MixedEffects(Baseline):
         self,
         posterior_samples: dict,
         posterior_means: dict,
-        c: tuple,
-        x: np.ndarray
+        c: tuple
     ):
         a = posterior_means[site.a][c[::-1]]
         b = posterior_means[site.b][c[::-1]]
         lo = posterior_means[site.lo][c[::-1]]
         g = posterior_means[site.g][c[::-1]]
-        y = lo - jnp.log(jnp.maximum(g, jnp.exp(-jnp.maximum(0, b * (x - a)))))
+        y = lo - jnp.log(jnp.maximum(g, jnp.exp(-jnp.maximum(0, b * (self.x - a)))))
 
         threshold_samples = posterior_samples[site.a][:, c[2], c[1], c[0]]
         hpdi_interval = hpdi(threshold_samples, prob=0.95)

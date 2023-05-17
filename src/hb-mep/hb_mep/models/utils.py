@@ -5,8 +5,10 @@ class Site:
     lo = "lo"
     hi = "hi"
     g = "g"
+    mean = "mean"
     noise_offset = "noise_offset"
     noise_slope = "noise_slope"
+    noise = "noise"
     p = "p"
     q = "q"
 
