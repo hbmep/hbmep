@@ -26,10 +26,10 @@ from hb_mep.utils.constants import (
 logger = logging.getLogger(__name__)
 
 
-class MixedEffectsHuman(Baseline):
+class ReLU(Baseline):
     def __init__(self, config: HBMepConfig):
-        super(MixedEffectsHuman, self).__init__(config=config)
-        self.name = "Mixed_Effects_Human"
+        super(ReLU, self).__init__(config=config)
+        self.name = "ReLU"
 
         self.columns = ["participant", "method"]
         self.x = np.linspace(0, 15, 100)
@@ -39,70 +39,48 @@ class MixedEffectsHuman(Baseline):
         n_feature1 = np.unique(feature1).shape[0]
 
         """ Hyperpriors """
-        delta_mean = numpyro.sample(site.delta_mean, dist.Normal(0, 10))
-        delta_scale = numpyro.sample(site.delta_scale, dist.HalfNormal(2.0))
-
-        # Baseline threshold
-        baseline_mean_global_mean = numpyro.sample(
-            "baseline_mean_global_mean",
-            dist.HalfNormal(2.0)
+        a_mean_global_mean = numpyro.sample(
+            "a_mean_global_mean",
+            dist.HalfNormal(10.0)
         )
-        baseline_scale_global_scale = numpyro.sample(
-            site.baseline_scale_global_scale,
+        a_scale_global_scale = numpyro.sample(
+            "a_scale_global_scale",
             dist.HalfNormal(2.0)
         )
 
-        baseline_scale = numpyro.sample(
-            site.baseline_scale,
-            dist.HalfNormal(baseline_scale_global_scale)
+        a_scale = numpyro.sample(
+            site.a_scale,
+            dist.HalfNormal(a_scale_global_scale)
         )
-        baseline_mean = numpyro.sample(
-            site.baseline_mean,
-            dist.TruncatedDistribution(dist.Normal(baseline_mean_global_mean, baseline_scale), low=0)
+        a_mean = numpyro.sample(
+            site.a_mean,
+            dist.TruncatedDistribution(dist.Normal(a_mean_global_mean, a_scale), low=0)
         )
 
-        # Slope
         b_mean_global_scale = numpyro.sample(site.b_mean_global_scale, dist.HalfNormal(5.0))
         b_scale_global_scale = numpyro.sample(site.b_scale_global_scale, dist.HalfNormal(2.0))
 
         b_mean = numpyro.sample(site.b_mean, dist.HalfNormal(b_mean_global_scale))
         b_scale = numpyro.sample(site.b_scale, dist.HalfNormal(b_scale_global_scale))
 
-        # MEP at rest
         lo_scale_global_scale = numpyro.sample(site.lo_scale_global_scale, dist.HalfNormal(2.0))
         lo_scale = numpyro.sample(site.lo_scale, dist.HalfNormal(lo_scale_global_scale))
 
-        # # Saturation
-        # g_shape = numpyro.sample(site.g_shape, dist.HalfNormal(20.0))
-
         with numpyro.plate("n_participant", n_participant, dim=-1):
-            """ Priors """
-            baseline = numpyro.sample(
-                site.baseline,
-                dist.TruncatedDistribution(dist.Normal(baseline_mean, baseline_scale), low=0)
-            )
-            delta = numpyro.sample(site.delta, dist.Normal(delta_mean, delta_scale))
-
             with numpyro.plate("n_feature1", n_feature1, dim=-2):
-                # Threshold
-                a = numpyro.deterministic(
+                """ Priors """
+                a = numpyro.sample(
                     site.a,
-                    jnp.array([baseline, baseline + delta])
+                    dist.TruncatedDistribution(dist.Normal(a_mean, a_scale), low=0)
                 )
 
-                # Slope
                 b = numpyro.sample(
                     site.b,
                     dist.TruncatedDistribution(dist.Normal(b_mean, b_scale), low=0)
                 )
 
-                # MEP at rest
                 lo = numpyro.sample(site.lo, dist.HalfNormal(lo_scale))
 
-                # # Saturation
-                # g = numpyro.sample(site.g, dist.Beta(1, g_shape))
-
-                # Noise
                 noise_offset = numpyro.sample(
                     site.noise_offset,
                     dist.HalfCauchy(0.5)
@@ -112,7 +90,7 @@ class MixedEffectsHuman(Baseline):
                     dist.HalfCauchy(0.5)
                 )
 
-        # Model
+        """ Model """
         mean = numpyro.deterministic(
             site.mean,
             lo[feature1, participant] + \
@@ -124,9 +102,6 @@ class MixedEffectsHuman(Baseline):
             noise_offset[feature1, participant] + \
             noise_slope[feature1, participant] * mean
         )
-
-        penalty = 5 * (jnp.fabs(baseline + delta) - (baseline + delta))
-        numpyro.factor(site.penalty, -penalty)
 
         with numpyro.plate("data", len(intensity)):
             return numpyro.sample("obs", dist.TruncatedNormal(mean, sigma, low=0), obs=response_obs)
@@ -160,32 +135,12 @@ class MixedEffectsHuman(Baseline):
         a = posterior_means[site.a][c[::-1]]
         b = posterior_means[site.b][c[::-1]]
         lo = posterior_means[site.lo][c[::-1]]
-        # g = posterior_means[site.g][c[::-1]]
-        # y = lo - jnp.log(jnp.maximum(g, jnp.exp(-jnp.maximum(0, b * (x - a)))))
         y = lo + jax.nn.relu(b * (self.x - a))
 
         threshold_samples = posterior_samples[site.a][:, c[1], c[0]]
         hpdi_interval = hpdi(threshold_samples, prob=0.95)
 
         return y, threshold_samples, hpdi_interval
-
-    # def _get_estimates(
-    #     self,
-    #     posterior_samples: dict,
-    #     posterior_means: dict,
-    #     c: tuple
-    # ):
-    #     a = posterior_means[site.a][c[::-1]]
-    #     b = posterior_means[site.b][c[::-1]]
-    #     lo = posterior_means[site.lo][c[::-1]]
-    #     g = posterior_means[site.g][c[::-1]]
-    #     y = lo - jnp.log(jnp.maximum(g, jnp.exp(-jnp.maximum(0, b * (self.x - a)))))
-    #     # y = lo + self.link(b * (self.xx - a))
-
-    #     threshold_samples = posterior_samples[site.a][:, c[1], c[0]]
-    #     hpdi_interval = hpdi(threshold_samples, prob=0.95)
-
-    #     return y, threshold_samples, hpdi_interval
 
     def _get_combinations(self, df: pd.DataFrame):
         combinations = \
@@ -252,7 +207,7 @@ class MixedEffectsHuman(Baseline):
 
             ax[i, 1].set_title(f"Model Fit")
             ax[i, 2].set_title(f"Threshold Estimate")
-            ax[i, 1].legend(loc="upper right")
-            ax[i, 2].legend(loc="upper right")
+            ax[i, 1].legend(loc="upper left")
+            ax[i, 2].legend(loc="upper left")
 
         return fig
