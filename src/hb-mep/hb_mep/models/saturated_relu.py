@@ -63,7 +63,11 @@ class SaturatedReLU(Baseline):
         b_mean = numpyro.sample(site.b_mean, dist.HalfNormal(b_mean_global_scale))
         b_scale = numpyro.sample(site.b_scale, dist.HalfNormal(b_scale_global_scale))
 
-        g_shape = numpyro.sample(site.g_shape, dist.HalfNormal(5.0))
+        g_shape_global_scale = numpyro.sample(
+            "g_shape_global_scale",
+            dist.HalfNormal(5.0)
+        )
+        g_shape = numpyro.sample(site.g_shape, dist.HalfNormal(g_shape_global_scale))
 
         lo_scale_global_scale = numpyro.sample(site.lo_scale_global_scale, dist.HalfNormal(2.0))
         lo_scale = numpyro.sample(site.lo_scale, dist.HalfNormal(lo_scale_global_scale))
