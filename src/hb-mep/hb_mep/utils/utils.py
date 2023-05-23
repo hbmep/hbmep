@@ -45,7 +45,9 @@ def timing(f):
 
 
 @timing
-def plot(df: pd.DataFrame, encoder_dict: dict = None):
+def plot(
+    df: pd.DataFrame, encoder_dict: dict = None, mat: np.ndarray = None
+):
     columns = [PARTICIPANT] + FEATURES
     combinations = \
         df \
@@ -56,14 +58,22 @@ def plot(df: pd.DataFrame, encoder_dict: dict = None):
     combinations = combinations[columns].apply(tuple, axis=1).tolist()
     n_combinations = len(combinations)
 
+    n_columns = 1 if mat is None else 2
+
     fig, axes = plt.subplots(
-        n_combinations, 1, figsize=(8, n_combinations * 3), constrained_layout=True
+        n_combinations,
+        n_columns,
+        figsize=(5 * n_columns, n_combinations * 3),
+        constrained_layout=True
     )
 
     for i, c in enumerate(combinations):
         idx = df[columns].apply(tuple, axis=1).isin([c])
-        temp_df = df[idx].reset_index(drop=True).copy()
 
+        temp_df = df[idx].reset_index(drop=True).copy()
+        temp_mat = mat[idx, :]
+
+        ax = axes[i] if mat is None else axes[i][0]
         sns.scatterplot(data=temp_df, x=INTENSITY, y=RESPONSE, ax=axes[i])
 
         if encoder_dict is None:
