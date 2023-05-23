@@ -71,18 +71,36 @@ def plot(
         idx = df[columns].apply(tuple, axis=1).isin([c])
 
         temp_df = df[idx].reset_index(drop=True).copy()
-        temp_mat = mat[idx, :]
 
         ax = axes[i] if mat is None else axes[i][0]
-        sns.scatterplot(data=temp_df, x=INTENSITY, y=RESPONSE, ax=axes[i])
+        sns.scatterplot(data=temp_df, x=INTENSITY, y=RESPONSE, ax=ax)
 
         if encoder_dict is None:
-            axes[i].set_title(f"{columns} - {c}")
+            ax.set_title(f"{columns} - {c}")
         else:
             c0 = encoder_dict[columns[0]].inverse_transform(np.array([c[0]]))[0]
             c1 = encoder_dict[columns[1]].inverse_transform(np.array([c[1]]))[0]
             c2 = encoder_dict[columns[2]].inverse_transform(np.array([c[2]]))[0]
 
-            axes[i].set_title(f"{(c0, c1, c2)}")
+            ax.set_title(f"{(c0, c1, c2)}")
+
+        if mat is not None:
+            ax = axes[i, 1]
+            temp_mat = mat[idx, :]
+
+            y = np.linspace(-1, 1, temp_mat.shape[1])
+
+            for j in range(temp_mat.shape[0]):
+                x = temp_mat[j, :] / 100 + temp_df.pulse_amplitude[j]
+
+                ax.plot(y, color="green", alpha=.4)
+                ax.axhline(
+                    y=0.015, color="red", linestyle='--', alpha=.4, label="AUC Window"
+                )
+                ax.axhline(
+                    y=0.003, color="red", linestyle='--', alpha=.4, label="AUC Window"
+                )
+
+            ax.set_ylim(bottom=-0.01, top=0.02)
 
     return fig
