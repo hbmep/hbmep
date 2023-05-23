@@ -34,6 +34,7 @@ class Baseline():
         self.reports_path = Path(os.path.join(self.current_path, REPORTS_DIR))
 
         self.name = "Baseline"
+        self.link = jax.nn.relu
 
         self.random_state = 0
         self.columns = [PARTICIPANT] + FEATURES
@@ -51,8 +52,17 @@ class Baseline():
             )
 
             a_scale = numpyro.sample(site.a_scale, dist.HalfNormal(20))
-            b_scale = numpyro.sample(site.b_scale, dist.HalfNormal(100))
-            lo_scale = numpyro.sample(site.lo_scale, dist.HalfNormal(5))
+            b_scale = numpyro.sample(site.b_scale, dist.HalfNormal(0.1))
+            lo_scale = numpyro.sample(site.lo_scale, dist.HalfNormal(0.2))
+
+            noise_offset_scale = numpyro.sample(
+                site.noise_offset_scale,
+                dist.HalfCauchy(0.2)
+            )
+            noise_slope_scale = numpyro.sample(
+                site.noise_slope_scale,
+                dist.HalfCauchy(0.2)
+            )
 
             with numpyro.plate("n_participant", n_participant, dim=-2):
                 # Priors
@@ -66,11 +76,11 @@ class Baseline():
 
                 noise_offset = numpyro.sample(
                     site.noise_offset,
-                    dist.HalfCauchy(0.01)
+                    dist.HalfCauchy(noise_offset_scale)
                 )
                 noise_slope = numpyro.sample(
                     site.noise_slope,
-                    dist.HalfCauchy(0.05)
+                    dist.HalfCauchy(noise_slope_scale)
                 )
 
         # Model
@@ -124,7 +134,7 @@ class Baseline():
         a = posterior_means[site.a][c]
         b = posterior_means[site.b][c]
         lo = posterior_means[site.lo][c]
-        y = lo + jax.nn.relu(b * (self.x - a))
+        y = lo + self.link(b * (self.x - a))
 
         threshold_samples = posterior_samples[site.a][:, c[0], c[1]]
         hpdi_interval = hpdi(threshold_samples, prob=0.95)

@@ -1,31 +1,30 @@
+from typing import Optional
 from pathlib import Path
 
 
 class HBMepConfig():
     # This will be set to working directory by os.getcwd(). Don't change
-    CURRENT_PATH: Path = None
+    CURRENT_PATH: Optional[Path] = None
 
     # File (present in data folder) to use for modeling
-    FNAME: str = "simulated_data.csv"
-    # FNAME: str = "rats_data_updated.csv"
+    FNAME: Optional[str] = None
 
     # Independent variable
-    INTENSITY: str = "intensity"
+    INTENSITY: str = "pulse_amplitude"
 
     # Participant variable
     PARTICIPANT: str = "participant"
 
     # Dependent variable
-    RESPONSE: str = "auc"
+    RESPONSE: str = "auc_1"
 
     # Study Features
-    FEATURES: list[str] = ["segment", "method"]
-    # FEATURES: list[str] = ["ch_combination", "method"]
+    FEATURES: list[str] = ["compound_position", "method"]
 
     # Preprocess parameters
     PREPROCESS_PARAMS: dict[str, int] = {
         "min_observations": 0,
-        "scalar_intensity": 1000,
+        "scalar_intensity": 1,
         "scalar_response": 1
     }
     ZERO_ONE_THRESHOLDS: list[int] = [0.]

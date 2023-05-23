@@ -28,6 +28,7 @@ class MixedEffects(Baseline):
     def __init__(self, config: HBMepConfig):
         super(MixedEffects, self).__init__(config=config)
         self.name = "Mixed_Effects"
+        self.x = np.linspace(0, 450, 1000)
 
     def _model(self, intensity, participant, feature0, feature1, response_obs=None):
         n_participant = np.unique(participant).shape[0]

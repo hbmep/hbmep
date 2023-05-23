@@ -64,7 +64,7 @@ def plot(df: pd.DataFrame, encoder_dict: dict = None):
         idx = df[columns].apply(tuple, axis=1).isin([c])
         temp_df = df[idx].reset_index(drop=True).copy()
 
-        sns.scatterplot(data=temp_df, x=INTENSITY, y=RESPONSE, ax=axes[i], hue="sc_cluster_as")
+        sns.scatterplot(data=temp_df, x=INTENSITY, y=RESPONSE, ax=axes[i])
 
         if encoder_dict is None:
             axes[i].set_title(f"{columns} - {c}")
