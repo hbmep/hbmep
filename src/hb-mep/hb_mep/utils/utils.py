@@ -46,8 +46,14 @@ def timing(f):
 
 @timing
 def plot(
-    df: pd.DataFrame, encoder_dict: dict = None, mat: np.ndarray = None
+    df: pd.DataFrame,
+    encoder_dict: dict = None,
+    mat: np.ndarray = None,
+    time: np.ndarray = None
 ):
+    if mat is not None:
+        assert time is not None
+
     columns = [PARTICIPANT] + FEATURES
     combinations = \
         df \
@@ -63,7 +69,7 @@ def plot(
     fig, axes = plt.subplots(
         n_combinations,
         n_columns,
-        figsize=(5 * n_columns, n_combinations * 3),
+        figsize=(n_columns * 6, n_combinations * 3),
         constrained_layout=True
     )
 
@@ -75,32 +81,40 @@ def plot(
         ax = axes[i] if mat is None else axes[i][0]
         sns.scatterplot(data=temp_df, x=INTENSITY, y=RESPONSE, ax=ax)
 
+        ax.set_xlabel(f"{INTENSITY}")
+        ax.set_ylabel(f"{RESPONSE}")
+
         if encoder_dict is None:
-            ax.set_title(f"{columns} - {c}")
+            title = f"{columns} - {c}"
         else:
             c0 = encoder_dict[columns[0]].inverse_transform(np.array([c[0]]))[0]
             c1 = encoder_dict[columns[1]].inverse_transform(np.array([c[1]]))[0]
             c2 = encoder_dict[columns[2]].inverse_transform(np.array([c[2]]))[0]
+            title = f"{(c0, c1, c2)}"
 
-            ax.set_title(f"{(c0, c1, c2)}")
+        ax.set_title(title)
 
         if mat is not None:
-            ax = axes[i, 1]
+            ax = axes[i][1]
             temp_mat = mat[idx, :]
 
-            y = np.linspace(-1, 1, temp_mat.shape[1])
-
             for j in range(temp_mat.shape[0]):
-                x = temp_mat[j, :] / 100 + temp_df.pulse_amplitude[j]
+                x = temp_mat[j, :]/60 + temp_df[INTENSITY].values[j]
+                ax.plot(x, time, color="green", alpha=.4)
 
-                ax.plot(y, color="green", alpha=.4)
-                ax.axhline(
-                    y=0.015, color="red", linestyle='--', alpha=.4, label="AUC Window"
-                )
-                ax.axhline(
-                    y=0.003, color="red", linestyle='--', alpha=.4, label="AUC Window"
-                )
+            ax.axhline(
+                y=0.003, color="red", linestyle='--', alpha=.4, label="AUC Window"
+            )
+            ax.axhline(
+                y=0.015, color="red", linestyle='--', alpha=.4
+            )
 
-            ax.set_ylim(bottom=-0.01, top=0.02)
+            ax.set_ylim(bottom=-0.001, top=0.02)
+
+            ax.set_xlabel(f"{INTENSITY}")
+            ax.set_ylabel(f"Time")
+
+            ax.legend(loc="upper right")
+            ax.set_title(f"Motor Evoked Potential")
 
     return fig

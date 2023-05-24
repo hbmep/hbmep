@@ -131,7 +131,16 @@ class Baseline():
 
         return y, threshold_samples, hpdi_interval
 
-    def plot(self, df: pd.DataFrame, posterior_samples: dict):
+    def plot(
+        self,
+        df: pd.DataFrame,
+        posterior_samples: dict,
+        mat: np.ndarray = None,
+        time: np.ndarray = None
+    ):
+        if mat is not None:
+            assert time is not None
+
         combinations = self._get_combinations(df)
         n_combinations = len(combinations)
 
@@ -139,10 +148,12 @@ class Baseline():
             p:posterior_samples[p].mean(axis=0) for p in posterior_samples
         }
 
-        fig, ax = plt.subplots(
+        n_columns = 3 if mat is None else 4
+
+        fig, axes = plt.subplots(
             n_combinations,
-            3,
-            figsize=(12, n_combinations * 3),
+            n_columns,
+            figsize=(n_columns * 6, n_combinations * 3),
             constrained_layout=True
         )
 
@@ -150,33 +161,58 @@ class Baseline():
             idx = df[self.columns].apply(tuple, axis=1).isin([c])
             temp_df = df[idx].reset_index(drop=True).copy()
 
-            sns.scatterplot(data=temp_df, x=INTENSITY, y=RESPONSE, ax=ax[i, 0])
-            sns.scatterplot(data=temp_df, x=INTENSITY, y=RESPONSE, ax=ax[i, 1], alpha=.4)
+            sns.scatterplot(data=temp_df, x=INTENSITY, y=RESPONSE, ax=axes[i, 0])
+            sns.scatterplot(data=temp_df, x=INTENSITY, y=RESPONSE, alpha=.4, ax=axes[i, 1])
 
             y, threshold_samples, hpdi_interval = self._get_estimates(
                 posterior_samples, posterior_means, c
             )
 
-            sns.kdeplot(x=threshold_samples, ax=ax[i, 1], color="blue")
+            sns.kdeplot(x=threshold_samples, color="blue", ax=axes[i, 1])
             sns.lineplot(
                 x=self.x,
                 y=y,
-                ax=ax[i, 1],
                 color="red",
                 alpha=0.4,
-                label=f"Mean Posterior"
+                label=f"Mean Posterior",
+                ax=axes[i, 1]
             )
-            sns.kdeplot(x=threshold_samples, color="blue", ax=ax[i, 2])
+            sns.kdeplot(x=threshold_samples, color="blue", ax=axes[i, 2])
 
-            ax[i, 2].axvline(hpdi_interval[0], linestyle="--", color="green", label="95% HPDI Interval")
-            ax[i, 2].axvline(hpdi_interval[1], linestyle="--", color="green")
+            axes[i, 2].axvline(hpdi_interval[0], linestyle="--", color="green", label="95% HPDI Interval")
+            axes[i, 2].axvline(hpdi_interval[1], linestyle="--", color="green")
 
-            ax[i, 1].set_xlim(right=temp_df[INTENSITY].max() + 10)
+            axes[i, 1].set_xlim(right=temp_df[INTENSITY].max() + 10)
 
-            ax[i, 0].set_title(f"{tuple(self.columns)} - {c}")
-            ax[i, 1].set_title(f"Model Fit")
-            ax[i, 2].set_title(f"Threshold Estimate")
-            ax[i, 1].legend(loc="upper right")
-            ax[i, 2].legend(loc="upper right")
+            axes[i, 0].set_title(f"{tuple(self.columns)} - {c}")
+            axes[i, 1].set_title(f"Model Fit")
+            axes[i, 2].set_title(f"Threshold Estimate")
+
+            axes[i, 1].legend(loc="upper right")
+            axes[i, 2].legend(loc="upper right")
+
+            if mat is not None:
+                ax = axes[i][3]
+                temp_mat = mat[idx, :]
+
+                for j in range(temp_mat.shape[0]):
+                    x = temp_mat[j, :]/60 + temp_df[INTENSITY].values[j]
+                    ax.plot(x, time, color="green", alpha=.4)
+
+                ax.axhline(
+                    y=0.003, color="red", linestyle='--', alpha=.4, label="AUC Window"
+                )
+                ax.axhline(
+                    y=0.015, color="red", linestyle='--', alpha=.4
+                )
+
+                ax.set_ylim(bottom=-0.001, top=0.02)
+
+                ax.set_xlabel(f"{INTENSITY}")
+                ax.set_ylabel(f"Time")
+
+                ax.legend(loc="upper right")
+                ax.set_title(f"Motor Evoked Potential")
+
 
         return fig
