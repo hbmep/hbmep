@@ -48,9 +48,13 @@ def timing(f):
 def plot(
     df: pd.DataFrame,
     encoder_dict: dict = None,
+    pred: pd.DataFrame = None,
     mat: np.ndarray = None,
     time: np.ndarray = None
 ):
+    if pred is not None:
+        assert encoder_dict is not None
+
     if mat is not None:
         assert time is not None
 
@@ -93,6 +97,19 @@ def plot(
             title = f"{(c0, c1, c2)}"
 
         ax.set_title(title)
+
+        if pred is not None:
+            temp_pred = pred[pred[columns].apply(tuple, axis=1).isin([(c0, c1, c2)])]
+            prediction = temp_pred[RESPONSE].values
+            assert len(prediction) == 1
+            ax.axvline(
+                x=prediction[0],
+                color="red",
+                linestyle='--',
+                alpha=.4,
+                label=f"Ahmet's prediction: {prediction[0]}"
+            )
+            ax.legend(loc="upper right")
 
         if mat is not None:
             ax = axes[i][1]
