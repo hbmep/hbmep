@@ -4,11 +4,10 @@ import jax
 import jax.numpy as jnp
 import numpy as np
 import pandas as pd
-import matplotlib.pyplot as plt
-import seaborn as sns
 
 import numpyro
 import numpyro.distributions as dist
+from numpyro.distributions.mixtures import MixtureGeneral
 from numpyro.infer import MCMC, NUTS
 from numpyro.diagnostics import hpdi
 
@@ -35,12 +34,13 @@ class MixtureModel(Baseline):
         self.x = np.linspace(0, 450, 1000)
 
     def _model(self, intensity, participant, feature0, feature1, response_obs=None):
+        n_data = intensity.shape[0]
         n_participant = np.unique(participant).shape[0]
         n_feature0 = np.unique(feature0).shape[0]
         n_feature1 = np.unique(feature1).shape[0]
 
         with numpyro.plate("n_participant", n_participant, dim=-1):
-            # Hyperriors
+            """ Hyper-priors """
             a_mean = numpyro.sample(
                 site.a_mean,
                 dist.TruncatedDistribution(dist.Normal(150, 50), low=0)
@@ -63,9 +63,14 @@ class MixtureModel(Baseline):
                 dist.HalfCauchy(0.2)
             )
 
+            noise_mixture = numpyro.sample(
+                "noise_mixture",
+                dist.HalfCauchy(0.2)
+            )
+
             with numpyro.plate("n_feature0", n_feature0, dim=-2):
                 with numpyro.plate("n_feature1", n_feature1, dim=-3):
-                    # Priors
+                    """ Priors """
                     a = numpyro.sample(
                         site.a,
                         dist.TruncatedDistribution(dist.Normal(a_mean, a_scale), low=0)
@@ -110,8 +115,22 @@ class MixtureModel(Baseline):
             mean
         )
 
-        with numpyro.plate("data", len(intensity)):
-            return numpyro.sample("obs", dist.TruncatedNormal(mean, sigma, low=0), obs=response_obs)
+        """ Mixture """
+        mixing_distribution = dist.Categorical(probs=jnp.array([0.9, 0.1]))
+
+        component_distributions = [
+            dist.TruncatedNormal(mean, sigma, low=0),
+            dist.TruncatedNormal(0, noise_mixture[participant], low=0)
+        ]
+
+        Mixture = MixtureGeneral(
+            mixing_distribution=mixing_distribution,
+            component_distributions=component_distributions
+        )
+
+        """ Observation """
+        with numpyro.plate(site.data, n_data):
+            return numpyro.sample(site.obs, Mixture, obs=response_obs)
 
     @timing
     def run_inference(self, df: pd.DataFrame) -> tuple[numpyro.infer.mcmc.MCMC, dict]:

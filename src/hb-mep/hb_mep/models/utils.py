@@ -46,3 +46,8 @@ class Site:
     baseline = "baseline"
     delta = "delta"
     penalty = "penalty"
+
+    # Observation
+    data = "data"
+    obs = "obs"
+
