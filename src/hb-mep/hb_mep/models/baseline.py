@@ -129,7 +129,7 @@ class Baseline():
         threshold_samples = posterior_samples[site.a][:, c[0], c[1]]
         hpdi_interval = hpdi(threshold_samples, prob=0.95)
 
-        return y, threshold_samples, hpdi_interval
+        return y, a, threshold_samples, hpdi_interval
 
     def plot(
         self,
@@ -177,7 +177,7 @@ class Baseline():
 
             sns.scatterplot(data=temp_df, x=INTENSITY, y=RESPONSE, alpha=.4, ax=axes[i, 1])
 
-            y, threshold_samples, hpdi_interval = self._get_estimates(
+            y, a, threshold_samples, hpdi_interval = self._get_estimates(
                 posterior_samples, posterior_means, c
             )
 
@@ -192,8 +192,19 @@ class Baseline():
             )
             sns.kdeplot(x=threshold_samples, color="blue", ax=axes[i, 2])
 
-            axes[i, 2].axvline(hpdi_interval[0], linestyle="--", color="green", label="95% HPDI Interval")
+            axes[i, 2].axvline(
+                hpdi_interval[0],
+                linestyle="--",
+                color="green",
+                label=f"95% HPDI Interval\n({hpdi_interval[0]:.2f}, {hpdi_interval[1]:.2f})"
+            )
             axes[i, 2].axvline(hpdi_interval[1], linestyle="--", color="green")
+            axes[i, 2].axvline(
+                a,
+                linestyle="--",
+                color="red",
+                label=f"Mean Posterior {a:.2f}"
+            )
 
             axes[i, 1].set_xlim(right=temp_df[INTENSITY].max() + 10)
 

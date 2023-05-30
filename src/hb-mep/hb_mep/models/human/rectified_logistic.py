@@ -39,7 +39,7 @@ class RectifiedLogistic(Baseline):
         n_feature1 = np.unique(feature1).shape[0]
 
         with numpyro.plate("n_participant", n_participant, dim=-1):
-            # Hyperriors
+            """ Hyper-priors """
             a_mean = numpyro.sample(
                 site.a_mean,
                 dist.TruncatedDistribution(dist.Normal(5, 10), low=0)
@@ -63,7 +63,7 @@ class RectifiedLogistic(Baseline):
             )
 
             with numpyro.plate("n_feature1", n_feature1, dim=-2):
-                # Priors
+                """ Priors """
                 a = numpyro.sample(
                     site.a,
                     dist.TruncatedDistribution(dist.Normal(a_mean, a_scale), low=0)
@@ -109,6 +109,7 @@ class RectifiedLogistic(Baseline):
             mean
         )
 
+        """ Observation """
         with numpyro.plate("data", len(intensity)):
             return numpyro.sample("obs", dist.TruncatedNormal(mean, sigma, low=0), obs=response_obs)
 
@@ -153,4 +154,4 @@ class RectifiedLogistic(Baseline):
         threshold_samples = posterior_samples[site.a][:, c[1], c[0]]
         hpdi_interval = hpdi(threshold_samples, prob=0.95)
 
-        return y, threshold_samples, hpdi_interval
+        return y, a, threshold_samples, hpdi_interval
