@@ -163,18 +163,6 @@ class Baseline():
             temp_df = df[idx].reset_index(drop=True).copy()
 
             sns.scatterplot(data=temp_df, x=INTENSITY, y=RESPONSE, ax=axes[i, 0])
-
-            if encoder_dict is None:
-                title = f"{self.columns} - {c}"
-            else:
-                c0 = encoder_dict[self.columns[0]].inverse_transform(np.array([c[0]]))[0]
-                c1 = encoder_dict[self.columns[1]].inverse_transform(np.array([c[1]]))[0]
-                c2 = encoder_dict[self.columns[2]].inverse_transform(np.array([c[2]]))[0]
-
-                title = f"{tuple(self.columns)} - {(c0, c1, c2)}"
-
-            axes[i, 0].set_title(title)
-
             sns.scatterplot(data=temp_df, x=INTENSITY, y=RESPONSE, alpha=.4, ax=axes[i, 1])
 
             y, a, threshold_samples, hpdi_interval = self._get_estimates(
@@ -208,7 +196,20 @@ class Baseline():
 
             axes[i, 1].set_xlim(right=temp_df[INTENSITY].max() + 10)
 
-            axes[i, 1].set_title(f"Model Fit")
+            title = f"{self.columns} - {c}"
+            axes[i, 0].set_title(title)
+
+            if encoder_dict is not None:
+                c_inverse = []
+                for column, value in zip(self.columns, c):
+                    c_inverse.append(
+                        encoder_dict[column].inverse_transform(np.array([value]))[0]
+                    )
+                title = f"{tuple(self.columns)} - {tuple(c_inverse)}"
+            else:
+                title = "Model Fit"
+
+            axes[i, 1].set_title(title)
             axes[i, 2].set_title(f"Threshold Estimate")
 
             axes[i, 1].legend(loc="upper right")

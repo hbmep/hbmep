@@ -38,34 +38,49 @@ class MixtureModel(Baseline):
         n_participant = np.unique(participant).shape[0]
         n_feature1 = np.unique(feature1).shape[0]
 
+        # noise_mixture_scale = numpyro.sample(
+        #     "noise_mixture_scale",
+        #     dist.HalfCauchy(2)
+        # )
+
         with numpyro.plate("n_participant", n_participant, dim=-1):
             """ Hyper-priors """
             a_mean = numpyro.sample(
                 site.a_mean,
-                dist.TruncatedDistribution(dist.Normal(5, 10), low=0)
+                dist.TruncatedDistribution(dist.Normal(3, 2), low=0)
             )
-            a_scale = numpyro.sample(site.a_scale, dist.HalfNormal(10))
+            a_scale = numpyro.sample(site.a_scale, dist.HalfNormal(5))
 
-            b_scale = numpyro.sample(site.b_scale, dist.HalfNormal(10))
+            b_scale = numpyro.sample(site.b_scale, dist.HalfNormal(20))
 
             h_scale = numpyro.sample("h_scale", dist.HalfNormal(10))
-            v_scale = numpyro.sample("v_scale", dist.HalfNormal(10))
+            v_scale = numpyro.sample("v_scale", dist.HalfNormal(50))
 
-            lo_scale = numpyro.sample(site.lo_scale, dist.HalfNormal(0.2))
+            lo_scale = numpyro.sample(site.lo_scale, dist.HalfNormal(.5))
 
             noise_offset_scale = numpyro.sample(
                 site.noise_offset_scale,
-                dist.HalfCauchy(0.2)
+                dist.HalfCauchy(.05)
             )
             noise_slope_scale = numpyro.sample(
                 site.noise_slope_scale,
-                dist.HalfCauchy(0.2)
+                dist.HalfCauchy(.05)
             )
 
-            noise_mixture = numpyro.sample(
-                "noise_mixture",
-                dist.HalfCauchy(0.2)
-            )
+            # noise_mixture = numpyro.sample(
+            #     "noise_mixture",
+            #     dist.HalfCauchy(noise_mixture_scale)
+            # )
+
+            # noise_mixture_scale = numpyro.sample(
+            #     "noise_mixture_scale",
+            #     dist.HalfCauchy(2)
+            # )
+
+            # noise_mixture = numpyro.sample(
+            #     "noise_mixture",
+            #     dist.HalfCauchy(.05)
+            # )
 
             with numpyro.plate("n_feature1", n_feature1, dim=-2):
                 """ Priors """
@@ -109,16 +124,17 @@ class MixtureModel(Baseline):
         sigma = numpyro.deterministic(
             "sigma",
             noise_offset[feature1, participant] + \
-            noise_slope[feature1, participant] * \
-            mean
+            noise_slope[feature1, participant] * mean
         )
 
         """ Mixture """
-        mixing_distribution = dist.Categorical(probs=jnp.array([0.9, 0.1]))
+        q = numpyro.sample("q", dist.Uniform(0, 1))
+
+        mixing_distribution = dist.Categorical(probs=jnp.array([1 - q, q]))
 
         component_distributions = [
             dist.TruncatedNormal(mean, sigma, low=0),
-            dist.TruncatedNormal(0, noise_mixture[participant], low=0)
+            dist.TruncatedNormal(mean, .5, low=0)
         ]
 
         Mixture = MixtureGeneral(
@@ -129,6 +145,7 @@ class MixtureModel(Baseline):
         """ Observation """
         with numpyro.plate(site.data, n_data):
             return numpyro.sample(site.obs, Mixture, obs=response_obs)
+            # return numpyro.sample("obs", dist.TruncatedNormal(mean, sigma, low=0), obs=response_obs)
 
     @timing
     def run_inference(self, df: pd.DataFrame) -> tuple[numpyro.infer.mcmc.MCMC, dict]:

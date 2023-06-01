@@ -63,10 +63,10 @@ class MixtureModel(Baseline):
                 dist.HalfCauchy(0.2)
             )
 
-            # noise_mixture_scale = numpyro.sample(
-            #     "noise_mixture_scale",
-            #     dist.HalfCauchy(2)
-            # )
+            noise_mixture = numpyro.sample(
+                "noise_mixture",
+                dist.HalfCauchy(0.2)
+            )
 
             with numpyro.plate("n_feature0", n_feature0, dim=-2):
                 with numpyro.plate("n_feature1", n_feature1, dim=-3):
@@ -91,11 +91,6 @@ class MixtureModel(Baseline):
                         dist.HalfCauchy(noise_slope_scale)
                     )
 
-                    # noise_mixture = numpyro.sample(
-                    #     "noise_mixture",
-                    #     dist.HalfCauchy(10)
-                    # )
-
         """ Model """
         mean = numpyro.deterministic(
             site.mean,
@@ -116,23 +111,22 @@ class MixtureModel(Baseline):
         sigma = numpyro.deterministic(
             "sigma",
             noise_offset[feature1, feature0, participant] + \
-            noise_slope[feature1, feature0, participant] * mean
+            noise_slope[feature1, feature0, participant] * \
+            mean
         )
 
         """ Mixture """
-        # q = numpyro.sample("q", dist.Uniform(0, 1))
+        mixing_distribution = dist.Categorical(probs=jnp.array([0.9, 0.1]))
 
-        # mixing_distribution = dist.Categorical(probs=jnp.array([1 - q, q]))
+        component_distributions = [
+            dist.TruncatedNormal(mean, sigma, low=0),
+            dist.TruncatedNormal(0, noise_mixture[participant], low=0)
+        ]
 
-        # component_distributions = [
-        #     dist.TruncatedNormal(mean, sigma, low=0),
-        #     dist.TruncatedNormal(mean, noise_mixture[feature1, feature0, participant], low=0)
-        # ]
-
-        # Mixture = MixtureGeneral(
-        #     mixing_distribution=mixing_distribution,
-        #     component_distributions=component_distributions
-        # )
+        Mixture = MixtureGeneral(
+            mixing_distribution=mixing_distribution,
+            component_distributions=component_distributions
+        )
 
         """ Observation """
         with numpyro.plate(site.data, n_data):
@@ -180,4 +174,4 @@ class MixtureModel(Baseline):
         threshold_samples = posterior_samples[site.a][:, c[2], c[1], c[0]]
         hpdi_interval = hpdi(threshold_samples, prob=0.95)
 
-        return y, a, threshold_samples, hpdi_interval
+        return y, threshold_samples, hpdi_interval
