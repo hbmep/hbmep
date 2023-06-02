@@ -2,10 +2,11 @@ SHELL := /bin/bash
 CWD := $(dir $(abspath $(lastword $(MAKEFILE_LIST))))
 
 model ?= baseline
+version ?= 3.9
 
 .PHONY: build-base
 build-base:
-	@python3 -m venv .venv
+	@python$(version) -m venv .venv
 
 .PHONY: build
 build: build-base
