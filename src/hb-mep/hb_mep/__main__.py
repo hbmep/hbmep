@@ -4,7 +4,8 @@ import logging
 import argparse
 
 from hb_mep.config import HBMepConfig
-from hb_mep.models import Baseline, MixedEffects
+from hb_mep.models import Baseline
+from hb_mep.models.human import RectifiedLogistic
 from hb_mep.experiments import Experiment, SparseDataExperiment
 from hb_mep.experiments.models import BayesianHierarchical
 from hb_mep.api import run_inference, run_experiment
@@ -15,18 +16,16 @@ logging.basicConfig(format=FORMAT, level=logging.INFO)
 
 def main(args):
     config = HBMepConfig()
+    models = [Baseline, RectifiedLogistic]
+
     try:
         job = args.job
         name = args.name
 
         if job == "inference":
-            assert name in ["baseline", "mixed-effects", "bayesian-hierarchical"]
-            if name == "baseline":
-                model = Baseline(config)
-            elif name == "mixed-effects":
-                model = MixedEffects(config)
-            elif name == "bayesian-hierarchical":
-                model = BayesianHierarchical(config)
+            assert name in [model.name for model in models]
+
+            model = [model for model in models if model.name == ]
 
         if job == "experiment":
             assert name in ["sparse-data"]
@@ -53,7 +52,7 @@ if __name__ == "__main__":
         "--job",
         choices=["inference", "experiment"],
         required=True,
-        help="Job to run"
+        help="Job needed to run"
     )
     parser.add_argument(
         "--name",

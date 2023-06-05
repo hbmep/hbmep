@@ -1,10 +1,12 @@
 SHELL := /bin/bash
 CWD := $(dir $(abspath $(lastword $(MAKEFILE_LIST))))
 
-python ?= 3.9
-model ?= baseline
-
 export
+
+python ?= 3.9
+inference ?= inference
+model ?= baseline
+dataset ?= rats
 
 .PHONY: check-env
 check-env:
@@ -26,14 +28,4 @@ build: build-base
 
 run:
 	@source .venv/bin/activate && \
-	python -m hb_mep run --model=$(model)
-
-.PHONY: kernel
-kernel:
-	@source .venv/bin/activate && \
-	python -m ipykernel install --user --name=hb-mep-ipython
-
-.PHONY: server
-server:
-	@source .venv/bin/activate && \
-	jupyter notebook .
+	python -m hb_mep run --job =$(job) --model=$(model) --data=$(dataset)

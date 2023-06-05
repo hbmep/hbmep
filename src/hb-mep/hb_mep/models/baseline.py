@@ -34,10 +34,11 @@ class Baseline():
         self.reports_path = Path(os.path.join(self.current_path, REPORTS_DIR))
 
         self.name = "Baseline"
-
         self.random_state = 0
+
         self.columns = [PARTICIPANT] + FEATURES
         self.x = np.linspace(0, 450, 1000)
+        self.xpad = 10
 
     def _model(self, intensity, participant, feature0, response_obs=None):
         n_participant = np.unique(participant).shape[0]
@@ -194,7 +195,13 @@ class Baseline():
                 label=f"Mean Posterior {a:.2f}"
             )
 
-            axes[i, 1].set_xlim(right=temp_df[INTENSITY].max() + 10)
+            axes[i, 1].set_xlim(
+                left=temp_df[INTENSITY].min() - self.xpad,
+                right=temp_df[INTENSITY].max() + self.xpad
+            )
+            axes[i, 1].set_ylim(
+                top=temp_df[RESPONSE].max() + 2,
+            )
 
             title = f"{self.columns} - {c}"
             axes[i, 0].set_title(title)
@@ -212,7 +219,7 @@ class Baseline():
             axes[i, 1].set_title(title)
             axes[i, 2].set_title(f"Threshold Estimate")
 
-            axes[i, 1].legend(loc="upper right")
+            axes[i, 1].legend(loc="lower right")
             axes[i, 2].legend(loc="upper right")
 
             if mat is not None:

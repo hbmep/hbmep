@@ -28,7 +28,6 @@ def load_data(
         participant = f"amap{i:02}"
         PREFIX = f"rats_data/{participant}/*"
 
-        print(os.path.join(data.data_path, f"{PREFIX}/*auc_table.csv"))
         fpath = glob.glob(os.path.join(data.data_path, f"{PREFIX}/*auc_table.csv"))[0]
         temp_df = pd.read_csv(fpath)
 
