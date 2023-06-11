@@ -160,15 +160,12 @@ class Baseline():
         )
         return predictions
 
+    @timing
     def predictive_check(
         self,
         df: pd.DataFrame,
-        posterior_samples: Optional[dict] = None,
-        n_ppdm: int = 1000,
-        n_ppdo: int = 100
+        posterior_samples: Optional[dict] = None
     ):
-        assert n_ppdm >= n_ppdo
-
         (post_check, check) = (False, "Prior") if posterior_samples is None else (True, "Posterior")
 
         combinations = self._get_combinations(df)
@@ -193,8 +190,7 @@ class Baseline():
                 predictions = self.predict(
                     intensity=intensity,
                     combination=c,
-                    posterior_samples=posterior_samples,
-                    num_samples=n_ppdm
+                    posterior_samples=posterior_samples
                 )
                 obs = predictions["obs"]
                 mean = predictions["mean"]
@@ -210,54 +206,27 @@ class Baseline():
                 ax=axes[i, 0]
             )
 
-            choices = jax.random.choice(
-                self.rng_key,
-                a=np.array(range(obs.shape[0])),
-                shape=(n_ppdo,),
-                replace=False
-            )
-            y_obs = obs[choices, :].T
-            x = np.tile(intensity, (choices.shape[0], 1)).T
+            y_obs = obs.mean(axis=0)
+            hpdi_obs = hpdi(obs, prob=.95)
 
-            axes[i, 1].scatter(x, y_obs, s=11)
+            axes[i, 1].plot(intensity, y_obs, color="k", label="Mean Prediction")
+            axes[i, 1].fill_between(
+                intensity, hpdi_obs[0, :], hpdi_obs[1, :], color="paleturquoise", label="95% HPDI"
+            )
             sns.scatterplot(
                 data=temp_df, x=INTENSITY, y=RESPONSE, color="y", edgecolor="k", ax=axes[i, 1]
             )
-            sns.lineplot(
-                x=intensity,
-                y=mean.mean(axis=0),
-                label=f"Mean {check}",
-                color="k",
-                alpha=.4,
-                ax=axes[i, 1]
-            )
-
-            # choices = jax.random.choice(
-            #     self.rng_key,
-            #     a=np.array(range(mean.shape[0])),
-            #     shape=(n_ppdm,),
-            #     replace=False
-            # )
-            # y_mean = mean[choices, :].T
-            # x = np.tile(intensity, (choices.shape[0], 1)).T
 
             y_mean = mean.mean(axis=0)
             hpdi_mean = hpdi(mean, prob=.95)
-            axes[i, 2].plot(intensity, y_mean, color="k")
-            axes[i, 2].fill_between(intensity, hpdi_mean[0, :], hpdi_mean[1, :], color="paleturquoise")
 
-            # axes[i, 2].plot(x, y_mean, color="paleturquoise")
+            axes[i, 2].plot(intensity, y_mean, color="k", label="Mean Posterior")
+            axes[i, 2].fill_between(
+                intensity, hpdi_mean[0, :], hpdi_mean[1, :], color="paleturquoise", label="95% HPDI"
+            )
             sns.scatterplot(
                 data=temp_df, x=INTENSITY, y=RESPONSE, color="y", edgecolor="k", ax=axes[i, 2]
             )
-            # sns.lineplot(
-            #     x=intensity,
-            #     y=mean.mean(axis=0),
-            #     label=f"Mean {check}",
-            #     color="k",
-            #     alpha=.4,
-            #     ax=axes[i, 2]
-            # )
 
             """ Labels """
             axes[i, 0].set_title(f"{self.columns} - {c}")
@@ -271,6 +240,7 @@ class Baseline():
 
         return fig
 
+    @timing
     def plot(
         self,
         df: pd.DataFrame,
@@ -333,7 +303,7 @@ class Baseline():
                 hpdi_interval[0],
                 linestyle="--",
                 color="g",
-                label=f"95% HPDI Interval"
+                label="95% HPDI"
             )
             axes[i, 2].axvline(hpdi_interval[1], linestyle="--", color="g")
 

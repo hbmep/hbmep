@@ -35,13 +35,12 @@ class RectifiedLogistic(Baseline):
         self.x = np.linspace(0, 450, 1000)
 
     def _model(self, intensity, participant, feature0, feature1, response_obs=None):
-        n_data = intensity.shape[0]
         n_participant = np.unique(participant).shape[0]
         n_feature0 = np.unique(feature0).shape[0]
         n_feature1 = np.unique(feature1).shape[0]
 
         with numpyro.plate("n_participant", n_participant, dim=-1):
-            """ Hyper-priors """
+            # Hyperriors
             a_mean = numpyro.sample(
                 site.a_mean,
                 dist.TruncatedDistribution(dist.Normal(150, 50), low=0)
@@ -50,39 +49,30 @@ class RectifiedLogistic(Baseline):
 
             b_scale = numpyro.sample(site.b_scale, dist.HalfNormal(0.1))
 
-            h_mean = numpyro.sample(
-                "h_mean",
-                dist.TruncatedNormal(5, 2, low=0)
-            )
-            h_scale = numpyro.sample("h_scale", dist.HalfNormal(2))
-
+            h_scale = numpyro.sample("h_scale", dist.HalfNormal(10))
             v_scale = numpyro.sample("v_scale", dist.HalfNormal(10))
 
-            lo_scale = numpyro.sample(site.lo_scale, dist.HalfNormal(0.05))
+            lo_scale = numpyro.sample(site.lo_scale, dist.HalfNormal(0.2))
 
             noise_offset_scale = numpyro.sample(
                 site.noise_offset_scale,
-                dist.HalfCauchy(0.05)
+                dist.HalfCauchy(0.2)
             )
             noise_slope_scale = numpyro.sample(
                 site.noise_slope_scale,
-                dist.HalfCauchy(0.05)
+                dist.HalfCauchy(0.2)
             )
 
             with numpyro.plate("n_feature0", n_feature0, dim=-2):
                 with numpyro.plate("n_feature1", n_feature1, dim=-3):
-                    """ Priors """
+                    # Priors
                     a = numpyro.sample(
                         site.a,
-                        dist.TruncatedNormal(a_mean, a_scale, low=0)
+                        dist.TruncatedDistribution(dist.Normal(a_mean, a_scale), low=0)
                     )
                     b = numpyro.sample(site.b, dist.HalfNormal(b_scale))
 
-                    h = numpyro.sample(
-                        "h",
-                        dist.TruncatedNormal(h_mean, h_scale, low=0)
-                    )
-
+                    h = numpyro.sample("h", dist.HalfNormal(h_scale))
                     v = numpyro.sample("v", dist.HalfNormal(v_scale))
 
                     lo = numpyro.sample(site.lo, dist.HalfNormal(lo_scale))
@@ -95,8 +85,6 @@ class RectifiedLogistic(Baseline):
                         site.noise_slope,
                         dist.HalfCauchy(noise_slope_scale)
                     )
-
-                    d = numpyro.sample("d", dist.Gamma(2, .1))
 
         """ Model """
         mean = numpyro.deterministic(
@@ -118,18 +106,12 @@ class RectifiedLogistic(Baseline):
         sigma = numpyro.deterministic(
             "sigma",
             noise_offset[feature1, feature0, participant] + \
-            noise_slope[feature1, feature0, participant] * mean
+            noise_slope[feature1, feature0, participant] * \
+            mean
         )
 
-        df = numpyro.deterministic("df", 2 + d[feature1, feature0, participant])
-
-        """ Observation """
-        with numpyro.plate(site.data, n_data):
-            return numpyro.sample(
-                site.obs,
-                dist.LeftTruncatedDistribution(dist.StudentT(df, mean, sigma), low=0),
-                obs=response_obs
-            )
+        with numpyro.plate("data", len(intensity)):
+            return numpyro.sample("obs", dist.TruncatedNormal(mean, sigma, low=0), obs=response_obs)
 
     @timing
     def run_inference(self, df: pd.DataFrame) -> tuple[numpyro.infer.mcmc.MCMC, dict]:

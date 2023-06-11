@@ -5,7 +5,7 @@ export
 
 python ?= 3.9
 inference ?= inference
-model ?= baseline
+model ?= Baseline
 dataset ?= rats
 
 .PHONY: check-env
@@ -28,4 +28,4 @@ build: build-base
 
 run:
 	@source .venv/bin/activate && \
-	python -m hb_mep run --job =$(job) --model=$(model) --data=$(dataset)
+	python -m hb_mep run --model=$(model)

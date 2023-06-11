@@ -1,14 +1,13 @@
-from pyexpat import model
 import sys
 import logging
 import argparse
 
 from hb_mep.config import HBMepConfig
 from hb_mep.models import Baseline
-from hb_mep.models.human import RectifiedLogistic
-from hb_mep.experiments import Experiment, SparseDataExperiment
-from hb_mep.experiments.models import BayesianHierarchical
-from hb_mep.api import run_inference, run_experiment
+from hb_mep.models.rats import RectifiedLogistic, GammaRegression
+# from hb_mep.experiments import Experiment, SparseDataExperiment
+# from hb_mep.experiments.models import BayesianHierarchical
+from hb_mep.api import run_inference, run_experiment, run_inference_rats
 
 FORMAT = "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
 logging.basicConfig(format=FORMAT, level=logging.INFO)
@@ -16,31 +15,18 @@ logging.basicConfig(format=FORMAT, level=logging.INFO)
 
 def main(args):
     config = HBMepConfig()
-    models = [Baseline, RectifiedLogistic]
+    models = [Baseline, RectifiedLogistic, GammaRegression]
 
     try:
-        job = args.job
-        name = args.name
+        model = args.model
+        assert model in [m(config).name for m in models]
 
-        if job == "inference":
-            assert name in [model.name for model in models]
-
-            model = [model for model in models if model.name == ]
-
-        if job == "experiment":
-            assert name in ["sparse-data"]
-            if name == "sparse-data":
-                experiment = SparseDataExperiment(config)
+        Model = [m for m in models if m(config).name == model][0]
 
     except AssertionError:
-        raise AssertionError(f"Invalid instance {name} for {job} job")
+        raise AssertionError(f"Invalid model {model} for inference job")
 
-    if job == "inference":
-        run_inference(config, model)
-
-    if job == "experiment":
-        run_experiment(config, experiment)
-
+    run_inference_rats(config, Model)
     return
 
 
@@ -49,15 +35,9 @@ if __name__ == "__main__":
         description="Run HB-MEP"
     )
     parser.add_argument(
-        "--job",
-        choices=["inference", "experiment"],
+        "--model",
         required=True,
-        help="Job needed to run"
-    )
-    parser.add_argument(
-        "--name",
-        required=True,
-        help="Job to run"
+        help="Model to run"
     )
 
     try:
