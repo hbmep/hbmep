@@ -133,26 +133,3 @@ class RectifiedLogistic(Baseline):
         posterior_samples = mcmc.get_samples()
 
         return mcmc, posterior_samples
-
-    def _get_estimates(
-        self,
-        posterior_samples: dict,
-        posterior_means: dict,
-        c: tuple
-    ):
-        a = posterior_means[site.a][c[::-1]]
-        b = posterior_means[site.b][c[::-1]]
-        h = posterior_means["h"][c[::-1]]
-        v = posterior_means["v"][c[::-1]]
-        lo = posterior_means[site.lo][c[::-1]]
-
-        y = lo + jnp.maximum(
-            0,
-            -1 + (h + 1) / \
-            jnp.power(1 + (jnp.power(1 + h, v) - 1) * jnp.exp(-b * (self.x - a)), 1 / v)
-        )
-
-        threshold_samples = posterior_samples[site.a][:, c[2], c[1], c[0]]
-        hpdi_interval = hpdi(threshold_samples, prob=0.95)
-
-        return y, threshold_samples, hpdi_interval

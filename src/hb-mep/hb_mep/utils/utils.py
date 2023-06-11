@@ -68,12 +68,12 @@ def plot(
     combinations = combinations[columns].apply(tuple, axis=1).tolist()
     n_combinations = len(combinations)
 
-    n_columns = 1 if mat is None else 2
+    n_columns = 2 if mat is None else 3
 
     fig, axes = plt.subplots(
         n_combinations,
         n_columns,
-        figsize=(n_columns * 6, n_combinations * 3),
+        figsize=(n_columns * 5, n_combinations * 3),
         constrained_layout=True
     )
 
@@ -82,11 +82,14 @@ def plot(
 
         temp_df = df[idx].reset_index(drop=True).copy()
 
-        ax = axes[i] if mat is None else axes[i][0]
-        sns.scatterplot(data=temp_df, x=INTENSITY, y=RESPONSE, ax=ax)
+        sns.kdeplot(temp_df[RESPONSE], ax=axes[i, 0])
+        sns.kdeplot(np.log(temp_df[RESPONSE]), ax=axes[i, 0], color="green")
 
-        ax.set_xlabel(f"{INTENSITY}")
-        ax.set_ylabel(f"{RESPONSE}")
+        ax = axes[i] if mat is None else axes[i][0]
+        sns.scatterplot(data=temp_df, x=INTENSITY, y=RESPONSE, ax=axes[i, 1])
+
+        axes[i, 1].set_xlabel(f"{INTENSITY}")
+        axes[i, 1].set_ylabel(f"{RESPONSE}")
 
         if encoder_dict is None:
             title = f"{columns} - {c}"
@@ -96,7 +99,7 @@ def plot(
             c2 = encoder_dict[columns[2]].inverse_transform(np.array([c[2]]))[0]
             title = f"{(c0, c1, c2)}"
 
-        ax.set_title(title)
+        axes[i, 1].set_title(title)
 
         if pred is not None:
             temp_pred = pred[pred[columns].apply(tuple, axis=1).isin([(c0, c1, c2)])]

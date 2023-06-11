@@ -10,30 +10,30 @@ class HBMepConfig():
     FNAME: Optional[str] = None
 
     # Independent variable
-    # INTENSITY: str = "pulse_amplitude"      # Rats
-    INTENSITY: str = "intensity"      # Human
+    INTENSITY: str = "pulse_amplitude"      # Rats
+    # INTENSITY: str = "intensity"      # Human
 
     # Participant variable
     PARTICIPANT: str = "participant"
 
     # Dependent variable
-    # RESPONSE: str = "auc_1"     # Rats
-    RESPONSE: str = "auc"     # Human
+    RESPONSE: str = "auc_1"     # Rats
+    # RESPONSE: str = "auc"     # Human
 
     # Study Features
     FEATURES: list[str] = ["segment", "method"]
 
     # Preprocess parameters
-    # PREPROCESS_PARAMS: dict[str, int] = {
-    #     "min_observations": 0,
-    #     "scalar_intensity": 1,
-    #     "scalar_response": 1
-    # }       # Rats
     PREPROCESS_PARAMS: dict[str, int] = {
         "min_observations": 0,
-        "scalar_intensity": 1000,
+        "scalar_intensity": 1,
         "scalar_response": 1
-    }       # Human
+    }       # Rats
+    # PREPROCESS_PARAMS: dict[str, int] = {
+    #     "min_observations": 0,
+    #     "scalar_intensity": 1000,
+    #     "scalar_response": 1
+    # }       # Human
 
     ZERO_ONE_THRESHOLDS: list[int] = [0.]
 

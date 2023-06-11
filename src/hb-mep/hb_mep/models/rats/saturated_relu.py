@@ -4,8 +4,6 @@ import jax
 import jax.numpy as jnp
 import numpy as np
 import pandas as pd
-import matplotlib.pyplot as plt
-import seaborn as sns
 
 import numpyro
 import numpyro.distributions as dist
@@ -83,7 +81,8 @@ class SaturatedReLU(Baseline):
                     )
 
         # Model
-        mean = \
+        mean = numpyro.deterministic(
+            site.mean,
             lo[feature1, feature0, participant] - \
             jnp.log(jnp.maximum(
                 g[feature1, feature0, participant],
@@ -91,6 +90,7 @@ class SaturatedReLU(Baseline):
                     b[feature1, feature0, participant] * (intensity - a[feature1, feature0, participant])
                 ))
             ))
+        )
 
         noise = \
             noise_offset[feature1, feature0, participant] + \
@@ -119,156 +119,3 @@ class SaturatedReLU(Baseline):
         posterior_samples = mcmc.get_samples()
 
         return mcmc, posterior_samples
-
-    def _get_estimates(
-        self,
-        posterior_samples: dict,
-        posterior_means: dict,
-        c: tuple
-    ):
-        a = posterior_means[site.a][c[::-1]]
-        b = posterior_means[site.b][c[::-1]]
-        lo = posterior_means[site.lo][c[::-1]]
-        g = posterior_means[site.g][c[::-1]]
-        y = lo - jnp.log(jnp.maximum(g, jnp.exp(-jnp.maximum(0, b * (self.x - a)))))
-
-        threshold_samples = posterior_samples[site.a][:, c[2], c[1], c[0]]
-        hpdi_interval = hpdi(threshold_samples, prob=0.95)
-
-        return y, threshold_samples, hpdi_interval
-
-    def plot(
-        self,
-        df: pd.DataFrame,
-        posterior_samples: dict,
-        encoder_dict: dict = None,
-        pred: pd.DataFrame = None,
-        mat: np.ndarray = None,
-        time: np.ndarray = None
-    ):
-        if pred is not None:
-            assert encoder_dict is not None
-
-        if mat is not None:
-            assert time is not None
-
-        combinations = self._get_combinations(df)
-        n_combinations = len(combinations)
-
-        posterior_means = {
-            p:posterior_samples[p].mean(axis=0) for p in posterior_samples
-        }
-
-        n_columns = 3 if mat is None else 4
-
-        fig, axes = plt.subplots(
-            n_combinations,
-            n_columns,
-            figsize=(n_columns * 6, n_combinations * 3),
-            constrained_layout=True
-        )
-
-        for i, c in enumerate(combinations):
-            idx = df[self.columns].apply(tuple, axis=1).isin([c])
-            temp_df = df[idx].reset_index(drop=True).copy()
-
-            sns.scatterplot(data=temp_df, x=INTENSITY, y=RESPONSE, ax=axes[i, 0])
-
-            if encoder_dict is None:
-                title = f"{self.columns} - {c}"
-            else:
-                c0 = encoder_dict[self.columns[0]].inverse_transform(np.array([c[0]]))[0]
-                c1 = encoder_dict[self.columns[1]].inverse_transform(np.array([c[1]]))[0]
-                c2 = encoder_dict[self.columns[2]].inverse_transform(np.array([c[2]]))[0]
-
-                title = f"{tuple(self.columns)} - {(c0, c1, c2)}"
-
-            axes[i, 0].set_title(title)
-
-            sns.scatterplot(data=temp_df, x=INTENSITY, y=RESPONSE, alpha=.4, ax=axes[i, 1])
-
-            y, threshold_samples, hpdi_interval = self._get_estimates(
-                posterior_samples, posterior_means, c
-            )
-
-            sns.kdeplot(x=threshold_samples, color="blue", ax=axes[i, 1])
-            sns.lineplot(
-                x=self.x,
-                y=y,
-                color="red",
-                alpha=0.4,
-                label=f"Mean Posterior",
-                ax=axes[i, 1]
-            )
-            sns.kdeplot(x=threshold_samples, color="blue", ax=axes[i, 2])
-
-            axes[i, 2].axvline(hpdi_interval[0], linestyle="--", color="green", label="95% HPDI Interval")
-            axes[i, 2].axvline(hpdi_interval[1], linestyle="--", color="green")
-
-            axes[i, 1].set_xlim(right=temp_df[INTENSITY].max() + 10)
-
-            if pred is not None:
-                temp_pred = pred[pred[self.columns].apply(tuple, axis=1).isin([(c0, c1, c2)])]
-                prediction = temp_pred[RESPONSE].values
-                assert len(prediction) == 1
-                posterior_mean = posterior_means[site.a][c[::-1]]
-                axes[i, 0].axvline(
-                    x=posterior_mean,
-                    color="purple",
-                    linestyle='--',
-                    alpha=.4,
-                    label=f"Mean Posterior: {posterior_mean:.1f}"
-                )
-                axes[i, 0].axvline(
-                    x=prediction[0],
-                    color="red",
-                    linestyle='--',
-                    alpha=.4,
-                    label=f"Ahmet's pk-pk: {prediction[0]:.1f}"
-                )
-                axes[i, 2].axvline(
-                    x=posterior_mean,
-                    color="purple",
-                    linestyle='--',
-                    alpha=.4,
-                    label=f"Mean Posterior: {posterior_mean:.1f}"
-                )
-                axes[i, 2].axvline(
-                    x=prediction[0],
-                    color="red",
-                    linestyle='--',
-                    alpha=.4,
-                    label=f"Ahmet's pk-pk: {prediction[0]:.1f}"
-                )
-                axes[i, 0].legend(loc="upper left")
-
-            axes[i, 1].set_title(f"Model Fit")
-            axes[i, 2].set_title(f"Threshold Estimate")
-
-            axes[i, 1].legend(loc="upper left")
-            axes[i, 2].legend(loc="upper left")
-
-            if mat is not None:
-                ax = axes[i][3]
-                temp_mat = mat[idx, :]
-
-                for j in range(temp_mat.shape[0]):
-                    x = temp_mat[j, :]/60 + temp_df[INTENSITY].values[j]
-                    ax.plot(x, time, color="green", alpha=.4)
-
-                ax.axhline(
-                    y=0.003, color="red", linestyle='--', alpha=.4, label="AUC Window"
-                )
-                ax.axhline(
-                    y=0.015, color="red", linestyle='--', alpha=.4
-                )
-
-                ax.set_ylim(bottom=-0.001, top=0.02)
-
-                ax.set_xlabel(f"{INTENSITY}")
-                ax.set_ylabel(f"Time")
-
-                ax.legend(loc="upper right")
-                ax.set_title(f"Motor Evoked Potential")
-
-        return fig

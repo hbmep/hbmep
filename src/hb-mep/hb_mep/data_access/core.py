@@ -48,6 +48,11 @@ class DataClass:
         """
         Preprocess data
         """
+        idx = df[RESPONSE].isin([0])
+        if idx.sum():
+            df = df[~idx].copy()
+            logger.info(f"Removed {idx.sum()} observation(s) with zero AUC response.")
+
         # Scale data
         df[INTENSITY] = df[INTENSITY].apply(lambda x: x * scalar_intensity)
         df[RESPONSE] = df[RESPONSE].apply(lambda x: x * scalar_response)

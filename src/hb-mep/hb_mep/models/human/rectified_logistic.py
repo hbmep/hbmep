@@ -4,8 +4,6 @@ import jax
 import jax.numpy as jnp
 import numpy as np
 import pandas as pd
-import matplotlib.pyplot as plt
-import seaborn as sns
 
 import numpyro
 import numpyro.distributions as dist
@@ -33,6 +31,7 @@ class RectifiedLogistic(Baseline):
 
         self.columns = [PARTICIPANT, FEATURES[1]]
         self.x = np.linspace(0, 15, 100)
+        self.xpad = 2
 
     def _model(self, intensity, participant, feature1, response_obs=None):
         n_participant = np.unique(participant).shape[0]
