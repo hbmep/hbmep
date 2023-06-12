@@ -3,11 +3,18 @@ import logging
 import argparse
 
 from hb_mep.config import HBMepConfig
+from hb_mep.data_access import DataClass
 from hb_mep.models import Baseline
-from hb_mep.models.rats import RectifiedLogistic, GammaRegression
-# from hb_mep.experiments import Experiment, SparseDataExperiment
-# from hb_mep.experiments.models import BayesianHierarchical
-from hb_mep.api import run_inference, run_experiment, run_inference_rats
+from hb_mep.models.rats import (
+    RectifiedLogistic as RRectifiedLogistic,
+    GammaRegression as RGammaRegression
+)
+from hb_mep.models.human import (
+    RectifiedLogistic as HRectifiedLogistic
+)
+from hb_mep.models.rats.utils import load_data as load_data_rats
+from hb_mep.models.human.utils import load_data as load_data_human
+from hb_mep.api import run_inference
 
 FORMAT = "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
 logging.basicConfig(format=FORMAT, level=logging.INFO)
@@ -15,18 +22,32 @@ logging.basicConfig(format=FORMAT, level=logging.INFO)
 
 def main(args):
     config = HBMepConfig()
-    models = [Baseline, RectifiedLogistic, GammaRegression]
+    data = DataClass(config)
 
-    try:
-        model = args.model
-        assert model in [m(config).name for m in models]
+    base_models = [Baseline]
+    rats_models = base_models + [RRectifiedLogistic, RGammaRegression]
+    human_models = base_models + [HRectifiedLogistic]
 
-        Model = [m for m in models if m(config).name == model][0]
+    if args.dataset == "human":
+        models = human_models
 
-    except AssertionError:
-        raise AssertionError(f"Invalid model {model} for inference job")
+        subset = ["scapptio001"]
+        df = load_data_human(data=data, muscle="Triceps", subset=subset)
 
-    run_inference_rats(config, Model)
+    else:
+        models = rats_models
+
+        a, b = 1, 4
+        subset = range(a, b)
+        df, _, _ = load_data_rats(subset=subset, data=data)
+
+    assert args.model in [m(config).name for m in models]
+
+    Model = [m for m in models if m(config).name == args.model][0]
+
+    run_inference(
+        df=df, config=config, data=data, Model=Model, id=args.dataset
+    )
     return
 
 
@@ -35,9 +56,21 @@ if __name__ == "__main__":
         description="Run HB-MEP"
     )
     parser.add_argument(
+        "--job",
+        required=True,
+        choices=["Inference", "Experiment"],
+        help="Job to run"
+    )
+    parser.add_argument(
         "--model",
         required=True,
         help="Model to run"
+    )
+    parser.add_argument(
+        "--dataset",
+        required=True,
+        choices=["Rats", "Human"],
+        help="Dataset to use"
     )
 
     try:

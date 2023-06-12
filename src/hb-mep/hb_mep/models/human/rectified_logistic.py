@@ -1,4 +1,5 @@
 import logging
+from typing import Optional
 
 import jax
 import jax.numpy as jnp
@@ -7,7 +8,7 @@ import pandas as pd
 
 import numpyro
 import numpyro.distributions as dist
-from numpyro.infer import MCMC, NUTS
+from numpyro.infer import MCMC, NUTS, Predictive
 from numpyro.diagnostics import hpdi
 
 from hb_mep.config import HBMepConfig
@@ -24,10 +25,10 @@ from hb_mep.utils.constants import (
 logger = logging.getLogger(__name__)
 
 
-class RectifiedLogistic(Baseline):
+class MixtureModel(Baseline):
     def __init__(self, config: HBMepConfig):
-        super(RectifiedLogistic, self).__init__(config=config)
-        self.name = "Rectified_Logistic"
+        super(MixtureModel, self).__init__(config=config)
+        self.name = "Mixture_Model"
 
         self.columns = [PARTICIPANT, FEATURES[1]]
         self.x = np.linspace(0, 15, 100)
@@ -41,48 +42,63 @@ class RectifiedLogistic(Baseline):
             """ Hyper-priors """
             a_mean = numpyro.sample(
                 site.a_mean,
-                dist.TruncatedDistribution(dist.Normal(5, 10), low=0)
+                dist.TruncatedNormal(5, 10, low=0)
             )
             a_scale = numpyro.sample(site.a_scale, dist.HalfNormal(10))
 
-            b_scale = numpyro.sample(site.b_scale, dist.HalfNormal(10))
-
-            h_scale = numpyro.sample("h_scale", dist.HalfNormal(10))
-            v_scale = numpyro.sample("v_scale", dist.HalfNormal(10))
-
-            lo_scale = numpyro.sample(site.lo_scale, dist.HalfNormal(0.2))
-
-            noise_offset_scale = numpyro.sample(
-                site.noise_offset_scale,
-                dist.HalfCauchy(0.2)
+            b_mean = numpyro.sample(
+                "b_mean",
+                dist.TruncatedNormal(10, 5, low=0)
             )
-            noise_slope_scale = numpyro.sample(
-                site.noise_slope_scale,
-                dist.HalfCauchy(0.2)
+            b_scale = numpyro.sample(site.b_scale, dist.HalfNormal(20))
+
+            h_mean = numpyro.sample(
+                "h_mean",
+                dist.TruncatedNormal(15, 10, low=0)
+            )
+            h_scale = numpyro.sample("h_scale", dist.HalfNormal(20))
+
+            v_mean = numpyro.sample(
+                "v_mean",
+                dist.TruncatedNormal(50, 30, low=0)
+            )
+            v_scale = numpyro.sample("v_scale", dist.HalfNormal(20))
+
+            lo_scale = numpyro.sample(site.lo_scale, dist.HalfNormal(2))
+
+            noise_offset = numpyro.sample(
+                site.noise_offset,
+                dist.HalfNormal(2)
+            )
+            noise_slope = numpyro.sample(
+                site.noise_slope,
+                dist.HalfNormal(2)
             )
 
             with numpyro.plate("n_feature1", n_feature1, dim=-2):
                 """ Priors """
                 a = numpyro.sample(
                     site.a,
-                    dist.TruncatedDistribution(dist.Normal(a_mean, a_scale), low=0)
+                    dist.TruncatedNormal(a_mean, a_scale, low=0)
                 )
-                b = numpyro.sample(site.b, dist.HalfNormal(b_scale))
+                b = numpyro.sample(
+                    site.b,
+                    dist.TruncatedNormal(b_mean, b_scale, low=0)
+                )
 
-                h = numpyro.sample("h", dist.HalfNormal(h_scale))
-                v = numpyro.sample("v", dist.HalfNormal(v_scale))
+                h = numpyro.sample(
+                    "h",
+                    dist.TruncatedNormal(h_mean, h_scale, low=0)
+                )
+
+                v = numpyro.sample(
+                    "v",
+                    dist.TruncatedNormal(v_mean, v_scale, low=0)
+                )
 
                 lo = numpyro.sample(site.lo, dist.HalfNormal(lo_scale))
 
-                noise_offset = numpyro.sample(
-                    site.noise_offset,
-                    dist.HalfCauchy(noise_offset_scale)
-                )
-                noise_slope = numpyro.sample(
-                    site.noise_slope,
-                    dist.HalfCauchy(noise_slope_scale)
-                )
-
+                d = numpyro.sample("d", dist.Gamma(2, 0.1))
 
         """ Model """
         mean = numpyro.deterministic(
@@ -103,14 +119,20 @@ class RectifiedLogistic(Baseline):
 
         sigma = numpyro.deterministic(
             "sigma",
-            noise_offset[feature1, participant] + \
-            noise_slope[feature1, participant] * \
-            mean
+            noise_offset[participant] + noise_slope[participant] * mean
         )
+
+        df = numpyro.deterministic("df", 2 + d[feature1, participant])
 
         """ Observation """
         with numpyro.plate("data", len(intensity)):
-            return numpyro.sample("obs", dist.TruncatedNormal(mean, sigma, low=0), obs=response_obs)
+            return numpyro.sample(
+                site.obs,
+                dist.LeftTruncatedDistribution(
+                    dist.StudentT(df, mean, sigma), low=0
+                ),
+                obs=response_obs
+            )
 
     @timing
     def run_inference(self, df: pd.DataFrame) -> tuple[numpyro.infer.mcmc.MCMC, dict]:
@@ -132,25 +154,37 @@ class RectifiedLogistic(Baseline):
 
         return mcmc, posterior_samples
 
-    def _get_estimates(
+    def _get_threshold_estimates(
         self,
+        combination: tuple,
         posterior_samples: dict,
-        posterior_means: dict,
-        c: tuple
+        prob: float = .95
     ):
-        a = posterior_means[site.a][c[::-1]]
-        b = posterior_means[site.b][c[::-1]]
-        h = posterior_means["h"][c[::-1]]
-        v = posterior_means["v"][c[::-1]]
-        lo = posterior_means[site.lo][c[::-1]]
+        threshold_posterior = posterior_samples[site.a][
+            :, combination[1], combination[0]
+        ]
+        threshold = threshold_posterior.mean()
+        hpdi_interval = hpdi(threshold_posterior, prob=prob)
+        return threshold, threshold_posterior, hpdi_interval
 
-        y = lo + jnp.maximum(
-            0,
-            -1 + (h + 1) / \
-            jnp.power(1 + (jnp.power(1 + h, v) - 1) * jnp.exp(-b * (self.x - a)), 1 / v)
+    def predict(
+        self,
+        intensity: np.ndarray,
+        combination: tuple,
+        posterior_samples: Optional[dict] = None,
+        num_samples: int = 100
+    ):
+        predictive = Predictive(model=self._model, num_samples=num_samples)
+        if posterior_samples is not None:
+            predictive = Predictive(model=self._model, posterior_samples=posterior_samples)
+
+        participant = np.repeat([combination[0]], intensity.shape[0])
+        feature1 = np.repeat([combination[1]], intensity.shape[0])
+
+        predictions = predictive(
+            self.rng_key,
+            intensity=intensity,
+            participant=participant,
+            feature1=feature1
         )
-
-        threshold_samples = posterior_samples[site.a][:, c[1], c[0]]
-        hpdi_interval = hpdi(threshold_samples, prob=0.95)
-
-        return y, a, threshold_samples, hpdi_interval
+        return predictions

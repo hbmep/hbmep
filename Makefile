@@ -4,7 +4,7 @@ CWD := $(dir $(abspath $(lastword $(MAKEFILE_LIST))))
 export
 
 python ?= 3.9
-inference ?= inference
+job ?= inference
 model ?= Baseline
 dataset ?= rats
 
@@ -28,4 +28,4 @@ build: build-base
 
 run:
 	@source .venv/bin/activate && \
-	python -m hb_mep run --model=$(model)
+	python -m hb_mep run --job=$(job) --model=$(model) --dataset=$(dataset)
