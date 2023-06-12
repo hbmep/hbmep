@@ -25,10 +25,10 @@ from hb_mep.utils.constants import (
 logger = logging.getLogger(__name__)
 
 
-class MixtureModel(Baseline):
+class RectifiedLogistic(Baseline):
     def __init__(self, config: HBMepConfig):
-        super(MixtureModel, self).__init__(config=config)
-        self.name = "Mixture_Model"
+        super(RectifiedLogistic, self).__init__(config=config)
+        self.name = "Rectified_Logistic"
 
         self.columns = [PARTICIPANT, FEATURES[1]]
         self.x = np.linspace(0, 15, 100)
