@@ -31,18 +31,32 @@ def run_inference(
     model = Model(config)
     mcmc, posterior_samples = model.run_inference(df=df)
 
+    postfix = f"{model.name}_{id}"
+
     logger.info(f"Rendering convergence diagnostics ...")
     numpyro_data = az.from_numpyro(mcmc)
     diagnostics = az.summary(data=numpyro_data, hdi_prob=.95)
-    save_path = os.path.join(data.reports_path, f"MCMC_{model.name}_{id}.csv")
+    save_path = os.path.join(data.reports_path, f"MCMC_{postfix}.csv")
     diagnostics.to_csv(save_path)
     logger.info(f"Saved to {save_path}")
+
+    logger.info(f"Calculating LOO / WAIC scores ...")
+
+    score = az.loo(numpyro_data)
+    logger.info(f"ELPD LOO (Log): {score.elpd_loo:.2f}")
+    save_path = os.path.join(data.reports_path, f"LOO_{postfix}.csv")
+    score.to_csv(save_path)
+
+    score = az.waic(numpyro_data)
+    logger.info(f"ELPD WAIC (Log): {score.elpd_waic:.2f}")
+    save_path = os.path.join(data.reports_path, f"WAIC_{postfix}.csv")
+    score.to_csv(save_path)
 
     logger.info(f"Rendering fitted recruitment curves ...")
     fig = model.plot(
         df=df, posterior_samples=posterior_samples, encoder_dict=encoder_dict
     )
-    save_path = os.path.join(data.reports_path, f"RC_{model.name}_{id}.png")
+    save_path = os.path.join(data.reports_path, f"RC_{postfix}.png")
     fig.savefig(save_path, facecolor="w")
     logger.info(f"Saved to {save_path}")
 
@@ -50,7 +64,7 @@ def run_inference(
     fig = model.predictive_check(
         df=df, posterior_samples=posterior_samples
     )
-    save_path = os.path.join(data.reports_path, f"PPC_{model.name}_{id}.png")
+    save_path = os.path.join(data.reports_path, f"PPC_{postfix}.png")
     fig.savefig(save_path, facecolor="w")
     logger.info(f"Saved to {save_path}")
 

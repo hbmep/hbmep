@@ -4,13 +4,10 @@ import jax
 import jax.numpy as jnp
 import numpy as np
 import pandas as pd
-import matplotlib.pyplot as plt
-import seaborn as sns
 
 import numpyro
 import numpyro.distributions as dist
 from numpyro.infer import MCMC, NUTS
-from numpyro.diagnostics import hpdi
 
 from hb_mep.config import HBMepConfig
 from hb_mep.models.baseline import Baseline
@@ -45,7 +42,7 @@ class GammaRegression(Baseline):
                 site.a_mean,
                 dist.TruncatedDistribution(dist.Normal(150, 50), low=0)
             )
-            a_scale = numpyro.sample(site.a_scale, dist.HalfNormal(5))
+            a_scale = numpyro.sample(site.a_scale, dist.HalfNormal(50))
 
             b_scale = numpyro.sample(site.b_scale, dist.HalfNormal(0.1))
 
@@ -68,7 +65,8 @@ class GammaRegression(Baseline):
 
                     lo = numpyro.sample(site.lo, dist.HalfNormal(lo_scale))
 
-                    gamma_scale = numpyro.sample("gamma_scale", dist.Gamma(50, 0.01))
+                    gamma_scale_offset = numpyro.sample("gamma_scale_offset", dist.HalfCauchy(2.5))
+                    gamma_scale_slope = numpyro.sample("gamma_scale_slope", dist.HalfCauchy(2.5))
 
         """ Model """
         mean = numpyro.deterministic(
@@ -89,7 +87,8 @@ class GammaRegression(Baseline):
 
         scale = numpyro.deterministic(
             "scale",
-            gamma_scale[feature1, feature0, participant]
+            gamma_scale_offset[feature1, feature0, participant] + \
+            gamma_scale_slope[feature1, feature0, participant] * (1 / mean)
         )
 
         """ Observation """

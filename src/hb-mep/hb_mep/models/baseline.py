@@ -213,6 +213,21 @@ class Baseline():
             axes[i, 1].fill_between(
                 intensity, hpdi_obs[0, :], hpdi_obs[1, :], color="paleturquoise", label="95% HPDI"
             )
+
+            ## Additional
+            hpdi_obs_90 = hpdi(obs, prob=.90)
+            hpdi_obs_80 = hpdi(obs, prob=.80)
+            hpdi_obs_65 = hpdi(obs, prob=.65)
+            axes[i, 1].fill_between(
+                intensity, hpdi_obs_90[0, :], hpdi_obs_90[1, :], color="C1", label="90% HPDI"
+            )
+            axes[i, 1].fill_between(
+                intensity, hpdi_obs_80[0, :], hpdi_obs_80[1, :], color="C2", label="80% HPDI"
+            )
+            axes[i, 1].fill_between(
+                intensity, hpdi_obs_65[0, :], hpdi_obs_65[1, :], color="C3", label="65% HPDI"
+            )
+
             sns.scatterplot(
                 data=temp_df, x=INTENSITY, y=RESPONSE, color="y", edgecolor="k", ax=axes[i, 1]
             )
