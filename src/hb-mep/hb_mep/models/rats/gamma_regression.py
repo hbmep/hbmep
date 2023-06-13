@@ -22,6 +22,7 @@ from hb_mep.utils.constants import (
 
 logger = logging.getLogger(__name__)
 
+
 class GammaRegression(Baseline):
     def __init__(self, config: HBMepConfig):
         super(GammaRegression, self).__init__(config=config)

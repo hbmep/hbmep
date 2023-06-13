@@ -28,13 +28,13 @@ def main(args):
     rats_models = base_models + [RRectifiedLogistic, RGammaRegression]
     human_models = base_models + [HRectifiedLogistic]
 
-    if args.dataset == "human":
+    if args.dataset == "Human":
         models = human_models
 
         subset = ["scapptio001"]
         df = load_data_human(data=data, muscle="Triceps", subset=subset)
 
-    else:
+    elif args.dataset == "Rats":
         models = rats_models
 
         a, b = 1, 4
