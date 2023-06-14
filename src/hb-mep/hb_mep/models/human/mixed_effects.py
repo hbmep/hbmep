@@ -1,15 +1,14 @@
 import logging
+from typing import Optional
 
 import jax
 import jax.numpy as jnp
 import numpy as np
 import pandas as pd
-import matplotlib.pyplot as plt
-import seaborn as sns
 
 import numpyro
 import numpyro.distributions as dist
-from numpyro.infer import MCMC, NUTS
+from numpyro.infer import MCMC, NUTS, Predictive
 from numpyro.diagnostics import hpdi
 
 from hb_mep.config import HBMepConfig
@@ -29,12 +28,14 @@ logger = logging.getLogger(__name__)
 class MixedEffects(Baseline):
     def __init__(self, config: HBMepConfig):
         super(MixedEffects, self).__init__(config=config)
-        self.name = "Mixed_Effects_Human"
+        self.name = "Mixed_Effects"
 
-        self.columns = ["participant", "method"]
+        self.columns = [PARTICIPANT, FEATURES[1]]
         self.x = np.linspace(0, 15, 100)
+        self.xpad = 2
 
     def _model(self, intensity, participant, feature1, response_obs=None):
+        n_data = intensity.shape[0]
         n_participant = np.unique(participant).shape[0]
         n_feature1 = np.unique(feature1).shape[0]
 
@@ -151,108 +152,37 @@ class MixedEffects(Baseline):
 
         return mcmc, posterior_samples
 
-    def _get_estimates(
+    def _get_threshold_estimates(
         self,
+        combination: tuple,
         posterior_samples: dict,
-        posterior_means: dict,
-        c: tuple
+        prob: float = .95
     ):
-        a = posterior_means[site.a][c[::-1]]
-        b = posterior_means[site.b][c[::-1]]
-        lo = posterior_means[site.lo][c[::-1]]
-        # g = posterior_means[site.g][c[::-1]]
-        # y = lo - jnp.log(jnp.maximum(g, jnp.exp(-jnp.maximum(0, b * (x - a)))))
-        y = lo + jax.nn.relu(b * (self.x - a))
+        threshold_posterior = posterior_samples[site.a][
+            :, combination[1], combination[0]
+        ]
+        threshold = threshold_posterior.mean()
+        hpdi_interval = hpdi(threshold_posterior, prob=prob)
+        return threshold, threshold_posterior, hpdi_interval
 
-        threshold_samples = posterior_samples[site.a][:, c[1], c[0]]
-        hpdi_interval = hpdi(threshold_samples, prob=0.95)
+    def predict(
+        self,
+        intensity: np.ndarray,
+        combination: tuple,
+        posterior_samples: Optional[dict] = None,
+        num_samples: int = 100
+    ):
+        predictive = Predictive(model=self._model, num_samples=num_samples)
+        if posterior_samples is not None:
+            predictive = Predictive(model=self._model, posterior_samples=posterior_samples)
 
-        return y, threshold_samples, hpdi_interval
+        participant = np.repeat([combination[0]], intensity.shape[0])
+        feature1 = np.repeat([combination[1]], intensity.shape[0])
 
-    # def _get_estimates(
-    #     self,
-    #     posterior_samples: dict,
-    #     posterior_means: dict,
-    #     c: tuple
-    # ):
-    #     a = posterior_means[site.a][c[::-1]]
-    #     b = posterior_means[site.b][c[::-1]]
-    #     lo = posterior_means[site.lo][c[::-1]]
-    #     g = posterior_means[site.g][c[::-1]]
-    #     y = lo - jnp.log(jnp.maximum(g, jnp.exp(-jnp.maximum(0, b * (self.x - a)))))
-    #     # y = lo + self.link(b * (self.xx - a))
-
-    #     threshold_samples = posterior_samples[site.a][:, c[1], c[0]]
-    #     hpdi_interval = hpdi(threshold_samples, prob=0.95)
-
-    #     return y, threshold_samples, hpdi_interval
-
-    def _get_combinations(self, df: pd.DataFrame):
-        combinations = \
-            df \
-            .groupby(by=self.columns) \
-            .size() \
-            .to_frame("counts") \
-            .reset_index().copy()
-        combinations = combinations[self.columns].apply(tuple, axis=1).tolist()
-        return combinations
-
-    def plot(self, df: pd.DataFrame, posterior_samples: dict, encoder_dict: dict = None):
-        combinations = self._get_combinations(df)
-        n_combinations = len(combinations)
-
-        posterior_means = {
-            p:posterior_samples[p].mean(axis=0) for p in posterior_samples
-        }
-
-        fig, ax = plt.subplots(
-            n_combinations,
-            3,
-            figsize=(12, n_combinations * 3),
-            constrained_layout=True
+        predictions = predictive(
+            self.rng_key,
+            intensity=intensity,
+            participant=participant,
+            feature1=feature1
         )
-
-        for i, c in enumerate(combinations):
-            idx = df[self.columns].apply(tuple, axis=1).isin([c])
-            temp_df = df[idx].reset_index(drop=True).copy()
-
-            sns.scatterplot(data=temp_df, x=INTENSITY, y=RESPONSE, ax=ax[i, 0])
-            sns.scatterplot(data=temp_df, x=INTENSITY, y=RESPONSE, ax=ax[i, 1], alpha=.4)
-
-            y, threshold_samples, hpdi_interval = self._get_estimates(
-                posterior_samples, posterior_means, c
-            )
-
-            sns.kdeplot(x=threshold_samples, ax=ax[i, 1], color="blue")
-            sns.lineplot(
-                x=self.x,
-                y=y,
-                ax=ax[i, 1],
-                color="red",
-                alpha=0.4,
-                label=f"Mean Posterior"
-            )
-            sns.kdeplot(x=threshold_samples, color="blue", ax=ax[i, 2])
-
-            ax[i, 2].axvline(hpdi_interval[0], linestyle="--", color="green", label="95% HPDI Interval")
-            ax[i, 2].axvline(hpdi_interval[1], linestyle="--", color="green")
-
-            ax[i, 1].set_xlim(right=temp_df[INTENSITY].max() + 3)
-
-            if encoder_dict is None:
-                title = f"{tuple(self.columns)} - {c}"
-            else:
-                c0 = encoder_dict["participant"].inverse_transform(np.array([c[0]]))[0]
-                c1 = temp_df["sc_level"].unique()[0]
-                c2 = encoder_dict["method"].inverse_transform(np.array([c[1]]))[0]
-
-                title = f"({c0}, {c1}, {c2})"
-
-            ax[i, 0].set_title(title)
-
-            ax[i, 1].set_title(f"Model Fit")
-            ax[i, 2].set_title(f"Threshold Estimate")
-            ax[i, 1].legend(loc="upper right")
-            ax[i, 2].legend(loc="upper right")
-
-        return fig
+        return predictions

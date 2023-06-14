@@ -128,9 +128,7 @@ class RectifiedLogistic(Baseline):
         with numpyro.plate("data", len(intensity)):
             return numpyro.sample(
                 site.obs,
-                dist.LeftTruncatedDistribution(
-                    dist.StudentT(df, mean, sigma), low=0
-                ),
+                dist.LeftTruncatedDistribution(dist.StudentT(df, mean, sigma), low=0),
                 obs=response_obs
             )
 

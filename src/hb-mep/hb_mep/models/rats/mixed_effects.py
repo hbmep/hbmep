@@ -8,7 +8,6 @@ import pandas as pd
 import numpyro
 import numpyro.distributions as dist
 from numpyro.infer import MCMC, NUTS
-from numpyro.diagnostics import hpdi
 
 from hb_mep.config import HBMepConfig
 from hb_mep.models.baseline import Baseline
@@ -28,84 +27,86 @@ class MixedEffects(Baseline):
     def __init__(self, config: HBMepConfig):
         super(MixedEffects, self).__init__(config=config)
         self.name = "Mixed_Effects"
+
+        self.columns = [PARTICIPANT] + FEATURES
         self.x = np.linspace(0, 450, 1000)
 
     def _model(self, intensity, participant, feature0, feature1, response_obs=None):
+        n_data = intensity.shape[0]
         n_participant = np.unique(participant).shape[0]
         n_feature0 = np.unique(feature0).shape[0]
         n_feature1 = np.unique(feature1).shape[0]
 
-        delta_mean = numpyro.sample(site.delta_mean, dist.Normal(0, 100))
-        delta_scale = numpyro.sample(site.delta_scale, dist.HalfNormal(20))
-
         with numpyro.plate("n_participant", n_participant, dim=-1):
-            # Hyperriors
-            baseline_mean = numpyro.sample(
-                site.baseline_mean,
+            """ Hyper-priors """
+            a_mean = numpyro.sample(
+                site.a_mean,
                 dist.TruncatedDistribution(dist.Normal(150, 50), low=0)
             )
-            baseline_scale = numpyro.sample(site.baseline_scale, dist.HalfNormal(20))
+            a_scale = numpyro.sample(site.a_scale, dist.HalfNormal(50))
 
             b_scale = numpyro.sample(site.b_scale, dist.HalfNormal(0.1))
 
-            lo_scale = numpyro.sample(site.lo_scale, dist.HalfNormal(0.2))
-            g_shape = numpyro.sample(site.g_shape, dist.HalfNormal(5.0))
+            h_scale = numpyro.sample("h_scale", dist.HalfNormal(5))
+            v_scale = numpyro.sample("v_scale", dist.HalfNormal(10))
 
-            noise_offset_scale = numpyro.sample(
-                site.noise_offset_scale,
-                dist.HalfCauchy(0.2)
-            )
-            noise_slope_scale = numpyro.sample(
-                site.noise_slope_scale,
-                dist.HalfCauchy(0.2)
-            )
+            lo_scale = numpyro.sample(site.lo_scale, dist.HalfNormal(0.05))
 
             with numpyro.plate("n_feature0", n_feature0, dim=-2):
-                baseline = numpyro.sample(
-                    site.baseline,
-                    dist.TruncatedDistribution(dist.Normal(baseline_mean, baseline_scale), low=0)
-                )
-                delta = numpyro.sample(site.delta, dist.Normal(delta_mean, delta_scale))
-
                 with numpyro.plate("n_feature1", n_feature1, dim=-3):
-                    # Priors
-                    a = numpyro.deterministic(
+                    """ Priors """
+                    a = numpyro.sample(
                         site.a,
-                        jnp.array([baseline, baseline + delta])
+                        dist.TruncatedNormal(a_mean, a_scale, low=0)
                     )
                     b = numpyro.sample(site.b, dist.HalfNormal(b_scale))
 
+                    h = numpyro.sample("h", dist.HalfNormal(h_scale))
+                    v = numpyro.sample("v", dist.HalfNormal(v_scale))
+
                     lo = numpyro.sample(site.lo, dist.HalfNormal(lo_scale))
-                    g = numpyro.sample(site.g, dist.Beta(1, g_shape))
 
-                    noise_offset = numpyro.sample(
-                        site.noise_offset,
-                        dist.HalfCauchy(noise_offset_scale)
-                    )
-                    noise_slope = numpyro.sample(
-                        site.noise_slope,
-                        dist.HalfCauchy(noise_slope_scale)
-                    )
+                    gamma_scale_offset = numpyro.sample("gamma_scale_offset", dist.HalfCauchy(2.5))
+                    gamma_scale_slope = numpyro.sample("gamma_scale_slope", dist.HalfCauchy(2.5))
 
-        # Model
-        mean = \
-            lo[feature1, feature0, participant] - \
-            jnp.log(jnp.maximum(
-                g[feature1, feature0, participant],
-                jnp.exp(-jax.nn.relu(
-                    b[feature1, feature0, participant] * (intensity - a[feature1, feature0, participant])
-                ))
-            ))
+        """ Model """
+        mean = numpyro.deterministic(
+            site.mean,
+            lo[feature1, feature0, participant] + \
+            jnp.maximum(
+                0,
+                -1 + \
+                (h[feature1, feature0, participant] + 1) / \
+                jnp.power(
+                    1 + \
+                    (jnp.power(1 + h[feature1, feature0, participant], v[feature1, feature0, participant]) - 1) * \
+                    jnp.exp(-b[feature1, feature0, participant] * (intensity - a[feature1, feature0, participant])),
+                    1 / v[feature1, feature0, participant]
+                )
+            )
+        )
 
-        noise = \
-            noise_offset[feature1, feature0, participant] + \
-            noise_slope[feature1, feature0, participant] * mean
+        scale = numpyro.deterministic(
+            "scale",
+            gamma_scale_offset[feature1, feature0, participant] + \
+            gamma_scale_slope[feature1, feature0, participant] * (1 / mean)
+        )
 
-        penalty = 5 * (jnp.fabs(baseline + delta) - (baseline + delta))
-        numpyro.factor(site.penalty, -penalty)
+        arr = np.array([feature0, participant])
+        feature0_unq, participant_unq = np.unique(ar=arr, axis=-1)
 
-        with numpyro.plate("data", len(intensity)):
-            return numpyro.sample("obs", dist.TruncatedNormal(mean, noise, low=0), obs=response_obs)
+        delta = numpyro.deterministic(
+            "delta",
+            a[1, feature0_unq, participant_unq] - a[0, feature0_unq, participant_unq]
+        )
+
+        """ Observation """
+        with numpyro.plate(site.data, n_data):
+            return numpyro.sample(
+                site.obs,
+                dist.Gamma(mean * scale, scale),
+                obs=response_obs
+            )
 
     @timing
     def run_inference(self, df: pd.DataFrame) -> tuple[numpyro.infer.mcmc.MCMC, dict]:
@@ -127,20 +128,3 @@ class MixedEffects(Baseline):
         posterior_samples = mcmc.get_samples()
 
         return mcmc, posterior_samples
-
-    def _get_estimates(
-        self,
-        posterior_samples: dict,
-        posterior_means: dict,
-        c: tuple
-    ):
-        a = posterior_means[site.a][c[::-1]]
-        b = posterior_means[site.b][c[::-1]]
-        lo = posterior_means[site.lo][c[::-1]]
-        g = posterior_means[site.g][c[::-1]]
-        y = lo - jnp.log(jnp.maximum(g, jnp.exp(-jnp.maximum(0, b * (self.x - a)))))
-
-        threshold_samples = posterior_samples[site.a][:, c[2], c[1], c[0]]
-        hpdi_interval = hpdi(threshold_samples, prob=0.95)
-
-        return y, threshold_samples, hpdi_interval

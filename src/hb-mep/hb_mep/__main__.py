@@ -31,13 +31,14 @@ def main(args):
     if args.dataset == "Human":
         models = human_models
 
-        subset = ["scapptio001"]
-        df = load_data_human(data=data, muscle="Triceps", subset=subset)
+        # subset = ["scapptio001"]
+        # df = load_data_human(data=data, muscle="Triceps", subset=subset)
+        df = load_data_human(data=data, muscle="Triceps")
 
     elif args.dataset == "Rats":
         models = rats_models
 
-        a, b = 1, 4
+        a, b = 1, 6
         subset = range(a, b)
         df, _, _ = load_data_rats(subset=subset, data=data)
 

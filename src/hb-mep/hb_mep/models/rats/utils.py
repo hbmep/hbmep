@@ -1,6 +1,7 @@
 import os
 import glob
 import logging
+from pathlib import Path
 from typing import Optional
 
 import mat73
@@ -10,8 +11,7 @@ import pandas as pd
 from hb_mep.data_access import DataClass
 from hb_mep.utils import timing
 from hb_mep.utils.constants import (
-    PARTICIPANT,
-    FEATURES
+    PARTICIPANT
 )
 
 logger = logging.getLogger(__name__)
@@ -19,43 +19,40 @@ logger = logging.getLogger(__name__)
 
 @timing
 def load_data(
-    subset: Optional[list[int]],
-    data: DataClass = DataClass
+    dir: Path,
+    subdirs_pattern: list[str] = ["*L_CIRC*"],
+    participants: list[int] = range(1, 7),
 ):
     df = None
 
-    for i in subset:
-        participant = f"amap{i:02}"
-        PREFIX = f"rats_data/{participant}/*"
+    for p in participants:
+        participant = f"amap{p:02}"
 
-        fpath = glob.glob(os.path.join(data.data_path, f"{PREFIX}/*auc_table.csv"))[0]
-        temp_df = pd.read_csv(fpath)
+        for subdir_pattern in subdirs_pattern:
+            PREFIX = f"{dir}/{participant}/{subdir_pattern}"
 
-        fpath = glob.glob(os.path.join(data.data_path, f"{PREFIX}/*ep_matrix.mat"))[0]
-        data_dict = mat73.loadmat(fpath)
-        temp_mat = data_dict["ep_sliced"]
+            fpath = glob.glob(f"{PREFIX}/*auc_table.csv")[0]
+            temp_df = pd.read_csv(fpath)
 
-        if df is None:
-            time = data_dict["t_sliced"]
-        else:
-            assert (data_dict["t_sliced"] == time).all()
+            fpath = glob.glob(f"{PREFIX}/*ep_matrix.mat")[0]
+            data_dict = mat73.loadmat(fpath)
 
-        temp_df[PARTICIPANT] = participant
-        temp_df[FEATURES[0]] = temp_df.channel2_segment
-        temp_df[FEATURES[1]] = temp_df.channel2_laterality
+            temp_mat = data_dict["ep_sliced"]
 
-        idx = temp_df.channel1_segment.isna()
-        temp_df = temp_df[idx].copy()
-        temp_df.reset_index(drop=True, inplace=True)
+            if df is None:
+                time = data_dict["t_sliced"]
+            else:
+                assert (data_dict["t_sliced"] == time).all()
 
-        temp_mat = temp_mat[idx, :, :]
+            temp_df[PARTICIPANT] = participant
+            temp_df["subdir_pattern"] = subdir_pattern
 
-        if df is None:
-            df = temp_df.copy()
-            mat = temp_mat
-        else:
-            df = pd.concat([df, temp_df], ignore_index=True).copy()
-            mat = np.vstack((mat, temp_mat))
+            if df is None:
+                df = temp_df.copy()
+                mat = temp_mat
+            else:
+                df = pd.concat([df, temp_df], ignore_index=True).copy()
+                mat = np.vstack((mat, temp_mat))
 
     df.reset_index(drop=True, inplace=True)
     return df, mat, time

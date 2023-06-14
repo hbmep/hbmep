@@ -77,13 +77,17 @@ def plot(
         constrained_layout=True
     )
 
-    for i, c in enumerate(combinations):
-        idx = df[columns].apply(tuple, axis=1).isin([c])
+    for i, combination in enumerate(combinations):
+        idx = df[columns].apply(tuple, axis=1).isin([combination])
 
         temp_df = df[idx].reset_index(drop=True).copy()
 
-        sns.kdeplot(temp_df[RESPONSE], ax=axes[i, 0])
-        sns.kdeplot(np.log(temp_df[RESPONSE]), ax=axes[i, 0], color="green")
+        sns.kdeplot(temp_df[RESPONSE], ax=axes[i, 0], color="b", label=f"{RESPONSE}")
+        sns.kdeplot(np.log(temp_df[RESPONSE]), ax=axes[i, 0], color="g", label=f"log {RESPONSE}")
+
+        title = f"{columns} - {combination}"
+        axes[i, 0].set_title(title)
+        axes[i, 0].legend(loc="upper left")
 
         ax = axes[i] if mat is None else axes[i][0]
         sns.scatterplot(data=temp_df, x=INTENSITY, y=RESPONSE, ax=axes[i, 1])
@@ -91,31 +95,31 @@ def plot(
         axes[i, 1].set_xlabel(f"{INTENSITY}")
         axes[i, 1].set_ylabel(f"{RESPONSE}")
 
-        if encoder_dict is None:
-            title = f"{columns} - {c}"
-        else:
-            c0 = encoder_dict[columns[0]].inverse_transform(np.array([c[0]]))[0]
-            c1 = encoder_dict[columns[1]].inverse_transform(np.array([c[1]]))[0]
-            c2 = encoder_dict[columns[2]].inverse_transform(np.array([c[2]]))[0]
-            title = f"{(c0, c1, c2)}"
+        if encoder_dict is not None:
+            c_inverse = []
+            for (column, value) in zip(columns, combination):
+                value_inverse = encoder_dict[column].inverse_transform(np.array([value]))[0]
+                c_inverse.append(value_inverse)
+            title = f"{tuple(c_inverse)}"
 
         axes[i, 1].set_title(title)
 
-        if pred is not None:
-            temp_pred = pred[pred[columns].apply(tuple, axis=1).isin([(c0, c1, c2)])]
-            prediction = temp_pred[RESPONSE].values
-            assert len(prediction) == 1
-            ax.axvline(
-                x=prediction[0],
-                color="red",
-                linestyle='--',
-                alpha=.4,
-                label=f"Ahmet's prediction: {prediction[0]}"
-            )
-            ax.legend(loc="upper right")
+        # """ Ahmet's method """
+        # if pred is not None:
+        #     temp_pred = pred[pred[columns].apply(tuple, axis=1).isin([(c0, c1, c2)])]
+        #     prediction = temp_pred[RESPONSE].values
+        #     assert len(prediction) == 1
+        #     ax.axvline(
+        #         x=prediction[0],
+        #         color="red",
+        #         linestyle='--',
+        #         alpha=.4,
+        #         label=f"Ahmet's prediction: {prediction[0]}"
+        #     )
+        #     ax.legend(loc="upper right")
 
         if mat is not None:
-            ax = axes[i][1]
+            ax = axes[i, 2]
             temp_mat = mat[idx, :]
 
             for j in range(temp_mat.shape[0]):
