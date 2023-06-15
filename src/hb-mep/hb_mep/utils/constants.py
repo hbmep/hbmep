@@ -1,9 +1,11 @@
 from hb_mep.config import HBMepConfig as config
 
 
+""" Directories """
 DATA_DIR = "data"
 REPORTS_DIR = "reports"
 
+""" Variables """
 PARTICIPANT = config.PARTICIPANT
 INTENSITY = config.INTENSITY
 FEATURES = config.FEATURES

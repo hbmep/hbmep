@@ -66,9 +66,12 @@ def plot(
         .to_frame("counts") \
         .reset_index().copy()
     combinations = combinations[columns].apply(tuple, axis=1).tolist()
-    n_combinations = len(combinations)
 
-    n_columns = 2 if mat is None else 3
+    n_combinations = len(combinations)
+    n_response = len(RESPONSE)
+
+    n_columns = 1 if mat is None else 2
+    n_columns += n_response
 
     fig, axes = plt.subplots(
         n_combinations,
