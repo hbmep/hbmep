@@ -14,8 +14,7 @@ from hb_mep.utils.constants import (
     INTENSITY,
     RESPONSE,
     PARTICIPANT,
-    FEATURES,
-    AUC_MAP
+    FEATURES
 )
 
 logger = logging.getLogger(__name__)
@@ -41,34 +40,38 @@ class DataClass:
     def preprocess(
         self,
         df: pd.DataFrame,
-        min_observations: int = 25,
-        scalar_intensity: float = 1000,
-        scalar_response: float = 1
+        scalar_intensity: float,
+        scalar_response: list[float],
+        min_observations: int
         ) -> tuple[pd.DataFrame, dict, dict[str,  LabelEncoder]]:
         """
         Preprocess data
         """
-        idx = df[RESPONSE].isin([0])
+        assert len(RESPONSE) == len(scalar_response)
+
+        """ Remove zero AUC response """
+        idx = df[RESPONSE].isin([0]).any(axis=1)
         if idx.sum():
             df = df[~idx].copy()
-            logger.info(f"Removed {idx.sum()} observation(s) with zero AUC response.")
+            logger.info(f"Removed {idx.sum()} observation(s) containing zero AUC response")
 
-        # Scale data
+        """ Rescale data """
         df[INTENSITY] = df[INTENSITY].apply(lambda x: x * scalar_intensity)
-        df[RESPONSE] = df[RESPONSE].apply(lambda x: x * scalar_response)
+        df[RESPONSE] = df[RESPONSE] * scalar_response
 
-        # Mininum observations constraint
+        """ Mininum-observations constraint """
         temp_df = df \
                 .groupby(by=[PARTICIPANT] + FEATURES) \
                 .size() \
                 .to_frame('counts') \
                 .reset_index().copy()
+
         temp_df = temp_df[temp_df.counts >= min_observations].copy()
         keep = list(temp_df[[PARTICIPANT] + FEATURES].apply(tuple, axis=1))
         idx = df[[PARTICIPANT] + FEATURES].apply(tuple, axis=1).isin(keep)
         df = df[idx].copy()
 
-        # Encode participants and features
+        """ Encode participants and features """
         encoder_dict = defaultdict(LabelEncoder)
         df[[PARTICIPANT] + FEATURES] = \
             df[[PARTICIPANT] + FEATURES] \
@@ -84,6 +87,6 @@ class DataClass:
             logger.info(f"Reading data from {fpath}...")
             df = pd.read_csv(fpath)
 
-        df[f"raw_{RESPONSE}"] = df[RESPONSE]
+        df[["raw_" + r for r in RESPONSE]] = df[RESPONSE]
         logger.info('Processing data ...')
         return self.preprocess(df, **self.config.PREPROCESS_PARAMS)

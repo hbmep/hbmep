@@ -17,7 +17,7 @@ class HBMepConfig():
     PARTICIPANT: str = "participant"
 
     # Dependent variable
-    RESPONSE: str = "auc_1"     # Rats
+    RESPONSE: str = ["auc_1", "auc_2"]     # Rats
     # RESPONSE: str = "auc"     # Human
 
     # Study Features

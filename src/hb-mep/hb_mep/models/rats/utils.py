@@ -1,4 +1,3 @@
-import os
 import glob
 import logging
 from pathlib import Path
