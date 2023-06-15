@@ -38,6 +38,7 @@ class Baseline():
         self.name = "Baseline"
         self.random_state = 0
         self.rng_key = None
+        self.n_response = None
 
         self.columns = [PARTICIPANT] + FEATURES
         self.x = np.linspace(0, 450, 1000)
@@ -99,16 +100,21 @@ class Baseline():
         """
         Run MCMC inference
         """
-        response = df[RESPONSE].to_numpy().reshape(-1,)
+        response = df[RESPONSE].to_numpy()
+        self.n_response = response.shape[-1]
+
         participant = df[PARTICIPANT].to_numpy().reshape(-1,)
         feature0 = df[FEATURES[0]].to_numpy().reshape(-1,)
-        intensity = df[INTENSITY].to_numpy().reshape(-1,)
+
+        intensity = df[INTENSITY].to_numpy().reshape(-1, 1)
+        intensity = np.tile(intensity, (1, self.n_response))
 
         # MCMC
         nuts_kernel = NUTS(self._model)
         mcmc = MCMC(nuts_kernel, **self.config.MCMC_PARAMS)
-        logger.info(f"Running inference with {self.name} ...")
-        mcmc.run(self.rng_key, intensity, participant, feature0, response)
+        rng_key = jax.random.PRNGKey(self.random_state)
+        # logger.info(f"Running inference with {self.name} ...")
+        mcmc.run(rng_key, intensity, participant, feature0, response)
         posterior_samples = mcmc.get_samples()
 
         return mcmc, posterior_samples
@@ -130,9 +136,9 @@ class Baseline():
         prob: float = .95
     ):
         threshold_posterior = posterior_samples[site.a][
-            :, combination[2], combination[1], combination[0]
+            :, combination[1], combination[0], :
         ]
-        threshold = threshold_posterior.mean()
+        threshold = threshold_posterior.mean(axis=0)
         hpdi_interval = hpdi(threshold_posterior, prob=prob)
         return threshold, threshold_posterior, hpdi_interval
 
@@ -149,14 +155,12 @@ class Baseline():
 
         participant = np.repeat([combination[0]], intensity.shape[0])
         feature0 = np.repeat([combination[1]], intensity.shape[0])
-        feature1 = np.repeat([combination[2]], intensity.shape[0])
 
         predictions = predictive(
             self.rng_key,
             intensity=intensity,
             participant=participant,
-            feature0=feature0,
-            feature1=feature1
+            feature0=feature0
         )
         return predictions
 
@@ -214,7 +218,7 @@ class Baseline():
                 intensity, hpdi_obs[0, :], hpdi_obs[1, :], color="paleturquoise", label="95% HPDI"
             )
 
-            ## Additional
+            """ Additional """
             hpdi_obs_90 = hpdi(obs, prob=.90)
             hpdi_obs_80 = hpdi(obs, prob=.80)
             hpdi_obs_65 = hpdi(obs, prob=.65)
@@ -269,9 +273,13 @@ class Baseline():
 
         combinations = self._get_combinations(df)
         n_combinations = len(combinations)
-        intensity = self.x
 
-        n_columns = 3 if mat is None else 4
+        intensity = self.x
+        intensity = intensity.reshape(-1, 1)
+        intensity = np.tile(intensity, (1, self.n_response))
+
+        n_columns = 3 * self.n_response
+        if mat is not None: n_columns += self.n_response
 
         fig, axes = plt.subplots(
             n_combinations,
@@ -293,95 +301,101 @@ class Baseline():
                 c, posterior_samples
             )
 
-            """ Plots """
-            sns.scatterplot(data=temp_df, x=INTENSITY, y=RESPONSE, ax=axes[i, 0])
-            sns.scatterplot(data=temp_df, x=INTENSITY, y=RESPONSE, alpha=.4, ax=axes[i, 1])
+            j = 0
+            for (r, response) in enumerate(RESPONSE):
+                """ Plots """
+                sns.scatterplot(data=temp_df, x=INTENSITY, y=response, ax=axes[i, j])
+                sns.scatterplot(data=temp_df, x=INTENSITY, y=response, alpha=.4, ax=axes[i, j + 1])
 
-            sns.kdeplot(x=threshold_posterior, color="b", ax=axes[i, 1])
-            sns.lineplot(
-                x=intensity,
-                y=mean.mean(axis=0),
-                label="Mean Posterior",
-                color="r",
-                alpha=0.4,
-                ax=axes[i, 1]
-            )
-
-            sns.kdeplot(x=threshold_posterior, color="b", ax=axes[i, 2])
-            axes[i, 2].axvline(
-                threshold,
-                linestyle="--",
-                color="r",
-                label=f"Mean Posterior"
-            )
-            axes[i, 2].axvline(
-                hpdi_interval[0],
-                linestyle="--",
-                color="g",
-                label="95% HPDI"
-            )
-            axes[i, 2].axvline(hpdi_interval[1], linestyle="--", color="g")
-
-            """ Labels """
-            axes[i, 0].set_title(f"{self.columns} - {c}")
-
-            if encoder_dict is not None:
-                c_inverse = []
-                for column, value in zip(self.columns, c):
-                    c_inverse.append(
-                        encoder_dict[column].inverse_transform(np.array([value]))[0]
-                    )
-                title = f"{tuple(self.columns)} - {tuple(c_inverse)}"
-            else:
-                title = "Model Fit"
-
-            axes[i, 1].set_title(title)
-
-            skew = stats.skew(a=threshold_posterior)
-            kurt = stats.kurtosis(a=threshold_posterior)
-
-            title = f"TH: {threshold:.2f}"
-            title += f", CI: ({hpdi_interval[0]:.1f}, {hpdi_interval[1]:.1f})"
-            title += f", LEN: {hpdi_interval[1] - hpdi_interval[0]:.1f}"
-            title += r', $\overline{\mu_3}$'
-            title += f": {skew:.1f}"
-            title += f", K: {kurt:.1f}"
-            axes[i, 2].set_title(title)
-
-            """ Limits """
-            axes[i, 1].set_xlim(
-                left=temp_df[INTENSITY].min() - self.xpad, right=temp_df[INTENSITY].max() + self.xpad
-            )
-            axes[i, 1].set_ylim(
-                bottom=0, top=temp_df[RESPONSE].max() + .05
-            )
-
-            """ Legends """
-            axes[i, 1].legend(loc="upper left")
-            axes[i, 2].legend(loc="upper right")
-
-            """ EEG Data """
-            if mat is not None:
-                ax = axes[i, 3]
-                temp_mat = mat[idx, :]
-
-                for j in range(temp_mat.shape[0]):
-                    x = temp_mat[j, :]/60 + temp_df[INTENSITY].values[j]
-                    ax.plot(x, time, color="green", alpha=.4)
-
-                ax.axhline(
-                    y=0.003, color="red", linestyle='--', alpha=.4, label="AUC Window"
-                )
-                ax.axhline(
-                    y=0.015, color="red", linestyle='--', alpha=.4
+                sns.kdeplot(x=threshold_posterior[:, r], color="b", ax=axes[i, j + 1])
+                sns.lineplot(
+                    x=intensity[:, 0],
+                    y=mean.mean(axis=0)[:, r],
+                    label="Mean Posterior",
+                    color="r",
+                    alpha=0.4,
+                    ax=axes[i, j + 1]
                 )
 
-                ax.set_ylim(bottom=-0.001, top=0.02)
+                sns.kdeplot(x=threshold_posterior[:, r], color="b", ax=axes[i, j + 2])
+                axes[i, j + 2].axvline(
+                    threshold[r],
+                    linestyle="--",
+                    color="r",
+                    label=f"Mean Posterior"
+                )
+                axes[i, j + 2].axvline(
+                    hpdi_interval[:, r][0],
+                    linestyle="--",
+                    color="g",
+                    label="95% HPDI"
+                )
+                axes[i, j + 2].axvline(hpdi_interval[:, r][1], linestyle="--", color="g")
 
-                ax.set_xlabel(f"{INTENSITY}")
-                ax.set_ylabel(f"Time")
+                """ Labels """
+                axes[i, j].set_title(f"{response} - {self.columns} - {c}")
 
-                ax.legend(loc="upper right")
-                ax.set_title(f"Motor Evoked Potential")
+                if encoder_dict is not None:
+                    c_inverse = []
+                    for column, value in zip(self.columns, c):
+                        c_inverse.append(
+                            encoder_dict[column].inverse_transform(np.array([value]))[0]
+                        )
+                    title = f"{response} - {tuple(c_inverse)}"
+                else:
+                    title = f"{response} - Model Fit"
+
+                axes[i, j + 1].set_title(title)
+
+                skew = stats.skew(a=threshold_posterior[:, r])
+                kurt = stats.kurtosis(a=threshold_posterior[:, r])
+
+                title = f"{response} - TH: {threshold[r]:.2f}"
+                title += f", CI: ({hpdi_interval[:, r][0]:.1f}, {hpdi_interval[:, r][1]:.1f})"
+                title += f", LEN: {hpdi_interval[:, r][1] - hpdi_interval[:, r][0]:.1f}"
+                title += r', $\overline{\mu_3}$'
+                title += f": {skew:.1f}"
+                title += f", K: {kurt:.1f}"
+                axes[i, j + 2].set_title(title)
+
+                """ Limits """
+                axes[i, j + 1].set_xlim(
+                    left=temp_df[INTENSITY].min() - self.xpad, right=temp_df[INTENSITY].max() + self.xpad
+                )
+                axes[i, j + 1].set_ylim(
+                    bottom=0, top=temp_df[response].max() + .05
+                )
+
+                """ Legends """
+                axes[i, j + 1].legend(loc="upper left")
+                axes[i, j + 2].legend(loc="upper right")
+
+                j += 3
+
+                """ EEG Data """
+                # if mat is not None:
+                #     ax = axes[i, j]
+                #     temp_mat = mat[idx, :]
+
+                #     for j in range(temp_mat.shape[0]):
+                #         x = temp_mat[j, :]/60 + temp_df[INTENSITY].values[j]
+                #         ax.plot(x, time, color="green", alpha=.4)
+
+                #     ax.axhline(
+                #         y=0.003, color="red", linestyle='--', alpha=.4, label="AUC Window"
+                #     )
+                #     ax.axhline(
+                #         y=0.015, color="red", linestyle='--', alpha=.4
+                #     )
+
+                #     ax.set_ylim(bottom=-0.001, top=0.02)
+
+                #     ax.set_xlabel(f"{INTENSITY}")
+                #     ax.set_ylabel(f"Time")
+
+                #     ax.legend(loc="upper right")
+                #     ax.set_title(f"Motor Evoked Potential")
+
+                #     j += 1
 
         return fig
