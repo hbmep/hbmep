@@ -70,8 +70,8 @@ def plot(
     n_combinations = len(combinations)
     n_response = len(RESPONSE)
 
-    n_columns = 1 if mat is None else 2
-    n_columns += n_response
+    n_columns = 2 + n_response
+    if mat is not None: n_columns += n_response
 
     fig, axes = plt.subplots(
         n_combinations,
@@ -82,30 +82,65 @@ def plot(
 
     for i, combination in enumerate(combinations):
         idx = df[columns].apply(tuple, axis=1).isin([combination])
-
         temp_df = df[idx].reset_index(drop=True).copy()
 
-        sns.kdeplot(temp_df[RESPONSE], ax=axes[i, 0], color="b", label=f"{RESPONSE}")
-        sns.kdeplot(np.log(temp_df[RESPONSE]), ax=axes[i, 0], color="g", label=f"log {RESPONSE}")
+        """ Response KDE """
+        sns.kdeplot(temp_df[RESPONSE], ax=axes[i, 0])
 
-        title = f"{columns} - {combination}"
-        axes[i, 0].set_title(title)
-        axes[i, 0].legend(loc="upper left")
+        axes[i, 0].legend(loc="upper right", labels=RESPONSE)
+        axes[i, 0].set_title(f"{columns} - {combination}")
 
-        ax = axes[i] if mat is None else axes[i][0]
-        sns.scatterplot(data=temp_df, x=INTENSITY, y=RESPONSE, ax=axes[i, 1])
+        """ Log Response KDE """
+        sns.kdeplot(np.log(temp_df[RESPONSE]), ax=axes[i, 1])
+        axes[i, 1].legend(
+            loc="upper right",
+            labels=["log " + r for r in RESPONSE]
+        )
 
-        axes[i, 1].set_xlabel(f"{INTENSITY}")
-        axes[i, 1].set_ylabel(f"{RESPONSE}")
-
+        """ Inverted labels """
         if encoder_dict is not None:
-            c_inverse = []
+            combination_inverse = []
             for (column, value) in zip(columns, combination):
                 value_inverse = encoder_dict[column].inverse_transform(np.array([value]))[0]
-                c_inverse.append(value_inverse)
-            title = f"{tuple(c_inverse)}"
+                combination_inverse.append(value_inverse)
 
-        axes[i, 1].set_title(title)
+            axes[i, 1].set_title(f"{tuple(combination_inverse)}")
+
+        j = 2
+        for (r, response) in enumerate(RESPONSE):
+            """ Scatter plots """
+            sns.scatterplot(data=temp_df, x=INTENSITY, y=response, ax=axes[i, j])
+
+            axes[i, j].set_xlabel(f"{INTENSITY}")
+            axes[i, j].set_ylabel(f"{response}")
+
+            j += 1
+
+            """ EEG data """
+            if mat is not None:
+                ax = axes[i, j]
+                temp_mat = mat[idx, :, r]
+
+                for k in range(temp_mat.shape[0]):
+                    x = temp_mat[k, :]/60 + temp_df[INTENSITY].values[k]
+                    ax.plot(x, time, color="green", alpha=.4)
+
+                ax.axhline(
+                    y=0.003, color="red", linestyle='--', alpha=.4, label="AUC Window"
+                )
+                ax.axhline(
+                    y=0.015, color="red", linestyle='--', alpha=.4
+                )
+
+                ax.set_ylim(bottom=-0.001, top=0.02)
+
+                ax.set_xlabel(f"{INTENSITY}")
+                ax.set_ylabel("Time")
+
+                ax.legend(loc="upper right")
+                ax.set_title(f"Motor Evoked Potential - {response}")
+
+                j += 1
 
         # """ Ahmet's method """
         # if pred is not None:
@@ -120,28 +155,5 @@ def plot(
         #         label=f"Ahmet's prediction: {prediction[0]}"
         #     )
         #     ax.legend(loc="upper right")
-
-        if mat is not None:
-            ax = axes[i, 2]
-            temp_mat = mat[idx, :]
-
-            for j in range(temp_mat.shape[0]):
-                x = temp_mat[j, :]/60 + temp_df[INTENSITY].values[j]
-                ax.plot(x, time, color="green", alpha=.4)
-
-            ax.axhline(
-                y=0.003, color="red", linestyle='--', alpha=.4, label="AUC Window"
-            )
-            ax.axhline(
-                y=0.015, color="red", linestyle='--', alpha=.4
-            )
-
-            ax.set_ylim(bottom=-0.001, top=0.02)
-
-            ax.set_xlabel(f"{INTENSITY}")
-            ax.set_ylabel(f"Time")
-
-            ax.legend(loc="upper right")
-            ax.set_title(f"Motor Evoked Potential")
 
     return fig

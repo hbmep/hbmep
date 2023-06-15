@@ -22,6 +22,7 @@ class HBMepConfig():
 
     """ Endogenous """
     RESPONSE: str = ["auc_1", "auc_2"]     # Rats
+    # RESPONSE: str = ["auc_1"]     # Rats
     # RESPONSE: str = "auc"     # Human
 
     """ Preprocess parameters """
@@ -30,6 +31,11 @@ class HBMepConfig():
         "scalar_response": [1, 1],
         "min_observations": 0
     }       # Rats
+    # PREPROCESS_PARAMS: dict[str, int] = {
+    #     "scalar_intensity": 1,
+    #     "scalar_response": [1],
+    #     "min_observations": 0
+    # }       # Rats
     # PREPROCESS_PARAMS: dict[str, int] = {
     #     "scalar_intensity": 1000,
     #     "scalar_response": [1],
