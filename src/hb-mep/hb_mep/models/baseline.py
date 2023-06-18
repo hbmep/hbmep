@@ -41,7 +41,7 @@ class Baseline():
         self.n_response = None
 
         self.columns = [PARTICIPANT] + FEATURES
-        self.x = np.linspace(0, 450, 1000)
+        self.x = np.linspace(0, 1000, 10000)
         self.xpad = 10
 
         self._set_rng_key()
@@ -50,6 +50,10 @@ class Baseline():
         self.rng_key = jax.random.PRNGKey(self.random_state)
 
     def _model(self, intensity, participant, feature0, response_obs=None):
+        intensity = intensity.reshape(-1, 1)
+        intensity = np.tile(intensity, (1, self.n_response))
+
+        n_data = intensity.shape[0]
         n_participant = np.unique(participant).shape[0]
         n_feature0 = np.unique(feature0).shape[0]
 
@@ -92,7 +96,7 @@ class Baseline():
 
         noise = noise_offset[participant, feature0] + noise_slope[participant, feature0] * mean
 
-        with numpyro.plate("data", len(intensity)):
+        with numpyro.plate("data", n_data):
             return numpyro.sample("obs", dist.TruncatedNormal(mean, noise, low=0), obs=response_obs)
 
     @timing
@@ -103,11 +107,9 @@ class Baseline():
         response = df[RESPONSE].to_numpy()
         self.n_response = response.shape[-1]
 
+        intensity = df[INTENSITY].to_numpy().reshape(-1,)
         participant = df[PARTICIPANT].to_numpy().reshape(-1,)
         feature0 = df[FEATURES[0]].to_numpy().reshape(-1,)
-
-        intensity = df[INTENSITY].to_numpy().reshape(-1, 1)
-        intensity = np.tile(intensity, (1, self.n_response))
 
         # MCMC
         nuts_kernel = NUTS(self._model)
@@ -170,13 +172,15 @@ class Baseline():
         df: pd.DataFrame,
         posterior_samples: Optional[dict] = None
     ):
-        (post_check, check) = (False, "Prior") if posterior_samples is None else (True, "Posterior")
+        posterior_check = False if posterior_samples is None else True
+        check = "Posterior" if posterior_check else "Prior"
 
         combinations = self._get_combinations(df)
         n_combinations = len(combinations)
+
         intensity = self.x
 
-        n_columns = 3
+        n_columns = 3 * self.n_response
         predictions = None
 
         fig, axes = plt.subplots(
@@ -190,7 +194,7 @@ class Baseline():
             idx = df[self.columns].apply(tuple, axis=1).isin([c])
             temp_df = df[idx].reset_index(drop=True).copy()
 
-            if post_check or (not post_check and predictions is None):
+            if posterior_check or predictions is None:
                 predictions = self.predict(
                     intensity=intensity,
                     combination=c,
@@ -199,63 +203,110 @@ class Baseline():
                 obs = predictions["obs"]
                 mean = predictions["mean"]
 
-            """ Plots """
-            sns.scatterplot(data=temp_df, x=INTENSITY, y=RESPONSE, alpha=.4, ax=axes[i, 0])
-            sns.lineplot(
-                x=intensity,
-                y=mean.mean(axis=0),
-                label=f"Mean {check}",
-                color="r",
-                alpha=0.4,
-                ax=axes[i, 0]
-            )
+                hpdi_obs = hpdi(obs, prob=.95)
+                hpdi_mean = hpdi(mean, prob=.95)
 
-            y_obs = obs.mean(axis=0)
-            hpdi_obs = hpdi(obs, prob=.95)
+                """ Additional """
+                hpdi_obs_90 = hpdi(obs, prob=.90)
+                hpdi_obs_80 = hpdi(obs, prob=.80)
+                hpdi_obs_65 = hpdi(obs, prob=.65)
 
-            axes[i, 1].plot(intensity, y_obs, color="k", label="Mean Prediction")
-            axes[i, 1].fill_between(
-                intensity, hpdi_obs[0, :], hpdi_obs[1, :], color="paleturquoise", label="95% HPDI"
-            )
 
-            """ Additional """
-            hpdi_obs_90 = hpdi(obs, prob=.90)
-            hpdi_obs_80 = hpdi(obs, prob=.80)
-            hpdi_obs_65 = hpdi(obs, prob=.65)
-            axes[i, 1].fill_between(
-                intensity, hpdi_obs_90[0, :], hpdi_obs_90[1, :], color="C1", label="90% HPDI"
-            )
-            axes[i, 1].fill_between(
-                intensity, hpdi_obs_80[0, :], hpdi_obs_80[1, :], color="C2", label="80% HPDI"
-            )
-            axes[i, 1].fill_between(
-                intensity, hpdi_obs_65[0, :], hpdi_obs_65[1, :], color="C3", label="65% HPDI"
-            )
+            j = 0
+            for (r, response) in enumerate(RESPONSE):
+                """ Plots """
+                sns.scatterplot(data=temp_df, x=INTENSITY, y=response, alpha=.4, ax=axes[i, j])
+                sns.lineplot(
+                    x=intensity,
+                    y=mean.mean(axis=0)[:, r],
+                    label=f"Mean {check}",
+                    color="r",
+                    alpha=0.4,
+                    ax=axes[i, j]
+                )
 
-            sns.scatterplot(
-                data=temp_df, x=INTENSITY, y=RESPONSE, color="y", edgecolor="k", ax=axes[i, 1]
-            )
+                axes[i, j + 1].plot(
+                    intensity,
+                    obs.mean(axis=0)[:, r],
+                    color="k",
+                    label="Mean Prediction"
+                )
+                axes[i, j + 1].fill_between(
+                    intensity,
+                    hpdi_obs[0, :, r],
+                    hpdi_obs[1, :, r],
+                    color="paleturquoise",
+                    label="95% HPDI"
+                )
 
-            y_mean = mean.mean(axis=0)
-            hpdi_mean = hpdi(mean, prob=.95)
+                """ Additional """
+                axes[i, j + 1].fill_between(
+                    intensity,
+                    hpdi_obs_90[0, :, r],
+                    hpdi_obs_90[1, :, r],
+                    color="C1",
+                    label="90% HPDI"
+                )
+                axes[i, j + 1].fill_between(
+                    intensity,
+                    hpdi_obs_80[0, :, r],
+                    hpdi_obs_80[1, :, r],
+                    color="C2",
+                    label="80% HPDI"
+                )
+                axes[i, j + 1].fill_between(
+                    intensity,
+                    hpdi_obs_65[0, :, r],
+                    hpdi_obs_65[1, :, r],
+                    color="C3",
+                    label="65% HPDI"
+                )
 
-            axes[i, 2].plot(intensity, y_mean, color="k", label="Mean Posterior")
-            axes[i, 2].fill_between(
-                intensity, hpdi_mean[0, :], hpdi_mean[1, :], color="paleturquoise", label="95% HPDI"
-            )
-            sns.scatterplot(
-                data=temp_df, x=INTENSITY, y=RESPONSE, color="y", edgecolor="k", ax=axes[i, 2]
-            )
+                sns.scatterplot(
+                    data=temp_df, x=INTENSITY, y=response, color="y", edgecolor="k", ax=axes[i, j + 1]
+                )
 
-            """ Labels """
-            axes[i, 0].set_title(f"{self.columns} - {c}")
-            axes[i, 1].set_title(f"{check} Predictive")
-            axes[i, 2].set_title(f"{check} Predictive Mean")
+                axes[i, j + 2].plot(
+                    intensity,
+                    mean.mean(axis=0)[:, r],
+                    color="k",
+                    label=f"Mean {check}"
+                )
+                axes[i, j + 2].fill_between(
+                    intensity, hpdi_mean[0, :, r], hpdi_mean[1, :, r], color="paleturquoise", label="95% HPDI"
+                )
+                sns.scatterplot(
+                    data=temp_df, x=INTENSITY, y=response, color="y", edgecolor="k", ax=axes[i, j + 2]
+                )
 
-            """ Legends """
-            axes[i, 0].legend(loc="upper left")
-            axes[i, 1].legend(loc="upper left")
-            axes[i, 2].legend(loc="upper left")
+                """ Labels """
+                axes[i, j].set_title(f"{response} - {tuple(self.columns)} - {c}")
+                axes[i, j + 1].set_title(f"{check} Predictive")
+                axes[i, j + 2].set_title(f"{check} Predictive Mean")
+
+                """ Limits """
+                axes[i, j].set_xlim(
+                    left=max(0, temp_df[INTENSITY].min() - 5 * self.xpad),
+                    right=temp_df[INTENSITY].max() + 5 * self.xpad
+                )
+                axes[i, j].set_xlim(
+                    left=max(0, temp_df[INTENSITY].min() - 5 * self.xpad),
+                    right=temp_df[INTENSITY].max() + 5 * self.xpad
+                )
+                axes[i, j + 1].set_xlim(
+                    left=max(0, temp_df[INTENSITY].min() - 5 * self.xpad),
+                    right=temp_df[INTENSITY].max() + 5 * self.xpad
+                )
+                axes[i, j + 2].set_xlim(
+                    left=max(0, temp_df[INTENSITY].min() - 5 * self.xpad),
+                    right=temp_df[INTENSITY].max() + 5 * self.xpad
+                )
+                """ Legends """
+                axes[i, j].legend(loc="upper left")
+                axes[i, j + 1].legend(loc="upper left")
+                axes[i, j + 2].legend(loc="upper left")
+
+                j += 3
 
         return fig
 
@@ -275,8 +326,6 @@ class Baseline():
         n_combinations = len(combinations)
 
         intensity = self.x
-        intensity = intensity.reshape(-1, 1)
-        intensity = np.tile(intensity, (1, self.n_response))
 
         n_columns = 3 * self.n_response
         if mat is not None: n_columns += self.n_response
@@ -309,7 +358,7 @@ class Baseline():
 
                 sns.kdeplot(x=threshold_posterior[:, r], color="b", ax=axes[i, j + 1])
                 sns.lineplot(
-                    x=intensity[:, 0],
+                    x=intensity,
                     y=mean.mean(axis=0)[:, r],
                     label="Mean Posterior",
                     color="r",
@@ -333,7 +382,7 @@ class Baseline():
                 axes[i, j + 2].axvline(hpdi_interval[:, r][1], linestyle="--", color="g")
 
                 """ Labels """
-                axes[i, j].set_title(f"{response} - {self.columns} - {c}")
+                axes[i, j].set_title(f"{response} - {tuple(self.columns)} - {c}")
 
                 if encoder_dict is not None:
                     c_inverse = []
@@ -360,7 +409,8 @@ class Baseline():
 
                 """ Limits """
                 axes[i, j + 1].set_xlim(
-                    left=temp_df[INTENSITY].min() - self.xpad, right=temp_df[INTENSITY].max() + self.xpad
+                    left=max(0, temp_df[INTENSITY].min() - 2 * self.xpad),
+                    right=temp_df[INTENSITY].max() + self.xpad
                 )
                 axes[i, j + 1].set_ylim(
                     bottom=0, top=temp_df[response].max() + .05
@@ -373,29 +423,29 @@ class Baseline():
                 j += 3
 
                 """ EEG Data """
-                # if mat is not None:
-                #     ax = axes[i, j]
-                #     temp_mat = mat[idx, :]
+                if mat is not None:
+                    ax = axes[i, j]
+                    temp_mat = mat[idx, :, r]
 
-                #     for j in range(temp_mat.shape[0]):
-                #         x = temp_mat[j, :]/60 + temp_df[INTENSITY].values[j]
-                #         ax.plot(x, time, color="green", alpha=.4)
+                    for k in range(temp_mat.shape[0]):
+                        x = temp_mat[k, :]/60 + temp_df[INTENSITY].values[k]
+                        ax.plot(x, time, color="green", alpha=.4)
 
-                #     ax.axhline(
-                #         y=0.003, color="red", linestyle='--', alpha=.4, label="AUC Window"
-                #     )
-                #     ax.axhline(
-                #         y=0.015, color="red", linestyle='--', alpha=.4
-                #     )
+                    ax.axhline(
+                        y=0.003, color="red", linestyle='--', alpha=.4, label="AUC Window"
+                    )
+                    ax.axhline(
+                        y=0.015, color="red", linestyle='--', alpha=.4
+                    )
 
-                #     ax.set_ylim(bottom=-0.001, top=0.02)
+                    ax.set_ylim(bottom=-0.001, top=0.02)
 
-                #     ax.set_xlabel(f"{INTENSITY}")
-                #     ax.set_ylabel(f"Time")
+                    ax.set_xlabel(f"{INTENSITY}")
+                    ax.set_ylabel(f"Time")
 
-                #     ax.legend(loc="upper right")
-                #     ax.set_title(f"Motor Evoked Potential")
+                    ax.legend(loc="upper right")
+                    ax.set_title(f"Motor Evoked Potential")
 
-                #     j += 1
+                    j += 1
 
         return fig

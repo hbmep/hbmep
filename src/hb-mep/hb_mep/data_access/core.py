@@ -1,9 +1,11 @@
 import os
 import logging
 from pathlib import Path
+from typing import Optional
 from collections import defaultdict
 
 import pandas as pd
+import numpy as np
 from sklearn.preprocessing import LabelEncoder
 
 from hb_mep.config import HBMepConfig
@@ -42,7 +44,8 @@ class DataClass:
         df: pd.DataFrame,
         scalar_intensity: float,
         scalar_response: list[float],
-        min_observations: int
+        min_observations: int,
+        mat: Optional[np.ndarray] = None
         ) -> tuple[pd.DataFrame, dict, dict[str,  LabelEncoder]]:
         """
         Preprocess data
@@ -53,6 +56,7 @@ class DataClass:
         idx = df[RESPONSE].isin([0]).any(axis=1)
         if idx.sum():
             df = df[~idx].copy()
+            if mat is not None: mat = mat[idx, :, :]
             logger.info(f"Removed {idx.sum()} observation(s) containing zero AUC response")
 
         """ Rescale data """
@@ -70,6 +74,7 @@ class DataClass:
         keep = list(temp_df[[PARTICIPANT] + FEATURES].apply(tuple, axis=1))
         idx = df[[PARTICIPANT] + FEATURES].apply(tuple, axis=1).isin(keep)
         df = df[idx].copy()
+        if mat is not None: mat = mat[idx, :, :]
 
         """ Encode participants and features """
         encoder_dict = defaultdict(LabelEncoder)
@@ -78,10 +83,14 @@ class DataClass:
             .apply(lambda x: encoder_dict[x.name].fit_transform(x)).copy()
 
         df.reset_index(inplace=True, drop=True)
-        return df, encoder_dict
+        return df, encoder_dict, mat
 
     @timing
-    def build(self, df: pd.DataFrame = None):
+    def build(
+        self,
+        df: Optional[pd.DataFrame] = None,
+        mat: Optional[np.ndarray] = None
+    ):
         if df is None:
             fpath = os.path.join(self.data_path, self.config.FNAME)
             logger.info(f"Reading data from {fpath}...")
@@ -89,4 +98,4 @@ class DataClass:
 
         df[["raw_" + r for r in RESPONSE]] = df[RESPONSE]
         logger.info('Processing data ...')
-        return self.preprocess(df, **self.config.PREPROCESS_PARAMS)
+        return self.preprocess(df=df, **self.config.PREPROCESS_PARAMS, mat=mat)

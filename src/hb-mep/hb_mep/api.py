@@ -1,8 +1,11 @@
 import os
 import logging
+from pathlib import Path
+from typing import Optional
 
 import arviz as az
 import pandas as pd
+import numpy as np
 import numpyro
 
 from hb_mep.config import HBMepConfig
@@ -20,43 +23,55 @@ logger = logging.getLogger(__name__)
 @timing
 def run_inference(
     df: pd.DataFrame,
-    config: HBMepConfig = HBMepConfig,
-    data: DataClass = DataClass,
-    Model: Baseline = Baseline,
-    id: str = "Inference"
+    data: DataClass,
+    model: Baseline,
+    reports_path: Path,
+    mat: Optional[np.ndarray] = None,
+    time: Optional[np.ndarray] = None
 ) -> None:
-    data.make_dirs()
-    df, encoder_dict = data.build(df)
+    if mat is not None:
+        assert time is not None
 
-    model = Model(config)
+    """ Preprocess """
+    df, encoder_dict, mat = data.build(df=df, mat=mat)
+
+    """ Run inference """
     mcmc, posterior_samples = model.run_inference(df=df)
 
-    postfix = f"{model.name}_{id}"
+    """ Save artefacts """
+    logger.info(f"Saving inference data ...")
+    numpyro_data = az.from_numpyro(mcmc)
+    save_path = os.path.join(reports_path, "mcmc.nc")
+    numpyro_data.to_netcdf(save_path)
+    logger.info(f"Saved to {save_path}")
 
     logger.info(f"Rendering convergence diagnostics ...")
-    numpyro_data = az.from_numpyro(mcmc)
     diagnostics = az.summary(data=numpyro_data, hdi_prob=.95)
-    save_path = os.path.join(data.reports_path, f"MCMC_{postfix}.csv")
+    save_path = os.path.join(reports_path, f"diagnositcs.csv")
     diagnostics.to_csv(save_path)
     logger.info(f"Saved to {save_path}")
 
-    logger.info(f"Calculating LOO / WAIC scores ...")
+    logger.info(f"Evaluating LOO / WAIC scores ...")
 
     score = az.loo(numpyro_data)
     logger.info(f"ELPD LOO (Log): {score.elpd_loo:.2f}")
-    save_path = os.path.join(data.reports_path, f"LOO_{postfix}.csv")
+    save_path = os.path.join(reports_path, f"loo.csv")
     score.to_csv(save_path)
 
     score = az.waic(numpyro_data)
     logger.info(f"ELPD WAIC (Log): {score.elpd_waic:.2f}")
-    save_path = os.path.join(data.reports_path, f"WAIC_{postfix}.csv")
+    save_path = os.path.join(reports_path, f"waic.csv")
     score.to_csv(save_path)
 
     logger.info(f"Rendering fitted recruitment curves ...")
     fig = model.plot(
-        df=df, posterior_samples=posterior_samples, encoder_dict=encoder_dict
+        df=df,
+        posterior_samples=posterior_samples,
+        encoder_dict=encoder_dict,
+        mat=mat,
+        time=time
     )
-    save_path = os.path.join(data.reports_path, f"RC_{postfix}.png")
+    save_path = os.path.join(reports_path, f"recruitment_curves.png")
     fig.savefig(save_path, facecolor="w")
     logger.info(f"Saved to {save_path}")
 
@@ -64,11 +79,11 @@ def run_inference(
     fig = model.predictive_check(
         df=df, posterior_samples=posterior_samples
     )
-    save_path = os.path.join(data.reports_path, f"PPC_{postfix}.png")
+    save_path = os.path.join(reports_path, f"posterior_predictive.png")
     fig.savefig(save_path, facecolor="w")
     logger.info(f"Saved to {save_path}")
 
-    logger.info(f"Finished saving artefacts to {data.reports_path}")
+    logger.info(f"Finished saving artefacts to {reports_path}")
     return
 
 

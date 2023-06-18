@@ -7,6 +7,7 @@ python ?= 3.9
 job ?= inference
 model ?= Baseline
 dataset ?= rats
+tag ?= latest
 
 .PHONY: check-env
 check-env:
@@ -28,4 +29,9 @@ build: build-base
 
 run:
 	@source .venv/bin/activate && \
-	python -m hb_mep run --job=$(job) --model=$(model) --dataset=$(dataset)
+	python -m hb_mep run \
+	--job=$(job) \
+	--model=$(model) \
+	--dataset=$(dataset) \
+	--id=$(id) \
+	--tag=$(tag)

@@ -1,6 +1,8 @@
+import os
 import sys
 import logging
 import argparse
+from pathlib import Path
 
 from hb_mep.config import HBMepConfig
 from hb_mep.data_access import DataClass
@@ -21,13 +23,18 @@ logging.basicConfig(format=FORMAT, level=logging.INFO)
 
 
 def main(args):
+    mat, time = None, None
+
+    """ Load config """
     config = HBMepConfig()
     data = DataClass(config)
 
+    """ Available models """
     base_models = [Baseline]
     rats_models = base_models + [RRectifiedLogistic, RGammaRegression]
     human_models = base_models + [HRectifiedLogistic]
 
+    """ Load data """
     if args.dataset == "Human":
         models = human_models
 
@@ -38,16 +45,27 @@ def main(args):
     elif args.dataset == "Rats":
         models = rats_models
 
-        a, b = 1, 6
-        subset = range(a, b)
-        df, _, _ = load_data_rats(subset=subset, data=data)
+        subdir = "physio2"
+        dir = os.path.join(data.data_path, subdir)
+        participants = range(1, 2)
 
+        df, mat, time = load_data_rats(dir=dir, participants=participants)
+
+    """ Initialize model """
     assert args.model in [m(config).name for m in models]
 
     Model = [m for m in models if m(config).name == args.model][0]
+    model = Model(config)
 
+    """ Artefacts directory """
+    data.make_dirs()
+    postfix = f"{model.name}_{args.dataset}_{args.job}_{args.id}_{args.tag}"
+    reports_path = Path(os.path.join(data.reports_path, postfix))
+    reports_path.mkdir(parents=False, exist_ok=False)
+
+    """ Run inference """
     run_inference(
-        df=df, config=config, data=data, Model=Model, id=args.dataset
+        df=df, data=data, model=model, reports_path=reports_path, mat=mat, time=time
     )
     return
 
@@ -61,6 +79,16 @@ if __name__ == "__main__":
         required=True,
         choices=["Inference", "Experiment"],
         help="Job to run"
+    )
+    parser.add_argument(
+        "--id",
+        required=True,
+        help="Job id"
+    )
+    parser.add_argument(
+        "--tag",
+        required=True,
+        help="Job tag"
     )
     parser.add_argument(
         "--model",
