@@ -41,7 +41,7 @@ class Baseline():
         self.n_response = None
 
         self.columns = [PARTICIPANT] + FEATURES
-        self.x = np.linspace(0, 1000, 10000)
+        self.x = np.linspace(0, 800, 2000)
         self.xpad = 10
 
         self._set_rng_key()
