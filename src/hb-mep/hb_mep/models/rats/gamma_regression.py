@@ -31,7 +31,7 @@ class GammaRegression(Baseline):
         self.name = "Gamma_Regression"
 
         self.columns = [PARTICIPANT] + FEATURES
-        self.x = np.linspace(0, 1000, 10000)
+        self.x = np.linspace(0, 800, 2000)
 
     def _model(self, intensity, participant, feature0, response_obs=None):
         intensity = intensity.reshape(-1, 1)
