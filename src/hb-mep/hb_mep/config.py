@@ -11,36 +11,37 @@ class HBMepConfig():
     FNAME: Optional[str] = None
 
     """ Exogenous """
-    INTENSITY: str = "pulse_amplitude"      # Rats
-    # INTENSITY: str = "intensity"      # Human
+    # INTENSITY: str = "pulse_amplitude"      # Rats
+    INTENSITY: str = "intensity"      # Human
 
     """ Participant """
     PARTICIPANT: str = "participant"
 
     """ Features """
-    FEATURES: list[str] = ["compound_position"]
+    FEATURES: list[str] = ["segment", "method"]
+    # FEATURES: list[str] = ["compound_position"]
 
     """ Endogenous """
-    RESPONSE: str = ["auc_1", "auc_2"]     # Rats
+    # RESPONSE: str = ["auc_1", "auc_2"]     # Rats
     # RESPONSE: str = ["auc_1"]     # Rats
-    # RESPONSE: str = "auc"     # Human
+    RESPONSE: str = ["auc"]     # Human
 
     """ Preprocess parameters """
-    PREPROCESS_PARAMS: dict[str, int] = {
-        "scalar_intensity": 1,
-        "scalar_response": [1, 1],
-        "min_observations": 0
-    }       # Rats
+    # PREPROCESS_PARAMS: dict[str, int] = {
+    #     "scalar_intensity": 1,
+    #     "scalar_response": [1, 1],
+    #     "min_observations": 0
+    # }       # Rats
     # PREPROCESS_PARAMS: dict[str, int] = {
     #     "scalar_intensity": 1,
     #     "scalar_response": [1],
     #     "min_observations": 0
     # }       # Rats
-    # PREPROCESS_PARAMS: dict[str, int] = {
-    #     "scalar_intensity": 1000,
-    #     "scalar_response": [1],
-    #     "min_observations": 0
-    # }       # Human
+    PREPROCESS_PARAMS: dict[str, int] = {
+        "scalar_intensity": 1000,
+        "scalar_response": [1],
+        "min_observations": 0
+    }       # Human
 
     """ MCMC parameters """
     MCMC_PARAMS: dict[str, int] = {

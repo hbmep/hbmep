@@ -34,6 +34,7 @@ class GammaRegression(Baseline):
         self.x = np.linspace(0, 800, 2000)
 
     def _model(self, intensity, participant, feature0, response_obs=None):
+        n_data = intensity.shape[0]
         intensity = intensity.reshape(-1, 1)
         intensity = np.tile(intensity, (1, self.n_response))
 
@@ -46,7 +47,7 @@ class GammaRegression(Baseline):
                 """ Hyper-priors """
                 a_mean = numpyro.sample(
                     site.a_mean,
-                    dist.TruncatedDistribution(dist.Normal(150, 50), low=0)
+                    dist.TruncatedNormal(150, 50, low=0)
                 )
                 a_scale = numpyro.sample(site.a_scale, dist.HalfNormal(50))
 
@@ -93,7 +94,6 @@ class GammaRegression(Baseline):
                 )
             )
         )
-
         scale = numpyro.deterministic(
             "scale",
             gamma_scale_offset[feature0, participant] + \
@@ -152,7 +152,9 @@ class GammaRegression(Baseline):
     ):
         predictive = Predictive(model=self._model, num_samples=num_samples)
         if posterior_samples is not None:
-            predictive = Predictive(model=self._model, posterior_samples=posterior_samples)
+            predictive = Predictive(
+                model=self._model, posterior_samples=posterior_samples
+            )
 
         participant = np.repeat([combination[0]], intensity.shape[0])
         feature0 = np.repeat([combination[1]], intensity.shape[0])

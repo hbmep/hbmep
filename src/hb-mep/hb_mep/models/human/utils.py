@@ -132,7 +132,7 @@ def _clean_human_data(df: pd.DataFrame, muscle: str, sc_approach: str):
     df[FEATURES[0]] = df["sc_level"]
     df[FEATURES[1]] = df["sc_laterality"].apply(lambda x: x if x == "M" else "L")
 
-    df[RESPONSE] = \
+    df[RESPONSE[0]] = \
         df.apply(
             lambda x: x[AUC_MAP["L" + muscle]] \
             if LATERALITY_MAP[x.participant] == "L"
