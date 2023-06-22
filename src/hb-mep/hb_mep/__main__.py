@@ -8,8 +8,9 @@ from hb_mep.config import HBMepConfig
 from hb_mep.data_access import DataClass
 from hb_mep.models import Baseline
 from hb_mep.models.rats import (
-    RectifiedLogistic as RRectifiedLogistic,
-    GammaRegression as RGammaRegression
+    ReLU as RReLU,
+    SaturatedReLU as RSaturatedReLU,
+    RectifiedLogistic as RRectifiedLogistic
 )
 from hb_mep.models.human import (
     RectifiedLogistic as HRectifiedLogistic
@@ -31,7 +32,7 @@ def main(args):
 
     """ Available models """
     base_models = [Baseline]
-    rats_models = base_models + [RRectifiedLogistic, RGammaRegression]
+    rats_models = base_models + [RReLU, RSaturatedReLU, RRectifiedLogistic]
     human_models = base_models + [HRectifiedLogistic]
 
     """ Load data """
@@ -47,7 +48,7 @@ def main(args):
 
         subdir = "physio2"
         dir = os.path.join(data.data_path, subdir)
-        participants = range(1, 2)
+        participants = range(1, 9)
 
         df, mat, time = load_data_rats(dir=dir, participants=participants)
 

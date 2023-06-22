@@ -47,7 +47,7 @@ def run_inference(
 
     logger.info(f"Rendering convergence diagnostics ...")
     diagnostics = az.summary(data=numpyro_data, hdi_prob=.95)
-    save_path = os.path.join(reports_path, f"diagnositcs.csv")
+    save_path = os.path.join(reports_path, f"diagnostics.csv")
     diagnostics.to_csv(save_path)
     logger.info(f"Saved to {save_path}")
 

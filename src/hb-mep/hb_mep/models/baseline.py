@@ -413,7 +413,7 @@ class Baseline():
                     right=temp_df[INTENSITY].max() + self.xpad
                 )
                 axes[i, j + 1].set_ylim(
-                    bottom=0, top=temp_df[response].max() + .05
+                    bottom=0, top=temp_df[response].max() + .1
                 )
 
                 """ Legends """
