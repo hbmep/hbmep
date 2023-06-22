@@ -46,8 +46,8 @@ def main(args):
     elif args.dataset == "Rats":
         models = rats_models
 
-        subdir = "physio2"
-        dir = os.path.join(data.data_path, subdir)
+        dir_name = "physio2"
+        dir = os.path.join(data.data_path, dir_name)
         participants = range(1, 9)
 
         df, mat, time = load_data_rats(dir=dir, participants=participants)

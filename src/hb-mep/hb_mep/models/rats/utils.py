@@ -19,7 +19,7 @@ logger = logging.getLogger(__name__)
 @timing
 def load_data(
     dir: Path,
-    subdirs_pattern: list[str] = ["*L_CIRC*"],
+    subdir_pattern: list[str] = ["*L_CIRC*"],
     participants: list[int] = range(1, 7),
 ):
     df = None
@@ -27,8 +27,8 @@ def load_data(
     for p in participants:
         participant = f"amap{p:02}"
 
-        for subdir_pattern in subdirs_pattern:
-            PREFIX = f"{dir}/{participant}/{subdir_pattern}"
+        for pattern in subdir_pattern:
+            PREFIX = f"{dir}/{participant}/{pattern}"
 
             fpath = glob.glob(f"{PREFIX}/*auc_table.csv")[0]
             temp_df = pd.read_csv(fpath)
@@ -44,7 +44,7 @@ def load_data(
                 assert (data_dict["t_sliced"] == time).all()
 
             temp_df[PARTICIPANT] = participant
-            temp_df["subdir_pattern"] = subdir_pattern
+            temp_df["subdir_pattern"] = pattern
 
             if df is None:
                 df = temp_df.copy()

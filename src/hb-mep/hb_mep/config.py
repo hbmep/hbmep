@@ -45,7 +45,7 @@ class HBMepConfig():
 
     """ MCMC parameters """
     MCMC_PARAMS: dict[str, int] = {
-        "num_chains": 4,
-        "num_warmup": 4000,
-        "num_samples": 6000
+        "num_chains": 20,
+        "num_warmup": 1000,
+        "num_samples": 1000
     }

@@ -14,7 +14,7 @@ from hb_mep.models import Baseline
 from hb_mep.utils import timing
 
 numpyro.set_platform("cpu")
-numpyro.set_host_device_count(12)
+numpyro.set_host_device_count(22)
 numpyro.enable_x64()
 
 logger = logging.getLogger(__name__)
