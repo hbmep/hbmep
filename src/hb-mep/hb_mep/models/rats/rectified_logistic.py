@@ -124,7 +124,7 @@ class RectifiedLogistic(Baseline):
         nuts_kernel = NUTS(self._model)
         mcmc = MCMC(nuts_kernel, **self.config.MCMC_PARAMS)
         rng_key = jax.random.PRNGKey(self.random_state)
-        # logger.info(f"Running inference with {self.name} ...")
+        logger.info(f"Running inference with {self.name} ...")
         mcmc.run(rng_key, intensity, participant, feature0, response)
         posterior_samples = mcmc.get_samples()
 

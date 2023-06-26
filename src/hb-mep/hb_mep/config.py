@@ -18,18 +18,19 @@ class HBMepConfig():
     PARTICIPANT: str = "participant"
 
     """ Features """
-    # FEATURES: list[str] = ["segment", "method"]
+    # FEATURES: list[str] = ["segment", "laterality"]
     FEATURES: list[str] = ["compound_position"]
 
     """ Endogenous """
-    RESPONSE: str = ["auc_4", "auc_1", "auc_3", "auc_2", "auc_5"]     # Rats
+    RESPONSE: str = ["auc_3"]     # Rats
     # RESPONSE: str = ["auc_1"]     # Rats
     # RESPONSE: str = ["auc"]     # Human
+    # ["LBiceps", "LFCR", "LECR", "LTriceps", "LADM", "LDeltoid", "LBicepsFemoris", "RBiceps"]
 
     """ Preprocess parameters """
     PREPROCESS_PARAMS: dict[str, int] = {
         "scalar_intensity": 1,
-        "scalar_response": [1, 1, 1, 1, 1],
+        "scalar_response": [1],
         "min_observations": 0
     }       # Rats
     # PREPROCESS_PARAMS: dict[str, int] = {
@@ -45,7 +46,7 @@ class HBMepConfig():
 
     """ MCMC parameters """
     MCMC_PARAMS: dict[str, int] = {
-        "num_chains": 20,
-        "num_warmup": 1000,
-        "num_samples": 1000
+        "num_chains": 4,
+        "num_warmup": 4000,
+        "num_samples": 6000
     }

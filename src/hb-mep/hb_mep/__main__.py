@@ -1,6 +1,7 @@
 import os
 import sys
 import logging
+import shutil
 import argparse
 from pathlib import Path
 
@@ -10,7 +11,8 @@ from hb_mep.models import Baseline
 from hb_mep.models.rats import (
     ReLU as RReLU,
     SaturatedReLU as RSaturatedReLU,
-    RectifiedLogistic as RRectifiedLogistic
+    RectifiedLogistic as RRectifiedLogistic,
+    Pooled as RPooled
 )
 from hb_mep.models.human import (
     RectifiedLogistic as HRectifiedLogistic
@@ -21,6 +23,7 @@ from hb_mep.api import run_inference
 
 FORMAT = "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
 logging.basicConfig(format=FORMAT, level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 
 def main(args):
@@ -32,7 +35,7 @@ def main(args):
 
     """ Available models """
     base_models = [Baseline]
-    rats_models = base_models + [RReLU, RSaturatedReLU, RRectifiedLogistic]
+    rats_models = base_models + [RReLU, RSaturatedReLU, RRectifiedLogistic, RPooled]
     human_models = base_models + [HRectifiedLogistic]
 
     """ Load data """
@@ -63,6 +66,14 @@ def main(args):
     postfix = f"{model.name}_{args.dataset}_{args.job}_{args.id}_{args.tag}"
     reports_path = Path(os.path.join(data.reports_path, postfix))
     reports_path.mkdir(parents=False, exist_ok=False)
+    logger.info(f"Created artefacts directory {reports_path}")
+
+    """ Save config to artefacts """
+    config_src = os.path.join(data.current_path, "src/hb-mep/hb_mep/config.py")
+    config_dst = os.path.join(reports_path, "config.py")
+    logger.info(f"{config_src}")
+    shutil.copy(config_src, config_dst)
+    logger.info(f"Save configuration to {config_dst}")
 
     """ Run inference """
     run_inference(

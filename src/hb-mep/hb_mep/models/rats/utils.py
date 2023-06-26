@@ -1,7 +1,6 @@
 import glob
 import logging
 from pathlib import Path
-from typing import Optional
 
 import mat73
 import numpy as np
