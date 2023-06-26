@@ -425,7 +425,9 @@ class Baseline():
                 """ EEG Data """
                 if mat is not None:
                     ax = axes[i, j]
-                    temp_mat = mat[idx, :, r]
+
+                    muscle_idx = int(response.split("_")[1]) - 1
+                    temp_mat = mat[idx, :, muscle_idx]
 
                     for k in range(temp_mat.shape[0]):
                         x = temp_mat[k, :]/60 + temp_df[INTENSITY].values[k]

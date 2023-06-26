@@ -52,8 +52,11 @@ def main(args):
         dir_name = "physio2"
         dir = os.path.join(data.data_path, dir_name)
         participants = range(1, 9)
+        subdir_pattern = ["*L_CIRC*"]
 
-        df, mat, time = load_data_rats(dir=dir, participants=participants)
+        df, mat, time = load_data_rats(
+            dir=dir, participants=participants, subdir_pattern=subdir_pattern
+        )
 
     """ Initialize model """
     assert args.model in [m(config).name for m in models]

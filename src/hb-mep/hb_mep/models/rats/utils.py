@@ -29,28 +29,34 @@ def load_data(
         for pattern in subdir_pattern:
             PREFIX = f"{dir}/{participant}/{pattern}"
 
-            fpath = glob.glob(f"{PREFIX}/*auc_table.csv")[0]
-            temp_df = pd.read_csv(fpath)
+            subdirs = glob.glob(PREFIX)
+            subdirs = sorted(subdirs)
+            print(subdirs)
 
-            fpath = glob.glob(f"{PREFIX}/*ep_matrix.mat")[0]
-            data_dict = mat73.loadmat(fpath)
+            for subdir in subdirs:
 
-            temp_mat = data_dict["ep_sliced"]
+                fpath = glob.glob(f"{subdir}/*auc_table.csv")[0]
+                temp_df = pd.read_csv(fpath)
 
-            if df is None:
-                time = data_dict["t_sliced"]
-            else:
-                assert (data_dict["t_sliced"] == time).all()
+                fpath = glob.glob(f"{subdir}/*ep_matrix.mat")[0]
+                data_dict = mat73.loadmat(fpath)
 
-            temp_df[PARTICIPANT] = participant
-            temp_df["subdir_pattern"] = pattern
+                temp_mat = data_dict["ep_sliced"]
 
-            if df is None:
-                df = temp_df.copy()
-                mat = temp_mat
-            else:
-                df = pd.concat([df, temp_df], ignore_index=True).copy()
-                mat = np.vstack((mat, temp_mat))
+                if df is None:
+                    time = data_dict["t_sliced"]
+                else:
+                    assert (data_dict["t_sliced"] == time).all()
+
+                temp_df[PARTICIPANT] = participant
+                temp_df["subdir_pattern"] = pattern
+
+                if df is None:
+                    df = temp_df.copy()
+                    mat = temp_mat
+                else:
+                    df = pd.concat([df, temp_df], ignore_index=True).copy()
+                    mat = np.vstack((mat, temp_mat))
 
     df.reset_index(drop=True, inplace=True)
     return df, mat, time

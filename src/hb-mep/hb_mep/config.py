@@ -22,7 +22,7 @@ class HBMepConfig():
     FEATURES: list[str] = ["compound_position"]
 
     """ Endogenous """
-    RESPONSE: str = ["auc_3"]     # Rats
+    RESPONSE: str = ["auc_1", "auc_2", "auc_3", "auc_4", "auc_5"]     # Rats
     # RESPONSE: str = ["auc_1"]     # Rats
     # RESPONSE: str = ["auc"]     # Human
     # ["LBiceps", "LFCR", "LECR", "LTriceps", "LADM", "LDeltoid", "LBicepsFemoris", "RBiceps"]
@@ -30,7 +30,7 @@ class HBMepConfig():
     """ Preprocess parameters """
     PREPROCESS_PARAMS: dict[str, int] = {
         "scalar_intensity": 1,
-        "scalar_response": [1],
+        "scalar_response": [1] * 5,
         "min_observations": 0
     }       # Rats
     # PREPROCESS_PARAMS: dict[str, int] = {
