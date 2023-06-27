@@ -1,6 +1,7 @@
 import logging
 from time import time
 from pathlib import Path
+from typing import Optional
 from functools import wraps
 
 import numpy as np
@@ -50,16 +51,18 @@ def timing(f):
 def plot(
     df: pd.DataFrame,
     save_path: Path,
-    encoder_dict: dict = None,
-    pred: pd.DataFrame = None,
-    mat: np.ndarray = None,
-    time: np.ndarray = None
+    encoder_dict: Optional[dict] = None,
+    pred: Optional[pd.DataFrame] = None,
+    mat: Optional[np.ndarray] = None,
+    time: Optional[np.ndarray] = None,
+    auc_window: Optional[list[float]] = None
 ):
     if pred is not None:
         assert encoder_dict is not None
 
     if mat is not None:
         assert time is not None
+        assert auc_window is not None
 
     columns = [PARTICIPANT] + FEATURES
     combinations = \
@@ -69,6 +72,7 @@ def plot(
         .to_frame("counts") \
         .reset_index().copy()
     combinations = combinations[columns].apply(tuple, axis=1).tolist()
+    combinations = sorted(combination)
 
     n_combinations = len(combinations)
     n_response = len(RESPONSE)
@@ -105,8 +109,10 @@ def plot(
             """ Response KDE """
             sns.kdeplot(temp_df[RESPONSE], ax=axes[i, 0])
 
+            title = f"{columns} - {combination}"
+            axes[i, 0].set_title(title)
             axes[i, 0].legend(loc="upper right", labels=RESPONSE)
-            axes[i, 0].set_title(f"{columns} - {combination}")
+
 
             """ Log Response KDE """
             sns.kdeplot(np.log(temp_df[RESPONSE]), ax=axes[i, 1])
@@ -122,18 +128,11 @@ def plot(
                     value_inverse = encoder_dict[column].inverse_transform(np.array([value]))[0]
                     combination_inverse.append(value_inverse)
 
-                axes[i, 1].set_title(f"{tuple(combination_inverse)}")
+                title_inverted = f"{tuple(combination_inverse)}"
+                axes[i, 1].set_title(title_inverted)
 
             j = 2
-            for (r, response) in enumerate(RESPONSE):
-                """ Scatter plots """
-                sns.scatterplot(data=temp_df, x=INTENSITY, y=response, ax=axes[i, j])
-
-                axes[i, j].set_xlabel(f"{INTENSITY}")
-                axes[i, j].set_ylabel(f"{response}")
-
-                j += 1
-
+            for response in RESPONSE:
                 """ EEG data """
                 if mat is not None:
                     ax = axes[i, j]
@@ -146,10 +145,10 @@ def plot(
                         ax.plot(x, time, color="green", alpha=.4)
 
                     ax.axhline(
-                        y=0.003, color="red", linestyle='--', alpha=.4, label="AUC Window"
+                        y=auc_window[0], color="red", linestyle='--', alpha=.4, label=f"AUC Window {auc_window}"
                     )
                     ax.axhline(
-                        y=0.015, color="red", linestyle='--', alpha=.4
+                        y=auc_window[1], color="red", linestyle='--', alpha=.4
                     )
 
                     ax.set_ylim(bottom=-0.001, top=0.02)
@@ -158,26 +157,24 @@ def plot(
                     ax.set_ylabel("Time")
 
                     ax.legend(loc="upper right")
-                    ax.set_title(f"Motor Evoked Potential - {response}")
+                    axes[i, j].set_title("Motor Evoked Potential")
+
+                    if encoder_dict is None:
+                        axes[i, j].set_title(f"{response} - " + title)
+                    else:
+                        axes[i, j].set_title(f"{response} - " + title_inverted)
 
                     j += 1
 
-            # """ Ahmet's method """
-            # if pred is not None:
-            #     temp_pred = pred[pred[columns].apply(tuple, axis=1).isin([(c0, c1, c2)])]
-            #     prediction = temp_pred[RESPONSE].values
-            #     assert len(prediction) == 1
-            #     ax.axvline(
-            #         x=prediction[0],
-            #         color="red",
-            #         linestyle='--',
-            #         alpha=.4,
-            #         label=f"Ahmet's prediction: {prediction[0]}"
-            #     )
-            #     ax.legend(loc="upper right")
+                """ Scatter plot """
+                sns.scatterplot(data=temp_df, x=INTENSITY, y=response, ax=axes[i, j])
 
+                axes[i, j].set_xlabel(f"{INTENSITY}")
+                axes[i, j].set_ylabel(f"{response}")
+                axes[i, j].set_title("MEP Size (AUC)")
+
+                j += 1
             combination_counter += 1
-
         pdf.savefig(fig)
 
     pdf.close()

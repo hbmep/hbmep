@@ -1,4 +1,5 @@
 import glob
+import tomllib
 import logging
 from pathlib import Path
 
@@ -31,7 +32,6 @@ def load_data(
 
             subdirs = glob.glob(PREFIX)
             subdirs = sorted(subdirs)
-            print(subdirs)
 
             for subdir in subdirs:
 
@@ -43,10 +43,9 @@ def load_data(
 
                 temp_mat = data_dict["ep_sliced"]
 
-                if df is None:
-                    time = data_dict["t_sliced"]
-                else:
-                    assert (data_dict["t_sliced"] == time).all()
+                fpath = glob.glob(f"{subdir}/*cfg_proc.toml")[0]
+                with open(fpath, "rb") as f:
+                    cfg = tomllib.load(f)
 
                 temp_df[PARTICIPANT] = participant
                 temp_df["subdir_pattern"] = pattern
@@ -54,9 +53,16 @@ def load_data(
                 if df is None:
                     df = temp_df.copy()
                     mat = temp_mat
-                else:
-                    df = pd.concat([df, temp_df], ignore_index=True).copy()
-                    mat = np.vstack((mat, temp_mat))
+
+                    time = data_dict["t_sliced"]
+                    auc_window = cfg["auc"]["t_slice_minmax"]
+                    continue
+
+                assert (data_dict["t_sliced"] == time).all()
+                assert cfg["auc"]["t_slice_minmax"] == auc_window
+
+                df = pd.concat([df, temp_df], ignore_index=True).copy()
+                mat = np.vstack((mat, temp_mat))
 
     df.reset_index(drop=True, inplace=True)
-    return df, mat, time
+    return df, mat, time, auc_window

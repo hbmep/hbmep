@@ -3,7 +3,7 @@ CWD := $(dir $(abspath $(lastword $(MAKEFILE_LIST))))
 
 export
 
-python ?= 3.9
+python ?= 3.11
 job ?= inference
 model ?= Baseline
 dataset ?= rats
