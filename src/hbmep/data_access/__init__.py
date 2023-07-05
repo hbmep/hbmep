@@ -1,1 +1,1 @@
-from .core import DataClass
+from .core import Dataset

@@ -1,4 +1,3 @@
-import os
 import logging
 from pathlib import Path
 from typing import Optional
@@ -15,11 +14,11 @@ import numpyro
 import numpyro.distributions as dist
 from numpyro.infer import MCMC, NUTS, Predictive
 
-from hbmep.config import HBMepConfig
+from hbmep.config import Config
+from hbmep.data_access import Dataset
 from hbmep.models.utils import Site as site
 from hbmep.utils import (
     timing,
-    make_combinations,
     ceil,
     evaluate_posterior_mean,
     evaluate_hpdi_interval
@@ -28,19 +27,12 @@ from hbmep.utils import (
 logger = logging.getLogger(__name__)
 
 
-class Baseline():
-    def __init__(self, config: HBMepConfig):
+class Baseline(Dataset):
+    def __init__(self, config: Config):
+        super(Baseline, self).__init__(config=config)
         self.name = "Baseline"
         self.random_state = 0   # Read from config
         self.rng_key = None
-
-        self.intensity = config.INTENSITY
-        self.participant = config.PARTICIPANT
-        self.features = config.FEATURES
-        self.response = config.RESPONSE
-
-        self.n_response = len(config.RESPONSE)
-        self.columns = [config.PARTICIPANT] + config.FEATURES
 
         self.mcmc_params = config.MCMC_PARAMS
 
@@ -52,14 +44,14 @@ class Baseline():
     def _set_rng_key(self):
         self.rng_key = jax.random.PRNGKey(self.random_state)
 
-    def _model(self, intensity, participant, features, response_obs=None):
+    def _model(self, subject, features, intensity, response_obs=None):
         intensity = intensity.reshape(-1, 1)
         intensity = np.tile(intensity, (1, self.n_response))
 
         feature0 = features[0].reshape(-1,)
 
         n_data = intensity.shape[0]
-        n_participant = np.unique(participant).shape[0]
+        n_subject = np.unique(subject).shape[0]
         n_feature0 = np.unique(feature0).shape[0]
 
         with numpyro.plate("n_feature0", n_feature0, dim=-1):
@@ -73,7 +65,7 @@ class Baseline():
             b_scale = numpyro.sample(site.b_scale, dist.HalfNormal(100))
             lo_scale = numpyro.sample(site.lo_scale, dist.HalfNormal(5))
 
-            with numpyro.plate("n_participant", n_participant, dim=-2):
+            with numpyro.plate("n_subject", n_subject, dim=-2):
                 """ Priors """
                 a = numpyro.sample(
                     site.a,
@@ -94,25 +86,24 @@ class Baseline():
 
         """ Model """
         mean = \
-            lo[participant, feature0] + \
+            lo[subject, feature0] + \
             self.link(
-                b[participant, feature0] * (intensity - a[participant, feature0])
+                b[subject, feature0] * (intensity - a[subject, feature0])
             )
-
-        noise = noise_offset[participant, feature0] + noise_slope[participant, feature0] * mean
+        noise = noise_offset[subject, feature0] + noise_slope[subject, feature0] * mean
 
         with numpyro.plate("data", n_data):
             return numpyro.sample("obs", dist.TruncatedNormal(mean, noise, low=0), obs=response_obs)
 
     @timing
-    def run_inference(self, df: pd.DataFrame) -> tuple[numpyro.infer.mcmc.MCMC, dict]:
+    def run_inference(
+        self, df: pd.DataFrame
+    ) -> tuple[numpyro.infer.mcmc.MCMC, dict]:
         """ Prepare dataset """
-        response = df[self.response].to_numpy()
-        self.n_response = response.shape[-1]
-
-        intensity = df[self.intensity].to_numpy().reshape(-1,)
-        participant = df[self.participant].to_numpy().reshape(-1,)
+        subject = df[self.subject].to_numpy().reshape(-1,)
         features = df[self.features].to_numpy().T
+        intensity = df[self.intensity].to_numpy().reshape(-1,)
+        response = df[self.response].to_numpy()
 
         """ MCMC """
         nuts_kernel = NUTS(self._model)
@@ -120,10 +111,9 @@ class Baseline():
         rng_key = jax.random.PRNGKey(self.random_state)
 
         logger.info(f"Running inference with {self.name} ...")
-        mcmc.run(rng_key, intensity, participant, features, response)
+        mcmc.run(rng_key, subject, features, intensity, response)
         posterior_samples = mcmc.get_samples()
         return mcmc, posterior_samples
-
 
     def _estimate_threshold(
         self,
@@ -168,14 +158,14 @@ class Baseline():
         """ Prepare dataset """
         combination = np.array(list(combination))
         combination = np.tile(combination, (intensity.shape[0], 1)).T
-        participant = combination[0]
+        subject = combination[0]
         features = combination[1:]
 
         """ Predictions """
         predictions = predictive(
             self.rng_key,
             intensity=intensity,
-            participant=participant,
+            subject=subject,
             features=features
         )
         return predictions
@@ -196,7 +186,7 @@ class Baseline():
             assert auc_window is not None
 
         """ Setup pdf layout """
-        combinations = make_combinations(df=df, columns=self.columns)
+        combinations = self._make_combinations(df=df)
         n_combinations = len(combinations)
 
         n_fig_rows = 10
@@ -416,7 +406,7 @@ class Baseline():
         check_type = "Posterior" if is_posterior_check else "Prior"
 
         """ Setup pdf layout """
-        combinations = make_combinations(df=df, columns=self.columns)
+        combinations = self._make_combinations(df=df)
         n_combinations = len(combinations)
 
         n_fig_rows = 10

@@ -7,29 +7,26 @@ import mat73
 import numpy as np
 import pandas as pd
 
-from hbmep.data_access import DataClass
+from hbmep.data_access import Dataset
 from hbmep.utils import timing
-from hbmep.utils.constants import (
-    PARTICIPANT,
-    RESPONSE
-)
 
 logger = logging.getLogger(__name__)
 
 
 @timing
 def load_data(
+    data: Dataset,
     dir: Path,
     subdir_pattern: list[str] = ["*L_CIRC*"],
-    participants: list[int] = range(1, 7),
+    subjects: list[int] = range(1, 7),
 ):
     df = None
 
-    for p in participants:
-        participant = f"amap{p:02}"
+    for p in subjects:
+        subject = f"amap{p:02}"
 
         for pattern in subdir_pattern:
-            PREFIX = f"{dir}/{participant}/{pattern}"
+            PREFIX = f"{dir}/{subject}/{pattern}"
 
             subdirs = glob.glob(PREFIX)
             subdirs = sorted(subdirs)
@@ -48,7 +45,7 @@ def load_data(
                 with open(fpath, "rb") as f:
                     cfg = tomllib.load(f)
 
-                temp_df[PARTICIPANT] = participant
+                temp_df[data.subject] = subject
                 temp_df["subdir_pattern"] = pattern
 
                 if df is None:
@@ -65,7 +62,7 @@ def load_data(
                 df = pd.concat([df, temp_df], ignore_index=True).copy()
                 mat = np.vstack((mat, temp_mat))
 
-    response_ind = [int(response.split("_")[1]) - 1 for response in RESPONSE]
+    response_ind = [int(response.split("_")[1]) - 1 for response in data.response]
     mat = mat[..., response_ind]
 
     df.reset_index(drop=True, inplace=True)

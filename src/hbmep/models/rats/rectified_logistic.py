@@ -5,7 +5,7 @@ import jax.numpy as jnp
 import numpyro
 import numpyro.distributions as dist
 
-from hbmep.config import HBMepConfig
+from hbmep.config import Config
 from hbmep.models.baseline import Baseline
 from hbmep.models.utils import Site as site
 
@@ -13,27 +13,24 @@ logger = logging.getLogger(__name__)
 
 
 class RectifiedLogistic(Baseline):
-    def __init__(self, config: HBMepConfig):
+    def __init__(self, config: Config):
         super(RectifiedLogistic, self).__init__(config=config)
         self.name = "Rectified_Logistic"
 
         self.x_space = np.linspace(0, 800, 2000)
 
-    def _model(self, intensity, participant, features, response_obs=None):
-        if response_obs is not None:
-            self.n_response = response_obs.shape[1]
-
+    def _model(self, subject, features, intensity, response_obs=None):
         intensity = intensity.reshape(-1, 1)
         intensity = np.tile(intensity, (1, self.n_response))
 
         feature0 = features[0].reshape(-1,)
 
         n_data = intensity.shape[0]
-        n_participant = np.unique(participant).shape[0]
+        n_subject = np.unique(subject).shape[0]
         n_feature0 = np.unique(feature0).shape[0]
 
         with numpyro.plate("n_response", self.n_response, dim=-1):
-            with numpyro.plate("n_participant", n_participant, dim=-2):
+            with numpyro.plate("n_subject", n_subject, dim=-2):
                 """ Hyper-priors """
                 a_mean = numpyro.sample(
                     site.a_mean,
@@ -71,24 +68,24 @@ class RectifiedLogistic(Baseline):
         """ Model """
         mean = numpyro.deterministic(
             site.mean,
-            lo[feature0, participant] + \
+            lo[feature0, subject] + \
             jnp.maximum(
                 0,
                 -1 + \
-                (h[feature0, participant] + 1) / \
+                (h[feature0, subject] + 1) / \
                 jnp.power(
                     1 + \
-                    (jnp.power(1 + h[feature0, participant], v[feature0, participant]) - 1) * \
-                    jnp.exp(-b[feature0, participant] * (intensity - a[feature0, participant])),
-                    1 / v[feature0, participant]
+                    (jnp.power(1 + h[feature0, subject], v[feature0, subject]) - 1) * \
+                    jnp.exp(-b[feature0, subject] * (intensity - a[feature0, subject])),
+                    1 / v[feature0, subject]
                 )
             )
         )
 
         scale = numpyro.deterministic(
             "β",
-            gamma_scale_offset[feature0, participant] + \
-            gamma_scale_slope[feature0, participant] * (1 / mean)
+            gamma_scale_offset[feature0, subject] + \
+            gamma_scale_slope[feature0, subject] * (1 / mean)
         )
 
         """ Observation """

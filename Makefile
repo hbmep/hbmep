@@ -24,7 +24,7 @@ build-base: check-env
 build: build-base
 	@source .venv/bin/activate && \
 	pip install --upgrade pip && \
-	pip install .
+	pip install -e .
 
 run:
 	@source .venv/bin/activate && \

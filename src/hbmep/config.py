@@ -1,21 +1,22 @@
+import os
 from typing import Optional
 from pathlib import Path
 
 
-class HBMepConfig():
+class Config():
     """ This will be set to working directory by os.getcwd(). """
     """ Don't change """
     CURRENT_PATH: Optional[Path] = None
 
     """ File (inside data folder) to use for modeling """
-    FNAME: Optional[str] = None
+    CSV_PATH: Optional[str] = None
 
     """ Exogenous """
     INTENSITY: str = "pulse_amplitude"      # Rats
     # INTENSITY: str = "intensity"      # Human
 
     """ Participant """
-    PARTICIPANT: str = "participant"
+    SUBJECT: str = "participant"
 
     """ Features """
     # FEATURES: list[str] = ["segment", "laterality"]
