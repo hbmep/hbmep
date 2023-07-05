@@ -11,11 +11,11 @@ import numpyro.distributions as dist
 from numpyro.infer import MCMC, NUTS, Predictive
 from numpyro.diagnostics import hpdi
 
-from hb_mep.config import HBMepConfig
-from hb_mep.models.baseline import Baseline
-from hb_mep.models.utils import Site as site
-from hb_mep.utils import timing
-from hb_mep.utils.constants import (
+from hbmep.config import HBMepConfig
+from hbmep.models.baseline import Baseline
+from hbmep.models.utils import Site as site
+from hbmep.utils import timing
+from hbmep.utils.constants import (
     INTENSITY,
     RESPONSE,
     PARTICIPANT,
@@ -25,13 +25,13 @@ from hb_mep.utils.constants import (
 logger = logging.getLogger(__name__)
 
 
-class Pooled(Baseline):
+class GeneralizedLogistic(Baseline):
     def __init__(self, config: HBMepConfig):
-        super(Pooled, self).__init__(config=config)
-        self.name = "Pooled"
+        super(GeneralizedLogistic, self).__init__(config=config)
+        self.name = "Generalized_Logistic"
 
         self.columns = [PARTICIPANT] + FEATURES
-        self.x = np.linspace(0, 800, 2000)
+        self.x = np.linspace(0, 450, 1000)
 
     def _model(self, intensity, participant, feature0, response_obs=None):
         intensity = intensity.reshape(-1, 1)
@@ -41,22 +41,22 @@ class Pooled(Baseline):
         n_participant = np.unique(participant).shape[0]
         n_feature0 = np.unique(feature0).shape[0]
 
-        """ Hyper-priors """
-        a_mean = numpyro.sample(
-            site.a_mean,
-            dist.TruncatedNormal(150, 50, low=0)
-        )
-        a_scale = numpyro.sample(site.a_scale, dist.HalfNormal(50))
-
-        b_scale = numpyro.sample(site.b_scale, dist.HalfNormal(0.1))
-
-        h_scale = numpyro.sample("h_scale", dist.HalfNormal(5))
-        v_scale = numpyro.sample("v_scale", dist.HalfNormal(10))
-
-        lo_scale = numpyro.sample(site.lo_scale, dist.HalfNormal(0.05))
-
         with numpyro.plate("n_response", self.n_response, dim=-1):
             with numpyro.plate("n_participant", n_participant, dim=-2):
+                """ Hyper-priors """
+                a_mean = numpyro.sample(
+                    site.a_mean,
+                    dist.TruncatedNormal(100, 50, low=0)
+                )
+                a_scale = numpyro.sample(site.a_scale, dist.HalfNormal(50))
+
+                b_scale = numpyro.sample(site.b_scale, dist.HalfNormal(0.1))
+
+                h_scale = numpyro.sample("h_scale", dist.HalfNormal(5))
+                v_scale = numpyro.sample("v_scale", dist.HalfNormal(10))
+
+                l_scale = numpyro.sample("l_scale", dist.HalfNormal(.05))
+
                 with numpyro.plate("n_feature0", n_feature0, dim=-3):
                     """ Priors """
                     a = numpyro.sample(
@@ -65,10 +65,9 @@ class Pooled(Baseline):
                     )
                     b = numpyro.sample(site.b, dist.HalfNormal(b_scale))
 
+                    l = numpyro.sample("l", dist.HalfNormal(l_scale))
                     h = numpyro.sample("h", dist.HalfNormal(h_scale))
                     v = numpyro.sample("v", dist.HalfNormal(v_scale))
-
-                    lo = numpyro.sample(site.lo, dist.HalfNormal(lo_scale))
 
                     gamma_scale_offset = numpyro.sample(
                         "gamma_scale_offset", dist.HalfCauchy(2.5)
@@ -80,17 +79,11 @@ class Pooled(Baseline):
         """ Model """
         mean = numpyro.deterministic(
             site.mean,
-            lo[feature0, participant] + \
-            jnp.maximum(
-                0,
-                -1 + \
-                (h[feature0, participant] + 1) / \
-                jnp.power(
-                    1 + \
-                    (jnp.power(1 + h[feature0, participant], v[feature0, participant]) - 1) * \
-                    jnp.exp(-b[feature0, participant] * (intensity - a[feature0, participant])),
-                    1 / v[feature0, participant]
-                )
+            l[feature0, participant] + \
+            (l[feature0, participant] + h[feature0, participant]) / \
+            jnp.power(
+                1 + jnp.exp(-b[feature0, participant] * (intensity - a[feature0, participant])),
+                1 / v[feature0, participant]
             )
         )
 
@@ -124,7 +117,7 @@ class Pooled(Baseline):
         nuts_kernel = NUTS(self._model)
         mcmc = MCMC(nuts_kernel, **self.config.MCMC_PARAMS)
         rng_key = jax.random.PRNGKey(self.random_state)
-        logger.info(f"Running inference with {self.name} ...")
+        # logger.info(f"Running inference with {self.name} ...")
         mcmc.run(rng_key, intensity, participant, feature0, response)
         posterior_samples = mcmc.get_samples()
 

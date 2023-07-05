@@ -2,7 +2,6 @@ import logging
 from typing import Optional
 
 import jax
-import jax.numpy as jnp
 import numpy as np
 import pandas as pd
 
@@ -11,11 +10,11 @@ import numpyro.distributions as dist
 from numpyro.infer import MCMC, NUTS, Predictive
 from numpyro.diagnostics import hpdi
 
-from hb_mep.config import HBMepConfig
-from hb_mep.models.baseline import Baseline
-from hb_mep.models.utils import Site as site
-from hb_mep.utils import timing
-from hb_mep.utils.constants import (
+from hbmep.config import HBMepConfig
+from hbmep.models.baseline import Baseline
+from hbmep.models.utils import Site as site
+from hbmep.utils import timing
+from hbmep.utils.constants import (
     INTENSITY,
     RESPONSE,
     PARTICIPANT,
@@ -25,13 +24,13 @@ from hb_mep.utils.constants import (
 logger = logging.getLogger(__name__)
 
 
-class SaturatedReLU(Baseline):
+class ReLU(Baseline):
     def __init__(self, config: HBMepConfig):
-        super(SaturatedReLU, self).__init__(config=config)
-        self.name = "Saturated_ReLU"
+        super(ReLU, self).__init__(config=config)
+        self.name = "ReLU"
 
         self.columns = [PARTICIPANT] + FEATURES
-        self.x = np.linspace(0, 450, 1000)
+        self.x = np.linspace(0, 800, 2000)
 
     def _model(self, intensity, participant, feature0, response_obs=None):
         intensity = intensity.reshape(-1, 1)
@@ -51,8 +50,6 @@ class SaturatedReLU(Baseline):
                 a_scale = numpyro.sample(site.a_scale, dist.HalfNormal(50))
 
                 b_scale = numpyro.sample(site.b_scale, dist.HalfNormal(0.1))
-                g_shape = numpyro.sample(site.g_shape, dist.HalfNormal(5.0))
-
                 lo_scale = numpyro.sample(site.lo_scale, dist.HalfNormal(0.05))
 
                 with numpyro.plate("n_feature0", n_feature0, dim=-3):
@@ -63,8 +60,6 @@ class SaturatedReLU(Baseline):
                     )
 
                     b = numpyro.sample(site.b, dist.HalfNormal(b_scale))
-                    g = numpyro.sample(site.g, dist.Beta(1, g_shape))
-
                     lo = numpyro.sample(site.lo, dist.HalfNormal(lo_scale))
 
                     gamma_scale_offset = numpyro.sample(
@@ -77,13 +72,8 @@ class SaturatedReLU(Baseline):
         """ Model """
         mean = numpyro.deterministic(
             site.mean,
-            lo[feature0, participant] - \
-            jnp.log(jnp.maximum(
-                g[feature0, participant],
-                jnp.exp(-jax.nn.relu(
-                    b[feature0, participant] * (intensity - a[feature0, participant])
-                ))
-            ))
+            lo[feature0, participant] + \
+            jax.nn.relu(b[feature0, participant] * (intensity - a[feature0, participant]))
         )
 
         scale = numpyro.deterministic(

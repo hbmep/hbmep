@@ -8,10 +8,10 @@ import pandas as pd
 import numpy as np
 import numpyro
 
-from hb_mep.config import HBMepConfig
-from hb_mep.data_access import DataClass
-from hb_mep.models import Baseline
-from hb_mep.utils import timing
+from hbmep.config import HBMepConfig
+from hbmep.data_access import DataClass
+from hbmep.models import Baseline
+from hbmep.utils import timing
 
 numpyro.set_platform("cpu")
 numpyro.set_host_device_count(22)

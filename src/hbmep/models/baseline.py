@@ -15,9 +15,9 @@ import numpyro
 import numpyro.distributions as dist
 from numpyro.infer import MCMC, NUTS, Predictive
 
-from hb_mep.config import HBMepConfig
-from hb_mep.models.utils import Site as site
-from hb_mep.utils import (
+from hbmep.config import HBMepConfig
+from hbmep.models.utils import Site as site
+from hbmep.utils import (
     timing,
     make_combinations,
     ceil,
@@ -567,8 +567,8 @@ class Baseline():
                         ax.set_xticks(ticks=ticks)
                         ax.tick_params(axis="x", rotation=90)
                         ax.set_xlim(
-                            left=max(0, temp_df[self.intensity].min() - 5 * self.x_pad),
-                            right=temp_df[self.intensity].max() + 5 * self.x_pad
+                            left=max(0, temp_df[self.intensity].min() - 2 * self.x_pad),
+                            right=temp_df[self.intensity].max() + self.x_pad
                         )
 
                     """ Legends """

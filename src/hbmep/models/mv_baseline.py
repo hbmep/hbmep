@@ -6,8 +6,8 @@ import numpy as np
 import numpyro
 import numpyro.distributions as dist
 
-from hb_mep.config import HBMepConfig
-from hb_mep.models.baseline import Baseline
+from hbmep.config import HBMepConfig
+from hbmep.models.baseline import Baseline
 
 logger = logging.getLogger(__name__)
 

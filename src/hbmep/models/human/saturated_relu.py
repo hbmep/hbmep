@@ -12,11 +12,11 @@ import numpyro.distributions as dist
 from numpyro.infer import MCMC, NUTS
 from numpyro.diagnostics import hpdi
 
-from hb_mep.config import HBMepConfig
-from hb_mep.models.baseline import Baseline
-from hb_mep.models.utils import Site as site
-from hb_mep.utils import timing
-from hb_mep.utils.constants import (
+from hbmep.config import HBMepConfig
+from hbmep.models.baseline import Baseline
+from hbmep.models.utils import Site as site
+from hbmep.utils import timing
+from hbmep.utils.constants import (
     INTENSITY,
     RESPONSE,
     PARTICIPANT,

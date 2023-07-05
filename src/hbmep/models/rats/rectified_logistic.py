@@ -5,9 +5,9 @@ import jax.numpy as jnp
 import numpyro
 import numpyro.distributions as dist
 
-from hb_mep.config import HBMepConfig
-from hb_mep.models.baseline import Baseline
-from hb_mep.models.utils import Site as site
+from hbmep.config import HBMepConfig
+from hbmep.models.baseline import Baseline
+from hbmep.models.utils import Site as site
 
 logger = logging.getLogger(__name__)
 

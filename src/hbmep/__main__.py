@@ -5,21 +5,21 @@ import shutil
 import argparse
 from pathlib import Path
 
-from hb_mep.config import HBMepConfig
-from hb_mep.data_access import DataClass
-from hb_mep.models import Baseline
-from hb_mep.models.rats import (
+from hbmep.config import HBMepConfig
+from hbmep.data_access import DataClass
+from hbmep.models import Baseline
+from hbmep.models.rats import (
     ReLU as RReLU,
     SaturatedReLU as RSaturatedReLU,
     RectifiedLogistic as RRectifiedLogistic,
     Pooled as RPooled
 )
-from hb_mep.models.human import (
+from hbmep.models.human import (
     RectifiedLogistic as HRectifiedLogistic
 )
-from hb_mep.models.rats.utils import load_data as load_data_rats
-from hb_mep.models.human.utils import load_data as load_data_human
-from hb_mep.api import run_inference
+from hbmep.models.rats.utils import load_data as load_data_rats
+from hbmep.models.human.utils import load_data as load_data_human
+from hbmep.api import run_inference
 
 FORMAT = "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
 logging.basicConfig(format=FORMAT, level=logging.INFO)
@@ -72,7 +72,7 @@ def main(args):
     logger.info(f"Created artefacts directory {reports_path}")
 
     """ Save config to artefacts """
-    config_src = os.path.join(data.current_path, "src/hb-mep/hb_mep/config.py")
+    config_src = os.path.join(data.current_path, "src/hb-mep/hbmep/config.py")
     config_dst = os.path.join(reports_path, "config.py")
     logger.info(f"{config_src}")
     shutil.copy(config_src, config_dst)

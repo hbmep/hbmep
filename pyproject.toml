@@ -1,0 +1,23 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "hbmep"
+version = "0.0.1"
+authors = [
+    { name="vishu-tyagi", email="vishweshwartyagiv@gmail.com" },
+    { name="jrmxn", email="j.mcintoshr@gmail.com"}
+]
+description = "Package for hierarchical Bayesian modeling of motor evoked potential size"
+readme = "README.md"
+requires-python = ">=3.11"
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+]
+
+[project.urls]
+"Homepage" = "https://github.com/pypa/sampleproject"
+"Bug Tracker" = "https://github.com/pypa/sampleproject/issues"

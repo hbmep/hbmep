@@ -4,9 +4,9 @@ from typing import Optional
 
 import pandas as pd
 
-from hb_mep.data_access import DataClass
-from hb_mep.utils import timing
-from hb_mep.utils.constants import (
+from hbmep.data_access import DataClass
+from hbmep.utils import timing
+from hbmep.utils.constants import (
     INTENSITY,
     RESPONSE,
     PARTICIPANT,
