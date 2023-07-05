@@ -10,7 +10,8 @@ import pandas as pd
 from hb_mep.data_access import DataClass
 from hb_mep.utils import timing
 from hb_mep.utils.constants import (
-    PARTICIPANT
+    PARTICIPANT,
+    RESPONSE
 )
 
 logger = logging.getLogger(__name__)
@@ -63,6 +64,9 @@ def load_data(
 
                 df = pd.concat([df, temp_df], ignore_index=True).copy()
                 mat = np.vstack((mat, temp_mat))
+
+    response_ind = [int(response.split("_")[1]) - 1 for response in RESPONSE]
+    mat = mat[..., response_ind]
 
     df.reset_index(drop=True, inplace=True)
     return df, mat, time, auc_window

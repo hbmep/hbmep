@@ -8,22 +8,21 @@ import pandas as pd
 import scipy.stats as stats
 import seaborn as sns
 import matplotlib.pyplot as plt
+from matplotlib.backends.backend_pdf import PdfPages
 
 import jax
 import numpyro
 import numpyro.distributions as dist
 from numpyro.infer import MCMC, NUTS, Predictive
-from numpyro.diagnostics import hpdi
 
 from hb_mep.config import HBMepConfig
 from hb_mep.models.utils import Site as site
-from hb_mep.utils import timing
-from hb_mep.utils.constants import (
-    REPORTS_DIR,
-    INTENSITY,
-    RESPONSE,
-    PARTICIPANT,
-    FEATURES
+from hb_mep.utils import (
+    timing,
+    make_combinations,
+    ceil,
+    evaluate_posterior_mean,
+    evaluate_hpdi_interval
 )
 
 logger = logging.getLogger(__name__)
@@ -31,34 +30,40 @@ logger = logging.getLogger(__name__)
 
 class Baseline():
     def __init__(self, config: HBMepConfig):
-        self.config = config
-        self.current_path = Path(os.getcwd()) if not config.CURRENT_PATH else config.CURRENT_PATH
-        self.reports_path = Path(os.path.join(self.current_path, REPORTS_DIR))
-
         self.name = "Baseline"
-        self.random_state = 0
+        self.random_state = 0   # Read from config
         self.rng_key = None
-        self.n_response = None
 
-        self.columns = [PARTICIPANT] + FEATURES
-        self.x = np.linspace(0, 800, 2000)
-        self.xpad = 10
+        self.intensity = config.INTENSITY
+        self.participant = config.PARTICIPANT
+        self.features = config.FEATURES
+        self.response = config.RESPONSE
+
+        self.n_response = len(config.RESPONSE)
+        self.columns = [config.PARTICIPANT] + config.FEATURES
+
+        self.mcmc_params = config.MCMC_PARAMS
+
+        self.x_space = np.linspace(0, 800, 2000)    # Read from config
+        self.x_pad = 10     # Read from config
 
         self._set_rng_key()
 
     def _set_rng_key(self):
         self.rng_key = jax.random.PRNGKey(self.random_state)
 
-    def _model(self, intensity, participant, feature0, response_obs=None):
+    def _model(self, intensity, participant, features, response_obs=None):
         intensity = intensity.reshape(-1, 1)
         intensity = np.tile(intensity, (1, self.n_response))
+
+        feature0 = features[0].reshape(-1,)
 
         n_data = intensity.shape[0]
         n_participant = np.unique(participant).shape[0]
         n_feature0 = np.unique(feature0).shape[0]
 
         with numpyro.plate("n_feature0", n_feature0, dim=-1):
-            # Hyperpriors
+            """ Hyperpriors """
             a_mean = numpyro.sample(
                 "a_mean",
                 dist.TruncatedDistribution(dist.Normal(150, 50), low=0)
@@ -69,7 +74,7 @@ class Baseline():
             lo_scale = numpyro.sample(site.lo_scale, dist.HalfNormal(5))
 
             with numpyro.plate("n_participant", n_participant, dim=-2):
-                # Priors
+                """ Priors """
                 a = numpyro.sample(
                     site.a,
                     dist.TruncatedDistribution(dist.Normal(a_mean, a_scale), low=0)
@@ -87,7 +92,7 @@ class Baseline():
                     dist.HalfCauchy(0.05)
                 )
 
-        # Model
+        """ Model """
         mean = \
             lo[participant, feature0] + \
             self.link(
@@ -101,353 +106,482 @@ class Baseline():
 
     @timing
     def run_inference(self, df: pd.DataFrame) -> tuple[numpyro.infer.mcmc.MCMC, dict]:
-        """
-        Run MCMC inference
-        """
-        response = df[RESPONSE].to_numpy()
+        """ Prepare dataset """
+        response = df[self.response].to_numpy()
         self.n_response = response.shape[-1]
 
-        intensity = df[INTENSITY].to_numpy().reshape(-1,)
-        participant = df[PARTICIPANT].to_numpy().reshape(-1,)
-        feature0 = df[FEATURES[0]].to_numpy().reshape(-1,)
+        intensity = df[self.intensity].to_numpy().reshape(-1,)
+        participant = df[self.participant].to_numpy().reshape(-1,)
+        features = df[self.features].to_numpy().T
 
-        # MCMC
+        """ MCMC """
         nuts_kernel = NUTS(self._model)
-        mcmc = MCMC(nuts_kernel, **self.config.MCMC_PARAMS)
+        mcmc = MCMC(nuts_kernel, **self.mcmc_params)
         rng_key = jax.random.PRNGKey(self.random_state)
-        # logger.info(f"Running inference with {self.name} ...")
-        mcmc.run(rng_key, intensity, participant, feature0, response)
-        posterior_samples = mcmc.get_samples()
 
+        logger.info(f"Running inference with {self.name} ...")
+        mcmc.run(rng_key, intensity, participant, features, response)
+        posterior_samples = mcmc.get_samples()
         return mcmc, posterior_samples
 
-    def _get_combinations(self, df: pd.DataFrame):
-        combinations = \
-            df \
-            .groupby(by=self.columns) \
-            .size() \
-            .to_frame("counts") \
-            .reset_index().copy()
-        combinations = combinations[self.columns].apply(tuple, axis=1).tolist()
-        return combinations
 
-    def _get_threshold_estimates(
+    def _estimate_threshold(
         self,
-        combination: tuple,
+        combination: tuple[int],
         posterior_samples: dict,
         prob: float = .95
     ):
-        threshold_posterior = posterior_samples[site.a][
-            :, combination[1], combination[0], :
-        ]
-        threshold = threshold_posterior.mean(axis=0)
-        hpdi_interval = hpdi(threshold_posterior, prob=prob)
-        return threshold, threshold_posterior, hpdi_interval
+        """ Set index """
+        ind = [slice(None)] + list(combination) + [slice(None)]
+        ind = ind[::-1]
 
-    def predict(
+        """ Posterior mean """
+        posterior_samples = posterior_samples[site.a][tuple(ind)]
+        threshold = evaluate_posterior_mean(
+            posterior_samples=posterior_samples,
+            prob=prob
+        )
+
+        """ HPDI Interval """
+        hpdi_interval = evaluate_hpdi_interval(
+            posterior_samples=posterior_samples,
+            prob=prob
+        )
+        return threshold, posterior_samples, hpdi_interval
+
+    def _predict(
         self,
         intensity: np.ndarray,
         combination: tuple,
         posterior_samples: Optional[dict] = None,
         num_samples: int = 100
     ):
-        predictive = Predictive(model=self._model, num_samples=num_samples)
-        if posterior_samples is not None:
-            predictive = Predictive(model=self._model, posterior_samples=posterior_samples)
+        if posterior_samples is None:   # Prior predictive
+            predictive = Predictive(
+                model=self._model, num_samples=num_samples
+            )
+        else:   # Posterior predictive
+            predictive = Predictive(
+                model=self._model, posterior_samples=posterior_samples
+            )
 
-        participant = np.repeat([combination[0]], intensity.shape[0])
-        feature0 = np.repeat([combination[1]], intensity.shape[0])
+        """ Prepare dataset """
+        combination = np.array(list(combination))
+        combination = np.tile(combination, (intensity.shape[0], 1)).T
+        participant = combination[0]
+        features = combination[1:]
 
+        """ Predictions """
         predictions = predictive(
             self.rng_key,
             intensity=intensity,
             participant=participant,
-            feature0=feature0
+            features=features
         )
         return predictions
-
-    @timing
-    def predictive_check(
-        self,
-        df: pd.DataFrame,
-        posterior_samples: Optional[dict] = None
-    ):
-        posterior_check = False if posterior_samples is None else True
-        check = "Posterior" if posterior_check else "Prior"
-
-        combinations = self._get_combinations(df)
-        n_combinations = len(combinations)
-
-        intensity = self.x
-
-        n_columns = 3 * self.n_response
-        predictions = None
-
-        fig, axes = plt.subplots(
-            n_combinations,
-            n_columns,
-            figsize=(n_columns * 6, n_combinations * 3),
-            constrained_layout=True
-        )
-
-        for i, c in enumerate(combinations):
-            idx = df[self.columns].apply(tuple, axis=1).isin([c])
-            temp_df = df[idx].reset_index(drop=True).copy()
-
-            if posterior_check or predictions is None:
-                predictions = self.predict(
-                    intensity=intensity,
-                    combination=c,
-                    posterior_samples=posterior_samples
-                )
-                obs = predictions["obs"]
-                mean = predictions["mean"]
-
-                hpdi_obs = hpdi(obs, prob=.95)
-                hpdi_mean = hpdi(mean, prob=.95)
-
-                """ Additional """
-                hpdi_obs_90 = hpdi(obs, prob=.90)
-                hpdi_obs_80 = hpdi(obs, prob=.80)
-                hpdi_obs_65 = hpdi(obs, prob=.65)
-
-
-            j = 0
-            for (r, response) in enumerate(RESPONSE):
-                """ Plots """
-                sns.scatterplot(data=temp_df, x=INTENSITY, y=response, alpha=.4, ax=axes[i, j])
-                sns.lineplot(
-                    x=intensity,
-                    y=mean.mean(axis=0)[:, r],
-                    label=f"Mean {check}",
-                    color="r",
-                    alpha=0.4,
-                    ax=axes[i, j]
-                )
-
-                axes[i, j + 1].plot(
-                    intensity,
-                    obs.mean(axis=0)[:, r],
-                    color="k",
-                    label="Mean Prediction"
-                )
-                axes[i, j + 1].fill_between(
-                    intensity,
-                    hpdi_obs[0, :, r],
-                    hpdi_obs[1, :, r],
-                    color="paleturquoise",
-                    label="95% HPDI"
-                )
-
-                """ Additional """
-                axes[i, j + 1].fill_between(
-                    intensity,
-                    hpdi_obs_90[0, :, r],
-                    hpdi_obs_90[1, :, r],
-                    color="C1",
-                    label="90% HPDI"
-                )
-                axes[i, j + 1].fill_between(
-                    intensity,
-                    hpdi_obs_80[0, :, r],
-                    hpdi_obs_80[1, :, r],
-                    color="C2",
-                    label="80% HPDI"
-                )
-                axes[i, j + 1].fill_between(
-                    intensity,
-                    hpdi_obs_65[0, :, r],
-                    hpdi_obs_65[1, :, r],
-                    color="C3",
-                    label="65% HPDI"
-                )
-
-                sns.scatterplot(
-                    data=temp_df, x=INTENSITY, y=response, color="y", edgecolor="k", ax=axes[i, j + 1]
-                )
-
-                axes[i, j + 2].plot(
-                    intensity,
-                    mean.mean(axis=0)[:, r],
-                    color="k",
-                    label=f"Mean {check}"
-                )
-                axes[i, j + 2].fill_between(
-                    intensity, hpdi_mean[0, :, r], hpdi_mean[1, :, r], color="paleturquoise", label="95% HPDI"
-                )
-                sns.scatterplot(
-                    data=temp_df, x=INTENSITY, y=response, color="y", edgecolor="k", ax=axes[i, j + 2]
-                )
-
-                """ Labels """
-                axes[i, j].set_title(f"{response} - {tuple(self.columns)} - {c}")
-                axes[i, j + 1].set_title(f"{check} Predictive")
-                axes[i, j + 2].set_title(f"{check} Predictive Mean")
-
-                """ Limits """
-                axes[i, j].set_xlim(
-                    left=max(0, temp_df[INTENSITY].min() - 5 * self.xpad),
-                    right=temp_df[INTENSITY].max() + 5 * self.xpad
-                )
-                axes[i, j].set_xlim(
-                    left=max(0, temp_df[INTENSITY].min() - 5 * self.xpad),
-                    right=temp_df[INTENSITY].max() + 5 * self.xpad
-                )
-                axes[i, j + 1].set_xlim(
-                    left=max(0, temp_df[INTENSITY].min() - 5 * self.xpad),
-                    right=temp_df[INTENSITY].max() + 5 * self.xpad
-                )
-                axes[i, j + 2].set_xlim(
-                    left=max(0, temp_df[INTENSITY].min() - 5 * self.xpad),
-                    right=temp_df[INTENSITY].max() + 5 * self.xpad
-                )
-                """ Legends """
-                axes[i, j].legend(loc="upper left")
-                axes[i, j + 1].legend(loc="upper left")
-                axes[i, j + 2].legend(loc="upper left")
-
-                j += 3
-
-        return fig
 
     @timing
     def plot(
         self,
         df: pd.DataFrame,
+        save_path: Path,
         posterior_samples: dict,
         encoder_dict: Optional[dict] = None,
         mat: Optional[np.ndarray] = None,
-        time: Optional[np.ndarray] = None
+        time: Optional[np.ndarray] = None,
+        auc_window: Optional[list[float]] = None
     ):
         if mat is not None:
             assert time is not None
+            assert auc_window is not None
 
-        combinations = self._get_combinations(df)
+        """ Setup pdf layout """
+        combinations = make_combinations(df=df, columns=self.columns)
         n_combinations = len(combinations)
 
-        intensity = self.x
+        n_fig_rows = 10
+        n_columns_per_response = 3
+        if mat is not None: n_columns_per_response += 1
 
-        n_columns = 3 * self.n_response
-        if mat is not None: n_columns += self.n_response
+        n_fig_columns = n_columns_per_response * self.n_response
 
-        fig, axes = plt.subplots(
-            n_combinations,
-            n_columns,
-            figsize=(n_columns * 6, n_combinations * 3),
-            constrained_layout=True
-        )
+        pdf = PdfPages(save_path)
+        n_pdf_pages = n_combinations // n_fig_rows
 
-        for i, c in enumerate(combinations):
-            idx = df[self.columns].apply(tuple, axis=1).isin([c])
-            temp_df = df[idx].reset_index(drop=True).copy()
+        if n_combinations % n_fig_rows:
+            n_pdf_pages += 1
 
-            predictions = self.predict(
-                intensity=intensity, combination=c, posterior_samples=posterior_samples
-            )
-            mean = predictions["mean"]
+        """ Iterate over pdf pages """
+        combination_counter = 0
 
-            threshold, threshold_posterior, hpdi_interval = self._get_threshold_estimates(
-                c, posterior_samples
+        for page in range(n_pdf_pages):
+            n_rows_current_page = min(
+                n_fig_rows,
+                n_combinations - page * n_fig_rows
             )
 
-            j = 0
-            for (r, response) in enumerate(RESPONSE):
-                """ Plots """
-                sns.scatterplot(data=temp_df, x=INTENSITY, y=response, ax=axes[i, j])
-                sns.scatterplot(data=temp_df, x=INTENSITY, y=response, alpha=.4, ax=axes[i, j + 1])
+            fig, axes = plt.subplots(
+                n_rows_current_page,
+                n_fig_columns,
+                figsize=(n_fig_columns * 5, n_rows_current_page * 3),
+                constrained_layout=True,
+                squeeze=False
+            )
 
-                sns.kdeplot(x=threshold_posterior[:, r], color="b", ax=axes[i, j + 1])
-                sns.lineplot(
-                    x=intensity,
-                    y=mean.mean(axis=0)[:, r],
-                    label="Mean Posterior",
-                    color="r",
-                    alpha=0.4,
-                    ax=axes[i, j + 1]
+            for i in range(n_rows_current_page):
+                combination = combinations[combination_counter]
+
+                """ Filter dataframe """
+                ind = df[self.columns].apply(tuple, axis=1).isin([combination])
+                temp_df = df[ind].reset_index(drop=True).copy()
+
+                """ Predictions """
+                predictions = self._predict(
+                    intensity=self.x_space,
+                    combination=combination,
+                    posterior_samples=posterior_samples
+                )
+                mean = predictions[site.mean]
+                mean_posterior_mean = evaluate_posterior_mean(mean)
+
+                """ Threshold estimate """
+                threshold, threshold_posterior, hpdi_interval = \
+                    self._estimate_threshold(combination, posterior_samples)
+
+                """" Tickmarks for X axis """
+                base = 20
+                x_ticks = np.arange(
+                    0, ceil(temp_df[self.intensity].max(), base=base), base
                 )
 
-                sns.kdeplot(x=threshold_posterior[:, r], color="b", ax=axes[i, j + 2])
-                axes[i, j + 2].axvline(
-                    threshold[r],
-                    linestyle="--",
-                    color="r",
-                    label=f"Mean Posterior"
-                )
-                axes[i, j + 2].axvline(
-                    hpdi_interval[:, r][0],
-                    linestyle="--",
-                    color="g",
-                    label="95% HPDI"
-                )
-                axes[i, j + 2].axvline(hpdi_interval[:, r][1], linestyle="--", color="g")
+                for (r, response) in enumerate(self.response):
+                    j = n_columns_per_response * r
 
-                """ Labels """
-                axes[i, j].set_title(f"{response} - {tuple(self.columns)} - {c}")
+                    """ EEG Data """
+                    if mat is not None:
+                        ax = axes[i, j]
+                        temp_mat = mat[ind, :, r]
 
-                if encoder_dict is not None:
-                    c_inverse = []
-                    for column, value in zip(self.columns, c):
-                        c_inverse.append(
-                            encoder_dict[column].inverse_transform(np.array([value]))[0]
+                        for k in range(temp_mat.shape[0]):
+                            x = temp_mat[k, :]/60 + temp_df[self.intensity].values[k]
+                            ax.plot(x, time, color="green", alpha=.4)
+
+                        ax.axhline(
+                            y=auc_window[0],
+                            color="red",
+                            linestyle='--',
+                            alpha=.4,
+                            label=f"AUC Window {auc_window}"
                         )
-                    title = f"{response} - {tuple(c_inverse)}"
-                else:
-                    title = f"{response} - Model Fit"
+                        ax.axhline(
+                            y=auc_window[1],
+                            color="red",
+                            linestyle='--',
+                            alpha=.4
+                        )
 
-                axes[i, j + 1].set_title(title)
+                        ax.set_xticks(ticks=x_ticks)
+                        ax.tick_params(axis="x", rotation=90)
+                        ax.set_xlim(
+                            left=max(0, temp_df[self.intensity].min() - 2 * self.x_pad),
+                            right=temp_df[self.intensity].max() + self.x_pad
+                        )
+                        ax.set_ylim(bottom=-0.001, top=auc_window[1] + .005)
 
-                skew = stats.skew(a=threshold_posterior[:, r])
-                kurt = stats.kurtosis(a=threshold_posterior[:, r])
+                        ax.set_xlabel(f"{self.intensity}")
+                        ax.set_ylabel(f"Time")
+                        ax.legend(loc="upper right")
+                        ax.set_title(f"Motor Evoked Potential")
 
-                title = f"{response} - TH: {threshold[r]:.2f}"
-                title += f", CI: ({hpdi_interval[:, r][0]:.1f}, {hpdi_interval[:, r][1]:.1f})"
-                title += f", LEN: {hpdi_interval[:, r][1] - hpdi_interval[:, r][0]:.1f}"
-                title += r', $\overline{\mu_3}$'
-                title += f": {skew:.1f}"
-                title += f", K: {kurt:.1f}"
-                axes[i, j + 2].set_title(title)
+                        j += 1
 
-                """ Limits """
-                axes[i, j + 1].set_xlim(
-                    left=max(0, temp_df[INTENSITY].min() - 2 * self.xpad),
-                    right=temp_df[INTENSITY].max() + self.xpad
-                )
-                axes[i, j + 1].set_ylim(
-                    bottom=0, top=temp_df[response].max() + .1
-                )
-
-                """ Legends """
-                axes[i, j + 1].legend(loc="upper left")
-                axes[i, j + 2].legend(loc="upper right")
-
-                j += 3
-
-                """ EEG Data """
-                if mat is not None:
-                    ax = axes[i, j]
-
-                    muscle_idx = int(response.split("_")[1]) - 1
-                    temp_mat = mat[idx, :, muscle_idx]
-
-                    for k in range(temp_mat.shape[0]):
-                        x = temp_mat[k, :]/60 + temp_df[INTENSITY].values[k]
-                        ax.plot(x, time, color="green", alpha=.4)
-
-                    ax.axhline(
-                        y=0.003, color="red", linestyle='--', alpha=.4, label="AUC Window"
+                    """ Plots """
+                    sns.scatterplot(
+                        data=temp_df,
+                        x=self.intensity,
+                        y=response,
+                        ax=axes[i, j]
                     )
-                    ax.axhline(
-                        y=0.015, color="red", linestyle='--', alpha=.4
+                    sns.scatterplot(
+                        data=temp_df,
+                        x=self.intensity,
+                        y=response,
+                        alpha=.4,
+                        ax=axes[i, j + 1]
                     )
 
-                    ax.set_ylim(bottom=-0.001, top=0.02)
+                    sns.kdeplot(
+                        x=threshold_posterior[:, r],
+                        color="b",
+                        ax=axes[i, j + 1],
+                        alpha=.4
+                    )
+                    sns.lineplot(
+                        x=self.x_space,
+                        y=mean_posterior_mean[:, r],
+                        label="Mean Posterior",
+                        color="r",
+                        alpha=0.4,
+                        ax=axes[i, j + 1]
+                    )
 
-                    ax.set_xlabel(f"{INTENSITY}")
-                    ax.set_ylabel(f"Time")
+                    sns.kdeplot(
+                        x=threshold_posterior[:, r],
+                        color="b",
+                        ax=axes[i, j + 2]
+                    )
+                    axes[i, j + 2].axvline(
+                        threshold[r],
+                        linestyle="--",
+                        color="r",
+                        label=f"Mean Posterior"
+                    )
+                    axes[i, j + 2].axvline(
+                        hpdi_interval[:, r][0],
+                        linestyle="--",
+                        color="g",
+                        label="95% HPDI"
+                    )
+                    axes[i, j + 2].axvline(
+                        hpdi_interval[:, r][1],
+                        linestyle="--",
+                        color="g"
+                    )
 
-                    ax.legend(loc="upper right")
-                    ax.set_title(f"Motor Evoked Potential")
+                    """ Labels """
+                    title = f"{response} - {tuple(self.columns)} - {combination}"
+                    axes[i, j].set_title(title)
 
-                    j += 1
+                    if encoder_dict is not None:
+                        combination_inverse = []
+                        for column, value in zip(self.columns, combination):
+                            combination_inverse.append(
+                                encoder_dict[column] \
+                                    .inverse_transform(np.array([value]))[0]
+                            )
+                        title = f"{response} - {tuple(combination_inverse)}"
+                    else:
+                        title = f"{response} - Model Fit"
 
-        return fig
+                    axes[i, j + 1].set_title(title)
+
+                    skew = stats.skew(a=threshold_posterior[:, r])
+                    kurt = stats.kurtosis(a=threshold_posterior[:, r])
+
+                    title = f"{response} - TH: {threshold[r]:.2f}"
+                    title += f", CI: ({hpdi_interval[:, r][0]:.1f}, {hpdi_interval[:, r][1]:.1f})"
+                    title += f", LEN: {hpdi_interval[:, r][1] - hpdi_interval[:, r][0]:.1f}"
+                    title += r', $\overline{\mu_3}$'
+                    title += f": {skew:.1f}"
+                    title += f", K: {kurt:.1f}"
+                    axes[i, j + 2].set_title(title)
+
+                    """ Ticks """
+                    for k in [j, j + 1]:
+                        ax = axes[i, k]
+                        ax.set_xticks(ticks=x_ticks)
+                        ax.tick_params(axis="x", rotation=90)
+                        ax.set_xlim(
+                            left=max(0, temp_df[self.intensity].min() - 2 * self.x_pad),
+                            right=temp_df[self.intensity].max() + self.x_pad
+                        )
+                        ax.set_ylim(
+                            bottom=0, top=temp_df[response].max() + .1
+                        )
+
+                    """ Legends """
+                    axes[i, j + 1].legend(loc="upper left")
+                    axes[i, j + 2].legend(loc="upper right")
+
+                combination_counter += 1
+
+            pdf.savefig(fig)
+            plt.close()
+
+        pdf.close()
+        plt.show()
+        logger.info(f"Saved to {save_path}")
+        return
+
+    @timing
+    def predictive_check(
+        self,
+        df: pd.DataFrame,
+        save_path: Path,
+        posterior_samples: Optional[dict] = None
+    ):
+        """ Posterior / Prior Predictive Check """
+        is_posterior_check = True
+        if posterior_samples is None: is_posterior_check = False
+        check_type = "Posterior" if is_posterior_check else "Prior"
+
+        """ Setup pdf layout """
+        combinations = make_combinations(df=df, columns=self.columns)
+        n_combinations = len(combinations)
+
+        n_fig_rows = 10
+        n_columns_per_response = 3
+        n_fig_columns = n_columns_per_response * self.n_response
+
+        pdf = PdfPages(save_path)
+        n_pdf_pages = n_combinations // n_fig_rows
+
+        if n_combinations % n_fig_rows:
+            n_pdf_pages += 1
+
+        """ Iterate over pdf pages """
+        combination_counter = 0
+        predictions = None
+
+        for page in range(n_pdf_pages):
+            n_rows_current_page = min(
+                n_fig_rows,
+                n_combinations - page * n_fig_rows
+            )
+
+            fig, axes = plt.subplots(
+                n_rows_current_page,
+                n_fig_columns,
+                figsize=(n_fig_columns * 5, n_rows_current_page * 3),
+                constrained_layout=True,
+                squeeze=False
+            )
+
+            for i in range(n_rows_current_page):
+                combination = combinations[combination_counter]
+
+                ind = df[self.columns].apply(tuple, axis=1).isin([combination])
+                temp_df = df[ind].reset_index(drop=True).copy()
+
+                if is_posterior_check or predictions is None:
+                    """ Predictions """
+                    predictions = self._predict(
+                        intensity=self.x_space,
+                        combination=combination,
+                        posterior_samples=posterior_samples
+                    )
+                    obs = predictions[site.obs]
+                    mean = predictions[site.mean]
+
+                    """ Posterior mean """
+                    obs_posterior_mean = evaluate_posterior_mean(obs)
+                    mean_posterior_mean = evaluate_posterior_mean(mean)
+
+                    """ HPDI Intervals """
+                    hpdi_obs_95 = evaluate_hpdi_interval(obs, prob=.95)
+                    hpdi_obs_85 = evaluate_hpdi_interval(obs, prob=.85)
+                    hpdi_obs_65 = evaluate_hpdi_interval(obs, prob=.65)
+
+                    hpdi_mean_95 = evaluate_hpdi_interval(mean, prob=.95)
+
+                for (r, response) in enumerate(self.response):
+                    j = n_columns_per_response * r
+
+                    """ Plots """
+                    sns.scatterplot(
+                        data=temp_df,
+                        x=self.intensity,
+                        y=response,
+                        alpha=.4,
+                        ax=axes[i, j]
+                    )
+                    sns.lineplot(
+                        x=self.x_space,
+                        y=mean_posterior_mean[:, r],
+                        label=f"Mean {check_type}",
+                        color="r",
+                        alpha=0.4,
+                        ax=axes[i, j]
+                    )
+
+                    axes[i, j + 1].plot(
+                        self.x_space,
+                        obs_posterior_mean[:, r],
+                        color="k",
+                        label="Mean Prediction"
+                    )
+                    axes[i, j + 1].fill_between(
+                        self.x_space,
+                        hpdi_obs_95[0, :, r],
+                        hpdi_obs_95[1, :, r],
+                        color="C1",
+                        label="95% HPDI"
+                    )
+                    axes[i, j + 1].fill_between(
+                        self.x_space,
+                        hpdi_obs_85[0, :, r],
+                        hpdi_obs_85[1, :, r],
+                        color="C2",
+                        label="85% HPDI"
+                    )
+                    axes[i, j + 1].fill_between(
+                        self.x_space,
+                        hpdi_obs_65[0, :, r],
+                        hpdi_obs_65[1, :, r],
+                        color="C3",
+                        label="65% HPDI"
+                    )
+
+                    sns.scatterplot(
+                        data=temp_df,
+                        x=self.intensity,
+                        y=response,
+                        color="y",
+                        edgecolor="k",
+                        ax=axes[i, j + 1]
+                    )
+
+                    axes[i, j + 2].plot(
+                        self.x_space,
+                        mean_posterior_mean[:, r],
+                        color="k",
+                        label=f"Mean {check_type}"
+                    )
+                    axes[i, j + 2].fill_between(
+                        self.x_space,
+                        hpdi_mean_95[0, :, r],
+                        hpdi_mean_95[1, :, r],
+                        color="paleturquoise",
+                        label="95% HPDI"
+                    )
+                    sns.scatterplot(
+                        data=temp_df,
+                        x=self.intensity,
+                        y=response,
+                        color="y",
+                        edgecolor="k",
+                        ax=axes[i, j + 2]
+                    )
+
+                    """ Labels """
+                    title = f"{response} - {tuple(self.columns)} - {combination}"
+                    axes[i, j].set_title(title)
+                    axes[i, j + 1].set_title(f"{check_type} Predictive")
+                    axes[i, j + 2].set_title(f"{check_type} Predictive Mean")
+
+                    """ Ticks """
+                    base = 20
+                    ticks = np.arange(0, ceil(df[self.intensity].max(), base=base), base)
+                    for k in [j, j + 1, j + 2]:
+                        ax = axes[i, k]
+                        ax.set_xticks(ticks=ticks)
+                        ax.tick_params(axis="x", rotation=90)
+                        ax.set_xlim(
+                            left=max(0, temp_df[self.intensity].min() - 5 * self.x_pad),
+                            right=temp_df[self.intensity].max() + 5 * self.x_pad
+                        )
+
+                    """ Legends """
+                    axes[i, j].legend(loc="upper left")
+                    axes[i, j + 1].legend(loc="upper left")
+                    axes[i, j + 2].legend(loc="upper left")
+
+                combination_counter += 1
+
+            pdf.savefig(fig)
+            plt.close()
+
+        pdf.close()
+        plt.show()
+        logger.info(f"Saved to {save_path}")
+        return

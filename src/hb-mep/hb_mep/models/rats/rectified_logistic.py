@@ -1,26 +1,13 @@
 import logging
-from typing import Optional
 
-import jax
-import jax.numpy as jnp
 import numpy as np
-import pandas as pd
-
+import jax.numpy as jnp
 import numpyro
 import numpyro.distributions as dist
-from numpyro.infer import MCMC, NUTS, Predictive
-from numpyro.diagnostics import hpdi
 
 from hb_mep.config import HBMepConfig
 from hb_mep.models.baseline import Baseline
 from hb_mep.models.utils import Site as site
-from hb_mep.utils import timing
-from hb_mep.utils.constants import (
-    INTENSITY,
-    RESPONSE,
-    PARTICIPANT,
-    FEATURES
-)
 
 logger = logging.getLogger(__name__)
 
@@ -30,12 +17,16 @@ class RectifiedLogistic(Baseline):
         super(RectifiedLogistic, self).__init__(config=config)
         self.name = "Rectified_Logistic"
 
-        self.columns = [PARTICIPANT] + FEATURES
-        self.x = np.linspace(0, 800, 2000)
+        self.x_space = np.linspace(0, 800, 2000)
 
-    def _model(self, intensity, participant, feature0, response_obs=None):
+    def _model(self, intensity, participant, features, response_obs=None):
+        if response_obs is not None:
+            self.n_response = response_obs.shape[1]
+
         intensity = intensity.reshape(-1, 1)
         intensity = np.tile(intensity, (1, self.n_response))
+
+        feature0 = features[0].reshape(-1,)
 
         n_data = intensity.shape[0]
         n_participant = np.unique(participant).shape[0]
@@ -71,10 +62,10 @@ class RectifiedLogistic(Baseline):
                     lo = numpyro.sample(site.lo, dist.HalfNormal(lo_scale))
 
                     gamma_scale_offset = numpyro.sample(
-                        "gamma_scale_offset", dist.HalfCauchy(2.5)
+                        site.gamma_scale_offset, dist.HalfCauchy(2.5)
                     )
                     gamma_scale_slope = numpyro.sample(
-                        "gamma_scale_slope", dist.HalfCauchy(2.5)
+                        site.gamma_scale_slope, dist.HalfCauchy(2.5)
                     )
 
         """ Model """
@@ -95,7 +86,7 @@ class RectifiedLogistic(Baseline):
         )
 
         scale = numpyro.deterministic(
-            "scale",
+            "β",
             gamma_scale_offset[feature0, participant] + \
             gamma_scale_slope[feature0, participant] * (1 / mean)
         )
@@ -107,60 +98,3 @@ class RectifiedLogistic(Baseline):
                 dist.Gamma(mean * scale, scale).to_event(1),
                 obs=response_obs
             )
-
-    @timing
-    def run_inference(self, df: pd.DataFrame) -> tuple[numpyro.infer.mcmc.MCMC, dict]:
-        """
-        Run MCMC inference
-        """
-        response = df[RESPONSE].to_numpy()
-        self.n_response = response.shape[-1]
-
-        intensity = df[INTENSITY].to_numpy().reshape(-1,)
-        participant = df[PARTICIPANT].to_numpy().reshape(-1,)
-        feature0 = df[FEATURES[0]].to_numpy().reshape(-1,)
-
-        # MCMC
-        nuts_kernel = NUTS(self._model)
-        mcmc = MCMC(nuts_kernel, **self.config.MCMC_PARAMS)
-        rng_key = jax.random.PRNGKey(self.random_state)
-        logger.info(f"Running inference with {self.name} ...")
-        mcmc.run(rng_key, intensity, participant, feature0, response)
-        posterior_samples = mcmc.get_samples()
-
-        return mcmc, posterior_samples
-
-    def _get_threshold_estimates(
-        self,
-        combination: tuple,
-        posterior_samples: dict,
-        prob: float = .95
-    ):
-        threshold_posterior = posterior_samples[site.a][
-            :, combination[1], combination[0], :
-        ]
-        threshold = threshold_posterior.mean(axis=0)
-        hpdi_interval = hpdi(threshold_posterior, prob=prob)
-        return threshold, threshold_posterior, hpdi_interval
-
-    def predict(
-        self,
-        intensity: np.ndarray,
-        combination: tuple,
-        posterior_samples: Optional[dict] = None,
-        num_samples: int = 100
-    ):
-        predictive = Predictive(model=self._model, num_samples=num_samples)
-        if posterior_samples is not None:
-            predictive = Predictive(model=self._model, posterior_samples=posterior_samples)
-
-        participant = np.repeat([combination[0]], intensity.shape[0])
-        feature0 = np.repeat([combination[1]], intensity.shape[0])
-
-        predictions = predictive(
-            self.rng_key,
-            intensity=intensity,
-            participant=participant,
-            feature0=feature0
-        )
-        return predictions

@@ -10,6 +10,8 @@ import seaborn as sns
 import matplotlib.pyplot as plt
 from matplotlib.backends.backend_pdf import PdfPages
 
+from numpyro.diagnostics import hpdi
+
 from hb_mep.utils.constants import (
     INTENSITY,
     RESPONSE,
@@ -47,6 +49,33 @@ def timing(f):
     return wrap
 
 
+def ceil(x: float, base: int = 10):
+    return base * np.ceil(x / base)
+
+
+def make_combinations(df: pd.DataFrame, columns: list[str]):
+    assert set(columns) <= set(df.columns)
+    combinations = \
+        df \
+        .groupby(by=columns) \
+        .size() \
+        .to_frame("counts") \
+        .reset_index().copy()
+    combinations = combinations[columns].apply(tuple, axis=1).tolist()
+    combinations = sorted(combinations)
+    return combinations
+
+
+def evaluate_posterior_mean(posterior_samples, prob: float = .95):
+    posterior_mean = posterior_samples.mean(axis=0)
+    return posterior_mean
+
+
+def evaluate_hpdi_interval(posterior_samples, prob: float = .95):
+    hpdi_interval = hpdi(posterior_samples, prob=prob)
+    return hpdi_interval
+
+
 @timing
 def plot(
     df: pd.DataFrame,
@@ -65,26 +94,19 @@ def plot(
         assert auc_window is not None
 
     columns = [PARTICIPANT] + FEATURES
-    combinations = \
-        df \
-        .groupby(by=columns) \
-        .size() \
-        .to_frame("counts") \
-        .reset_index().copy()
-    combinations = combinations[columns].apply(tuple, axis=1).tolist()
-    combinations = sorted(combination)
+    combinations = make_combinations(df, columns)
 
     n_combinations = len(combinations)
     n_response = len(RESPONSE)
 
-    n_columns = 2 + n_response
-    if mat is not None: n_columns += n_response
+    n_fig_columns = 2 + n_response
+    if mat is not None: n_fig_columns += n_response
 
     n_rows = 10
     n_pages = n_combinations // n_rows
 
     if n_combinations % n_rows:
-        n_pages+= 1
+        n_pages += 1
 
     pdf = PdfPages(save_path)
     combination_counter = 0
@@ -94,8 +116,8 @@ def plot(
 
         fig, axes = plt.subplots(
             n_rows_current_page,
-            n_columns,
-            figsize=(n_columns * 5, n_rows_current_page * 3),
+            n_fig_columns,
+            figsize=(n_fig_columns * 5, n_rows_current_page * 3),
             constrained_layout=True,
             squeeze=False
         )
@@ -176,6 +198,7 @@ def plot(
                 j += 1
             combination_counter += 1
         pdf.savefig(fig)
+        plt.close()
 
     pdf.close()
     plt.show()

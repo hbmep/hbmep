@@ -51,3 +51,5 @@ class Site:
     data = "data"
     obs = "obs"
 
+    gamma_scale_offset = "gamma_scale_offset"
+    gamma_scale_slope = "gamma_scale_slope"
