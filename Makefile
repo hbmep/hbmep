@@ -24,12 +24,11 @@ build-base: check-env
 build: build-base
 	@source .venv/bin/activate && \
 	pip install --upgrade pip && \
-	pip install -r requirements.txt && \
-	pip install -e src/hb-mep
+	pip install .
 
 run:
 	@source .venv/bin/activate && \
-	python -m hb_mep run \
+	python -m hbmep run \
 	--job=$(job) \
 	--model=$(model) \
 	--dataset=$(dataset) \
