@@ -1,5 +1,36 @@
-""" Directories """
-REPORTS_DIR = "reports"
+PATHS = "paths"
+CSV_PATH = "csv"
+BUILD_DIR = "build_dir"
+RUN_ID = "run_id"
+
+VARIABLES = "vars"
+SUBJECT = "subject"
+FEATURES = "features"
+INTENSITY = "intensity"
+RESPONSE = "response"
+
+MCMC = "mcmc"
+CHAINS = "chains"
+WARMUP = "warmup"
+SAMPLES = "samples"
+NUM_CHAINS = "num_chains"
+NUM_WARMUP = "num_warmup"
+NUM_SAMPLES = "num_samples"
+
+AESTHETICS = "aesthetics"
+BASE = "base"
+
+RAW = "raw_"
+DATASET_PLOT = "dataset.pdf"
+RECRUITMENT_CURVES = "recruitment_curves.pdf"
+PRIOR_PREDICTIVE = "prior_predictive_check.pdf"
+POSTERIOR_PREDICTIVE = "posterior_predictive_check.pdf"
+
+BASELINE = "Baseline"
+RELU = "ReLU"
+SATURATED_RELU = "Saturated_ReLU"
+RECTIFIED_LOGISTIC = "Rectified_Logistic"
+
 
 # """ Variables """
 # PARTICIPANT = config.PARTICIPANT

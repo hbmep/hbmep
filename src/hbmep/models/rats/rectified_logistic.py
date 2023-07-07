@@ -5,17 +5,18 @@ import jax.numpy as jnp
 import numpyro
 import numpyro.distributions as dist
 
-from hbmep.config import Config
-from hbmep.models.baseline import Baseline
+from hbmep.config import MepConfig
+from hbmep.models import Baseline
 from hbmep.models.utils import Site as site
+from hbmep.utils.constants import RECTIFIED_LOGISTIC
 
 logger = logging.getLogger(__name__)
 
 
 class RectifiedLogistic(Baseline):
-    def __init__(self, config: Config):
+    def __init__(self, config: MepConfig):
         super(RectifiedLogistic, self).__init__(config=config)
-        self.name = "Rectified_Logistic"
+        self.name = RECTIFIED_LOGISTIC
 
         self.x_space = np.linspace(0, 800, 2000)
 
@@ -29,69 +30,64 @@ class RectifiedLogistic(Baseline):
         n_subject = np.unique(subject).shape[0]
         n_feature0 = np.unique(feature0).shape[0]
 
-        with numpyro.plate("n_response", self.n_response, dim=-1):
-            with numpyro.plate("n_subject", n_subject, dim=-2):
+        with numpyro.plate(site.n_response, self.n_response, dim=-1):
+            with numpyro.plate(site.n_subject, n_subject, dim=-2):
                 """ Hyper-priors """
-                a_mean = numpyro.sample(
-                    site.a_mean,
-                    dist.TruncatedNormal(150, 50, low=0)
+                mu_a = numpyro.sample(
+                    site.mu_a,
+                    dist.TruncatedNormal(self.mu_a[0], self.mu_a[1], low=0)
                 )
-                a_scale = numpyro.sample(site.a_scale, dist.HalfNormal(50))
+                sigma_a = numpyro.sample(site.sigma_a, dist.HalfNormal(self.sigma_a))
 
-                b_scale = numpyro.sample(site.b_scale, dist.HalfNormal(0.1))
+                sigma_b = numpyro.sample(site.sigma_b, dist.HalfNormal(self.sigma_b))
 
-                h_scale = numpyro.sample("h_scale", dist.HalfNormal(5))
-                v_scale = numpyro.sample("v_scale", dist.HalfNormal(10))
-
-                lo_scale = numpyro.sample(site.lo_scale, dist.HalfNormal(0.05))
+                sigma_L = numpyro.sample(site.sigma_L, dist.HalfNormal(self.sigma_L))
+                sigma_H = numpyro.sample(site.sigma_H, dist.HalfNormal(self.sigma_H))
+                sigma_v = numpyro.sample(site.sigma_v, dist.HalfNormal(self.sigma_v))
 
                 with numpyro.plate("n_feature0", n_feature0, dim=-3):
                     """ Priors """
                     a = numpyro.sample(
                         site.a,
-                        dist.TruncatedNormal(a_mean, a_scale, low=0)
+                        dist.TruncatedNormal(mu_a, sigma_a, low=0)
                     )
-                    b = numpyro.sample(site.b, dist.HalfNormal(b_scale))
+                    b = numpyro.sample(site.b, dist.HalfNormal(sigma_b))
 
-                    h = numpyro.sample("h", dist.HalfNormal(h_scale))
-                    v = numpyro.sample("v", dist.HalfNormal(v_scale))
+                    L = numpyro.sample(site.L, dist.HalfNormal(sigma_L))
+                    H = numpyro.sample(site.H, dist.HalfNormal(sigma_H))
+                    v = numpyro.sample(site.v, dist.HalfNormal(sigma_v))
 
-                    lo = numpyro.sample(site.lo, dist.HalfNormal(lo_scale))
-
-                    gamma_scale_offset = numpyro.sample(
-                        site.gamma_scale_offset, dist.HalfCauchy(2.5)
+                    g_1 = numpyro.sample(
+                        site.g_1, dist.HalfCauchy(self.g_1)
                     )
-                    gamma_scale_slope = numpyro.sample(
-                        site.gamma_scale_slope, dist.HalfCauchy(2.5)
+                    g_2 = numpyro.sample(
+                        site.g_2, dist.HalfCauchy(self.g_2)
                     )
 
         """ Model """
-        mean = numpyro.deterministic(
-            site.mean,
-            lo[feature0, subject] + \
+        mu = numpyro.deterministic(
+            site.mu,
+            L[feature0, subject] + \
             jnp.maximum(
                 0,
                 -1 + \
-                (h[feature0, subject] + 1) / \
+                (H[feature0, subject] + 1) / \
                 jnp.power(
                     1 + \
-                    (jnp.power(1 + h[feature0, subject], v[feature0, subject]) - 1) * \
+                    (jnp.power(1 + H[feature0, subject], v[feature0, subject]) - 1) * \
                     jnp.exp(-b[feature0, subject] * (intensity - a[feature0, subject])),
                     1 / v[feature0, subject]
                 )
             )
         )
-
-        scale = numpyro.deterministic(
-            "β",
-            gamma_scale_offset[feature0, subject] + \
-            gamma_scale_slope[feature0, subject] * (1 / mean)
+        beta = numpyro.deterministic(
+            site.beta,
+            g_1[feature0, subject] + g_2[feature0, subject] * (1 / mu)
         )
 
-        """ Observation """
         with numpyro.plate(site.data, n_data):
             return numpyro.sample(
                 site.obs,
-                dist.Gamma(mean * scale, scale).to_event(1),
+                dist.Gamma(mu * beta, beta).to_event(1),
                 obs=response_obs
             )

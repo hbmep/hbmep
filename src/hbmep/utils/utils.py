@@ -35,8 +35,16 @@ def timing(f):
     return wrap
 
 
-def ceil(x: float, base: int = 10):
-    return base * np.ceil(x / base)
+def floor(x: float, base: float = 10):
+    result = base * np.floor(x / base)
+    if base > 0: return int(result)
+    return result
+
+
+def ceil(x: float, base: float = 10):
+    result = base * np.ceil(x / base)
+    if base > 0: return int(result)
+    return result
 
 
 def evaluate_posterior_mean(posterior_samples, prob: float = .95):

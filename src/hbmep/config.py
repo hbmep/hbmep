@@ -1,53 +1,56 @@
-import os
-from typing import Optional
-from pathlib import Path
+import logging
+import tomllib
+
+import pandas as pd
+
+from hbmep.utils import constants as const
+
+logger = logging.getLogger(__name__)
 
 
-class Config():
-    """ This will be set to working directory by os.getcwd(). """
-    """ Don't change """
-    CURRENT_PATH: Optional[Path] = None
+class MepConfig():
+    def __init__(self, toml_path: str):
+        """ Load TOML """
+        with open(toml_path, "rb") as f:
+            cfg = tomllib.load(f)
 
-    """ File (inside data folder) to use for modeling """
-    CSV_PATH: Optional[str] = None
+            paths = cfg[const.PATHS]
+            vars = cfg[const.VARIABLES]
+            mcmc = cfg[const.MCMC]
+            aes = cfg[const.AESTHETICS]
 
-    """ Exogenous """
-    INTENSITY: str = "pulse_amplitude"      # Rats
-    # INTENSITY: str = "intensity"      # Human
+        """ Paths """
+        self.TOML_PATH: str = toml_path
+        self.CSV_PATH: str = paths[const.CSV_PATH]
+        self.BUILD_DIR: str = paths[const.BUILD_DIR]
+        self.RUN_ID: str = paths[const.RUN_ID]
 
-    """ Participant """
-    SUBJECT: str = "participant"
+        """ Variables """
+        self.SUBJECT: str = vars[const.SUBJECT]
+        self.FEATURES: list[str] = vars[const.FEATURES]
+        self.INTENSITY: str = vars[const.INTENSITY]
+        self.RESPONSE: list[str] = vars[const.RESPONSE]
 
-    """ Features """
-    # FEATURES: list[str] = ["segment", "laterality"]
-    FEATURES: list[str] = ["compound_position"]
+        """ Preprocess parameters """
+        self.PREPROCESS_PARAMS: dict[str, int] = {
+            "scalar_intensity": 1,
+            "scalar_response": [1] * len(self.RESPONSE),
+            "min_observations": 0
+        }
 
-    """ Endogenous """
-    RESPONSE: str = ["auc_3"]     # Rats
-    # RESPONSE: str = ["auc_1"]     # Rats
-    # RESPONSE: str = ["auc"]     # Human
-    # ["LBiceps", "LFCR", "LECR", "LTriceps", "LADM", "LDeltoid", "LBicepsFemoris", "RBiceps"]
+        """ MCMC parameters """
+        self.MCMC_PARAMS: dict[str, int] = {
+            const.NUM_CHAINS: mcmc[const.CHAINS],
+            const.NUM_WARMUP: mcmc[const.WARMUP],
+            const.NUM_SAMPLES: mcmc[const.SAMPLES]
+        }
 
-    """ Preprocess parameters """
-    PREPROCESS_PARAMS: dict[str, int] = {
-        "scalar_intensity": 1,
-        "scalar_response": [1] * 1,
-        "min_observations": 0
-    }       # Rats
-    # PREPROCESS_PARAMS: dict[str, int] = {
-    #     "scalar_intensity": 1,
-    #     "scalar_response": [1],
-    #     "min_observations": 0
-    # }       # Rats
-    # PREPROCESS_PARAMS: dict[str, int] = {
-    #     "scalar_intensity": 1000,
-    #     "scalar_response": [1],
-    #     "min_observations": 0
-    # }       # Human
+        """ Aesthetics """
+        self.BASE = aes[const.BASE]
 
-    """ MCMC parameters """
-    MCMC_PARAMS: dict[str, int] = {
-        "num_chains": 4,
-        "num_warmup": 4000,
-        "num_samples": 6000
-    }
+    def validate(self):
+        logger.info("Verifying configuration ...")
+        # df = pd.read_csv(self.csv_path)
+        # assert set(self.columns) <= set(df.columns)
+        logger.info("Success!")
+        return
