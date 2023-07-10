@@ -22,14 +22,7 @@ pip install hbmep
 
 ```
 
-### Install package
-```
-pip install -e src/hb-mep
-
-```
-
 Tutorial: https://github.com/hbmep/hbmep/blob/dev/notebooks/tutorial.ipynb
-
 
 ## To do
 
