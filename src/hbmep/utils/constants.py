@@ -20,16 +20,19 @@ NUM_SAMPLES = "num_samples"
 AESTHETICS = "aesthetics"
 BASE = "base"
 
+MODEL = "model"
+LINK = "link"
+
 RAW = "raw_"
 DATASET_PLOT = "dataset.pdf"
 RECRUITMENT_CURVES = "recruitment_curves.pdf"
 PRIOR_PREDICTIVE = "prior_predictive_check.pdf"
 POSTERIOR_PREDICTIVE = "posterior_predictive_check.pdf"
 
-BASELINE = "Baseline"
-RELU = "ReLU"
-SATURATED_RELU = "Saturated_ReLU"
-RECTIFIED_LOGISTIC = "Rectified_Logistic"
+BASELINE = "baseline"
+RELU = "relu"
+SATURATED_RELU = "saturated_reLU"
+RECTIFIED_LOGISTIC = "rectified_logistic"
 
 
 # """ Variables """

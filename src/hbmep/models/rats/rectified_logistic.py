@@ -16,9 +16,19 @@ logger = logging.getLogger(__name__)
 class RectifiedLogistic(Baseline):
     def __init__(self, config: MepConfig):
         super(RectifiedLogistic, self).__init__(config=config)
-        self.name = RECTIFIED_LOGISTIC
+        self.link = RECTIFIED_LOGISTIC
 
-        self.x_space = np.linspace(0, 800, 2000)
+        self.mu_a = config.PRIORS[site.mu_a]
+        self.sigma_a = config.PRIORS[site.sigma_a]
+
+        self.sigma_b = config.PRIORS[site.sigma_b]
+
+        self.sigma_L = config.PRIORS[site.sigma_L]
+        self.sigma_H = config.PRIORS[site.sigma_H]
+        self.sigma_v = config.PRIORS[site.sigma_v]
+
+        self.g_1 = config.PRIORS[site.g_1]
+        self.g_2 = config.PRIORS[site.g_2]
 
     def _model(self, subject, features, intensity, response_obs=None):
         intensity = intensity.reshape(-1, 1)

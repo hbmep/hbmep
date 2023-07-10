@@ -38,11 +38,12 @@ logger = logging.getLogger(__name__)
 class Baseline(MepDataset):
     def __init__(self, config: MepConfig):
         super(Baseline, self).__init__(config=config)
-        self.model_name = BASELINE
+        self.link = BASELINE
         self.random_state = 0
         self.rng_key = jax.random.PRNGKey(self.random_state)
-
+        self.base = config.BASE
         self.mcmc_params = config.MCMC_PARAMS
+
         self.recruitment_curves_path = os.path.join(self.run_dir, RECRUITMENT_CURVES)
         self.prior_predictive_path = os.path.join(self.run_dir, PRIOR_PREDICTIVE)
         self.posterior_predictive = os.path.join(self.run_dir, POSTERIOR_PREDICTIVE)

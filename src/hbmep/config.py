@@ -13,11 +13,13 @@ class MepConfig():
         """ Load TOML """
         with open(toml_path, "rb") as f:
             cfg = tomllib.load(f)
+            self._validate()
 
             paths = cfg[const.PATHS]
             vars = cfg[const.VARIABLES]
             mcmc = cfg[const.MCMC]
             aes = cfg[const.AESTHETICS]
+            model = cfg[const.MODEL]
 
         """ Paths """
         self.TOML_PATH: str = toml_path
@@ -48,7 +50,11 @@ class MepConfig():
         """ Aesthetics """
         self.BASE = aes[const.BASE]
 
-    def validate(self):
+        """ Model """
+        self.LINK = model[const.LINK]
+        self.PRIORS = cfg[self.LINK]
+
+    def _validate(self):
         logger.info("Verifying configuration ...")
         # df = pd.read_csv(self.csv_path)
         # assert set(self.columns) <= set(df.columns)
