@@ -12,7 +12,6 @@ from matplotlib.backends.backend_pdf import PdfPages
 
 import jax
 import numpyro
-import numpyro.distributions as dist
 from numpyro.infer import MCMC, NUTS, Predictive
 
 from hbmep.config import MepConfig
@@ -49,55 +48,7 @@ class Baseline(MepDataset):
         self.posterior_predictive = os.path.join(self.run_dir, POSTERIOR_PREDICTIVE)
 
     def _model(self, subject, features, intensity, response_obs=None):
-        intensity = intensity.reshape(-1, 1)
-        intensity = np.tile(intensity, (1, self.n_response))
-
-        feature0 = features[0].reshape(-1,)
-
-        n_data = intensity.shape[0]
-        n_subject = np.unique(subject).shape[0]
-        n_feature0 = np.unique(feature0).shape[0]
-
-        with numpyro.plate("n_feature0", n_feature0, dim=-1):
-            """ Hyperpriors """
-            a_mean = numpyro.sample(
-                "a_mean",
-                dist.TruncatedDistribution(dist.Normal(150, 50), low=0)
-            )
-
-            a_scale = numpyro.sample(site.a_scale, dist.HalfNormal(20))
-            b_scale = numpyro.sample(site.b_scale, dist.HalfNormal(100))
-            lo_scale = numpyro.sample(site.lo_scale, dist.HalfNormal(5))
-
-            with numpyro.plate("n_subject", n_subject, dim=-2):
-                """ Priors """
-                a = numpyro.sample(
-                    site.a,
-                    dist.TruncatedDistribution(dist.Normal(a_mean, a_scale), low=0)
-                )
-                b = numpyro.sample(site.b, dist.HalfNormal(b_scale))
-
-                lo = numpyro.sample(site.lo, dist.HalfNormal(lo_scale))
-
-                noise_offset = numpyro.sample(
-                    site.noise_offset,
-                    dist.HalfCauchy(0.01)
-                )
-                noise_slope = numpyro.sample(
-                    site.noise_slope,
-                    dist.HalfCauchy(0.05)
-                )
-
-        """ Model """
-        mean = \
-            lo[subject, feature0] + \
-            self.link(
-                b[subject, feature0] * (intensity - a[subject, feature0])
-            )
-        noise = noise_offset[subject, feature0] + noise_slope[subject, feature0] * mean
-
-        with numpyro.plate("data", n_data):
-            return numpyro.sample("obs", dist.TruncatedNormal(mean, noise, low=0), obs=response_obs)
+        pass
 
     @timing
     def run_inference(self, df: pd.DataFrame) -> tuple[numpyro.infer.mcmc.MCMC, dict]:
@@ -112,7 +63,7 @@ class Baseline(MepDataset):
         mcmc = MCMC(nuts_kernel, **self.mcmc_params)
         rng_key = jax.random.PRNGKey(self.random_state)
 
-        logger.info(f"Running inference with {self.model_name} ...")
+        logger.info(f"Running inference with {self.link} ...")
         mcmc.run(rng_key, subject, features, intensity, response)
         posterior_samples = mcmc.get_samples()
         return mcmc, posterior_samples
@@ -176,8 +127,8 @@ class Baseline(MepDataset):
     def render_recruitment_curves(
         self,
         df: pd.DataFrame,
+        encoder_dict: dict,
         posterior_samples: dict,
-        encoder_dict: Optional[dict] = None,
         mat: Optional[np.ndarray] = None,
         time: Optional[np.ndarray] = None,
         auc_window: Optional[list[float]] = None
@@ -212,7 +163,10 @@ class Baseline(MepDataset):
             fig, axes = plt.subplots(
                 n_rows_current_page,
                 n_fig_columns,
-                figsize=(n_fig_columns * 5, n_rows_current_page * 3),
+                figsize=(
+                    n_fig_columns * self.subplot_cell_width,
+                    n_rows_current_page * self.subplot_cell_height
+                ),
                 constrained_layout=True,
                 squeeze=False
             )
@@ -394,6 +348,7 @@ class Baseline(MepDataset):
     def render_predictive_check(
         self,
         df: pd.DataFrame,
+        encoder_dict: dict,
         posterior_samples: Optional[dict] = None
     ):
         """ Posterior / Prior Predictive Check """
@@ -428,7 +383,10 @@ class Baseline(MepDataset):
             fig, axes = plt.subplots(
                 n_rows_current_page,
                 n_fig_columns,
-                figsize=(n_fig_columns * 5, n_rows_current_page * 3),
+                figsize=(
+                    n_fig_columns * self.subplot_cell_width,
+                    n_rows_current_page * self.subplot_cell_height
+                ),
                 constrained_layout=True,
                 squeeze=False
             )
@@ -465,12 +423,15 @@ class Baseline(MepDataset):
                     obs_posterior_mean = evaluate_posterior_mean(obs)
                     mu_posterior_mean = evaluate_posterior_mean(mu)
 
-                    """ HPDI Intervals """
+                    """ HPDI intervals """
                     hpdi_obs_95 = evaluate_hpdi_interval(obs, prob=.95)
                     hpdi_obs_85 = evaluate_hpdi_interval(obs, prob=.85)
                     hpdi_obs_65 = evaluate_hpdi_interval(obs, prob=.65)
 
                     hpdi_mu_95 = evaluate_hpdi_interval(mu, prob=.95)
+                    if not is_posterior_check:
+                        hpdi_mu_85 = evaluate_hpdi_interval(mu, prob=.85)
+                        hpdi_mu_65 = evaluate_hpdi_interval(mu, prob=.65)
 
                 """ Iterate over responses """
                 for (r, response) in enumerate(self.response):
@@ -487,17 +448,19 @@ class Baseline(MepDataset):
                     sns.lineplot(
                         x=x_space,
                         y=mu_posterior_mean[:, r],
-                        label=f"Mean {check_type}",
+                        label=f"Mean Recruitment Curve",
                         color="r",
                         alpha=0.4,
                         ax=axes[i, j]
                     )
 
-                    axes[i, j + 1].plot(
-                        x_space,
-                        obs_posterior_mean[:, r],
+                    """ Plots: Predictions """
+                    sns.lineplot(
+                        x=x_space,
+                        y=obs_posterior_mean[:, r],
                         color="k",
-                        label="Mean Prediction"
+                        label=f"Mean Prediction",
+                        ax=axes[i, j + 1]
                     )
                     axes[i, j + 1].fill_between(
                         x_space,
@@ -520,7 +483,6 @@ class Baseline(MepDataset):
                         color="C3",
                         label="65% HPDI"
                     )
-
                     sns.scatterplot(
                         data=temp_df,
                         x=self.intensity,
@@ -530,19 +492,36 @@ class Baseline(MepDataset):
                         ax=axes[i, j + 1]
                     )
 
-                    axes[i, j + 2].plot(
-                        x_space,
-                        mu_posterior_mean[:, r],
+                    """ Plots: Recruitment curves """
+                    sns.lineplot(
+                        x=x_space,
+                        y=mu_posterior_mean[:, r],
                         color="k",
-                        label=f"Mean {check_type}"
+                        label=f"Mean Recruitment Curve",
+                        ax=axes[i, j + 2]
                     )
                     axes[i, j + 2].fill_between(
-                        self.x_space,
+                        x_space,
                         hpdi_mu_95[0, :, r],
                         hpdi_mu_95[1, :, r],
-                        color="paleturquoise",
+                        color="C1",
                         label="95% HPDI"
                     )
+                    if not is_posterior_check:
+                        axes[i, j + 2].fill_between(
+                            x_space,
+                            hpdi_mu_85[0, :, r],
+                            hpdi_mu_85[1, :, r],
+                            color="C2",
+                            label="85% HPDI"
+                        )
+                        axes[i, j + 2].fill_between(
+                            x_space,
+                            hpdi_mu_65[0, :, r],
+                            hpdi_mu_65[1, :, r],
+                            color="C3",
+                            label="65% HPDI"
+                        )
                     sns.scatterplot(
                         data=temp_df,
                         x=self.intensity,
@@ -553,10 +532,16 @@ class Baseline(MepDataset):
                     )
 
                     """ Labels """
-                    title = f"{response} - {tuple(self.columns)} - {combination}"
+                    title = f"{response} - {tuple(self.columns)}\nencoded: {combination}"
+                    combination_inverse = self._invert_combination(
+                        combination=combination,
+                        columns=self.columns,
+                        encoder_dict=encoder_dict
+                    )
+                    title += f" - decoded: {tuple(combination_inverse)}"
                     axes[i, j].set_title(title)
                     axes[i, j + 1].set_title(f"{check_type} Predictive")
-                    axes[i, j + 2].set_title(f"{check_type} Predictive Mean")
+                    axes[i, j + 2].set_title(f"{check_type} Predictive Recruitment Curves")
 
                     """ Ticks """
                     for k in [j, j + 1, j + 2]:

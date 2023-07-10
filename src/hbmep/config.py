@@ -10,7 +10,7 @@ logger = logging.getLogger(__name__)
 
 class MepConfig():
     def __init__(self, toml_path: str):
-        """ Load TOML """
+        """ Load TOML config and validate """
         with open(toml_path, "rb") as f:
             cfg = tomllib.load(f)
             self._validate()

@@ -24,7 +24,13 @@ build-base: check-env
 build: build-base
 	@source .venv/bin/activate && \
 	pip install --upgrade pip && \
-	pip install -e .
+	pip install .
+
+.PHONY: build-dev
+build-dev: build-base
+	@source .venv/bin/activate && \
+	pip install --upgrade pip && \
+	pip install -e .[dev]
 
 run:
 	@source .venv/bin/activate && \

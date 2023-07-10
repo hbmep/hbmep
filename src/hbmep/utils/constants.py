@@ -31,7 +31,7 @@ POSTERIOR_PREDICTIVE = "posterior_predictive_check.pdf"
 
 BASELINE = "baseline"
 RELU = "relu"
-SATURATED_RELU = "saturated_reLU"
+SATURATED_RELU = "saturated_relu"
 RECTIFIED_LOGISTIC = "rectified_logistic"
 
 

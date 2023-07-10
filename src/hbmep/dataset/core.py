@@ -21,15 +21,11 @@ logger = logging.getLogger(__name__)
 
 class MepDataset:
     def __init__(self, config: MepConfig):
+        self.toml_path = config.TOML_PATH
         self.csv_path = config.CSV_PATH
         self.build_dir = config.BUILD_DIR
         self.run_id = config.RUN_ID
         self.run_dir = os.path.join(self.build_dir, self.run_id)
-
-        self._make_dir(dir=self.run_dir)
-        logger.info(f"Initialized {self.run_dir} for storing artefacts")
-        self._copy(src=config.TOML_PATH, dst=self.run_dir)
-        logger.info(f"Copied config to {self.run_dir}")
 
         self.subject = config.SUBJECT
         self.features = config.FEATURES
@@ -42,7 +38,10 @@ class MepDataset:
 
         self.preprocess_params = config.PREPROCESS_PARAMS
         self.dataset_plot_path = os.path.join(self.run_dir, DATASET_PLOT)
+
         self.base = config.BASE
+        self.subplot_cell_width = 5
+        self.subplot_cell_height = 3
 
     def _make_dir(self, dir: str):
         Path(dir).mkdir(parents=True, exist_ok=True)
@@ -133,6 +132,11 @@ class MepDataset:
         df: Optional[pd.DataFrame] = None,
         mat: Optional[np.ndarray] = None
     ):
+        self._make_dir(dir=self.run_dir)
+        logger.info(f"Initialized {self.run_dir} for storing artefacts")
+        self._copy(src=self.toml_path, dst=self.run_dir)
+        logger.info(f"Copied config to {self.run_dir}")
+
         if df is None:
             csv_path = self.csv_path
             logger.info(f"Reading data from {csv_path} ...")
@@ -147,7 +151,7 @@ class MepDataset:
     def plot(
         self,
         df: pd.DataFrame,
-        encoder_dict: Optional[dict] = None,
+        encoder_dict: dict,
         mat: Optional[np.ndarray] = None,
         time: Optional[np.ndarray] = None,
         auc_window: Optional[list[float]] = None
@@ -182,7 +186,10 @@ class MepDataset:
             fig, axes = plt.subplots(
                 n_rows_current_page,
                 n_fig_columns,
-                figsize=(n_fig_columns * 5, n_rows_current_page * 3),
+                figsize=(
+                    n_fig_columns * self.subplot_cell_width,
+                    n_rows_current_page * self.subplot_cell_height
+                ),
                 constrained_layout=True,
                 squeeze=False
             )
@@ -205,25 +212,26 @@ class MepDataset:
                 """ Response KDE """
                 sns.kdeplot(temp_df[self.response], ax=axes[i, 0])
 
-                title = f"{self.columns} - {combination}"
-                axes[i, 0].set_title(title)
-                axes[i, 0].legend(loc="upper right", labels=self.response)
-
                 """ Log Response KDE """
                 sns.kdeplot(np.log(temp_df[self.response]), ax=axes[i, 1])
+
+                """ Labels """
+                title = f"{tuple(self.columns)} - encoded: {combination}"
+                axes[i, 0].set_title(title)
+                combination_inverse = self._invert_combination(
+                    combination=combination,
+                    columns=self.columns,
+                    encoder_dict=encoder_dict
+                )
+                title = f"decoded: {combination_inverse}"
+                axes[i, 1].set_title(title)
+
+                """ Legends """
+                axes[i, 0].legend(loc="upper right", labels=self.response)
                 axes[i, 1].legend(
                     loc="upper right",
                     labels=["log " + r for r in self.response]
                 )
-
-                """ Inverted labels """
-                if encoder_dict is not None:
-                    combination_inverse = self._invert_combination(
-                        combination=combination,
-                        columns=self.columns,
-                        encoder_dict=encoder_dict
-                    )
-                    axes[i, 1].set_title(combination_inverse)
 
                 j = 2
                 for response in self.response:
@@ -271,7 +279,7 @@ class MepDataset:
                     ax.set_xlim(left=min_intensity, right=max_intensity)
                     ax.set_xlabel(f"{self.intensity}")
                     ax.set_ylabel(f"{response}")
-                    ax.set_title("MEP Size (AUC)")
+                    ax.set_title(f"{response} - MEP Size")
 
                     j += 1
 
