@@ -1,0 +1,50 @@
+[paths]
+csv = "/home/vishu/data/mock.csv"
+build_dir = "/home/vishu/repos/hbmep/reports"
+run_id = "test_run_01"
+
+[vars]
+subject = "participant"
+features = ["compound_position"]
+intensity = "pulse_amplitude"
+response = ["auc_1", "auc_3"]
+
+[mcmc]
+chains = 4
+warmup = 4000
+samples = 6000
+
+[aesthetics]
+base = 20
+
+[model]
+link = "rectified_logistic"
+
+[rectified_logistic]
+"µ_a" = [150, 20]
+"σ_a" = 20
+"σ_b" = 0.5
+"σ_L" = 0.05
+"σ_H" = 50
+"σ_v" = 5
+"g_1" = 20
+"g_2" = 20
+"p" = 10
+
+[saturated_relu]
+"µ_a" = [150, 50]
+"σ_a" = 50
+"σ_b" = 0.1
+"σ_L" = 0.05
+"σ_H" = 5
+"σ_v" = 10
+
+[relu]
+"µ_a" = [150, 50]
+"σ_a" = 50
+"σ_b" = 0.1
+"σ_L" = 0.05
+"σ_H" = 5
+"σ_v" = 10
+"g_1" = 20
+"g_2" = 20

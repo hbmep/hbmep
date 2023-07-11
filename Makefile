@@ -1,29 +1,42 @@
 SHELL := /bin/bash
 CWD := $(dir $(abspath $(lastword $(MAKEFILE_LIST))))
 
-model ?= baseline
+export
+
+python ?= 3.11
+job ?= inference
+model ?= Baseline
+dataset ?= rats
+tag ?= latest
+
+.PHONY: check-env
+check-env:
+PYTHON3_OK := $(shell python3 --version 2>&1)
+ifeq ('$(PYTHON3_OK)','')
+    $(error package 'python3' not found)
+endif
 
 .PHONY: build-base
-build-base:
-	@python3 -m venv .venv
+build-base: check-env
+	@python$(python) -m venv .venv
 
 .PHONY: build
 build: build-base
 	@source .venv/bin/activate && \
 	pip install --upgrade pip && \
-	pip install -r requirements.txt && \
-	pip install -e src/hb-mep
+	pip install .
+
+.PHONY: build-dev
+build-dev: build-base
+	@source .venv/bin/activate && \
+	pip install --upgrade pip && \
+	pip install -e .[dev]
 
 run:
 	@source .venv/bin/activate && \
-	python -m hb_mep run --model=$(model)
-
-.PHONY: kernel
-kernel:
-	@source .venv/bin/activate && \
-	python -m ipykernel install --user --name=hb-mep-ipython
-
-.PHONY: server
-server:
-	@source .venv/bin/activate && \
-	jupyter notebook .
+	python -m hbmep run \
+	--job=$(job) \
+	--model=$(model) \
+	--dataset=$(dataset) \
+	--id=$(id) \
+	--tag=$(tag)

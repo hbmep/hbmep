@@ -2,17 +2,8 @@ import logging
 from time import time
 from functools import wraps
 
-import matplotlib.pyplot as plt
-import seaborn as sns
 import numpy as np
-import pandas as pd
-
-from hb_mep.utils.constants import (
-    INTENSITY,
-    RESPONSE,
-    PARTICIPANT,
-    FEATURES
-)
+from numpyro.diagnostics import hpdi
 
 logger = logging.getLogger(__name__)
 
@@ -44,27 +35,23 @@ def timing(f):
     return wrap
 
 
-@timing
-def plot(df: pd.DataFrame):
-    columns = [PARTICIPANT] + FEATURES
-    combinations = \
-        df \
-        .groupby(by=columns) \
-        .size() \
-        .to_frame("counts") \
-        .reset_index().copy()
-    combinations = combinations[columns].apply(tuple, axis=1).tolist()
-    n_combinations = len(combinations)
+def floor(x: float, base: float = 10):
+    result = base * np.floor(x / base)
+    if base > 0: return int(result)
+    return result
 
-    fig, axes = plt.subplots(
-        n_combinations, 1, figsize=(8, n_combinations * 3), constrained_layout=True
-    )
 
-    for i, c in enumerate(combinations):
-        idx = df[columns].apply(tuple, axis=1).isin([c])
-        temp_df = df[idx].reset_index(drop=True).copy()
+def ceil(x: float, base: float = 10):
+    result = base * np.ceil(x / base)
+    if base > 0: return int(result)
+    return result
 
-        sns.scatterplot(data=temp_df, x=INTENSITY, y=RESPONSE, ax=axes[i])
-        axes[i].set_title(f'Actual: Combination:{c}, {RESPONSE}')
 
-    return fig
+def evaluate_posterior_mean(posterior_samples, prob: float = .95):
+    posterior_mean = posterior_samples.mean(axis=0)
+    return posterior_mean
+
+
+def evaluate_hpdi_interval(posterior_samples, prob: float = .95):
+    hpdi_interval = hpdi(posterior_samples, prob=prob)
+    return hpdi_interval

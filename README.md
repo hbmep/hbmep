@@ -2,11 +2,7 @@
 
 ## Setup Instructions
 
-### Move into top-level directory
-```
-cd hb-mep
-
-```
+Requires Python >=3.11
 
 ### Create environment
 ```
@@ -20,42 +16,16 @@ source .venv/bin/activate
 
 ```
 
-### Install dependencies
+### Install hbmep
 ```
-pip install -r requirements.txt
-
-```
-
-### Install package
-```
-pip install -e src/hb-mep
+pip install hbmep
 
 ```
 
-### Run inference
-```
-python -m hb_mep run
-
-```
-
-### Install jupyter kernel
-```
-python -m ipykernel install --user --name=hb-mep-ipython
-
-```
-
-### Run jupyter server
-```
-jupyter notebook notebooks/
-
-```
-
-You can now use the kernel `hb-mep-ipython` to run notebooks.
-
+Tutorial: https://github.com/hbmep/hbmep/blob/dev/notebooks/tutorial.ipynb
 
 ## To do
 
 - Add About section
+- Create tutorial docs
 - Add tests
-- Make code publish-ready
-- Create docs with usage instructions

@@ -1,0 +1,48 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "hbmep"
+version = "0.1.0"
+authors = [
+    { name="Vishweshwar Tyagi, James R. McIntosh", email="vt2353@cumc.columbia.edu" }
+]
+description = "Package for hierarchical Bayesian modeling of Motor Evoked Potential (MEP) size"
+readme = "README.md"
+requires-python = ">=3.11"
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Science/Research",
+    "Intended Audience :: Developers",
+    "Topic :: Software Development",
+    "Topic :: Scientific/Engineering",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3 :: Only",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: Microsoft :: Windows",
+    "Operating System :: POSIX",
+    "Operating System :: Unix",
+    "Operating System :: MacOS"
+]
+dependencies = [
+    "numpy==1.24.2",
+    "pandas==2.0.2",
+    "scikit-learn==1.2.1",
+    "jax[cpu]==0.4.11",
+    "numpyro[cpu]==0.12.1",
+    "arviz==0.15.1",
+    "matplotlib==3.7.0",
+    "seaborn==0.12.2"
+]
+
+[project.optional-dependencies]
+dev = [
+    "jupyter==1.0.0"
+]
+
+[project.urls]
+"Homepage" = "https://github.com/hbmep/hbmep"
+"Bug Tracker" = "https://github.com/hbmep/hbmep/issues"
