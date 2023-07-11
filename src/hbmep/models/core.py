@@ -2,12 +2,13 @@ import logging
 from typing import Optional
 
 import pandas as pd
-import numpy as np
 import numpyro
 
 from hbmep.config import MepConfig
-from hbmep.models import Baseline
-from hbmep.models.rats import RectifiedLogistic
+from hbmep.models import (
+    Baseline,
+    RectifiedLogistic
+)
 
 logger = logging.getLogger(__name__)
 
@@ -28,17 +29,12 @@ class Model:
         self,
         df: pd.DataFrame,
         encoder_dict: dict,
-        posterior_samples: dict,
-        mat: Optional[np.ndarray] = None,
-        time: Optional[np.ndarray] = None,
-        auc_window: Optional[list[float]] = None
+        posterior_samples: dict
     ):
         self.model.render_recruitment_curves(
             df=df,
             encoder_dict=encoder_dict,
-            posterior_samples=posterior_samples,
-            mat=mat, time=time,
-            auc_window=auc_window
+            posterior_samples=posterior_samples
         )
         return
 

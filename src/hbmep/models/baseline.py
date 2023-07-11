@@ -1,10 +1,10 @@
 import os
 import logging
-from pathlib import Path
 from typing import Optional
 
-import numpy as np
 import pandas as pd
+import numpy as np
+from sklearn.preprocessing import LabelEncoder
 import scipy.stats as stats
 import seaborn as sns
 import matplotlib.pyplot as plt
@@ -128,22 +128,13 @@ class Baseline(MepDataset):
         self,
         df: pd.DataFrame,
         encoder_dict: dict,
-        posterior_samples: dict,
-        mat: Optional[np.ndarray] = None,
-        time: Optional[np.ndarray] = None,
-        auc_window: Optional[list[float]] = None
+        posterior_samples: dict[str,  LabelEncoder]
     ):
-        if mat is not None:
-            assert time is not None
-            assert auc_window is not None
-
         """ Setup pdf layout """
         combinations = self._make_combinations(df=df, columns=self.columns)
         n_combinations = len(combinations)
 
         n_columns_per_response = 3
-        if mat is not None: n_columns_per_response += 1
-
         n_fig_rows = 10
         n_fig_columns = n_columns_per_response * self.n_response
 
@@ -206,41 +197,6 @@ class Baseline(MepDataset):
                 for (r, response) in enumerate(self.response):
                     j = n_columns_per_response * r
 
-                    """ EEG Data """
-                    if mat is not None:
-                        ax = axes[i, j]
-                        temp_mat = mat[ind, :, r]
-
-                        for k in range(temp_mat.shape[0]):
-                            x = temp_mat[k, :]/60 + temp_df[self.intensity].values[k]
-                            ax.plot(x, time, color="green", alpha=.4)
-
-                        ax.axhline(
-                            y=auc_window[0],
-                            color="red",
-                            linestyle='--',
-                            alpha=.4,
-                            label=f"AUC Window {auc_window}"
-                        )
-                        ax.axhline(
-                            y=auc_window[1],
-                            color="red",
-                            linestyle='--',
-                            alpha=.4
-                        )
-
-                        ax.set_xticks(ticks=x_ticks)
-                        ax.tick_params(axis="x", rotation=90)
-                        ax.set_xlim(left=min_intensity, right=max_intensity)
-                        ax.set_ylim(bottom=-0.001, top=auc_window[1] + .005)
-
-                        ax.set_xlabel(f"{self.intensity}")
-                        ax.set_ylabel(f"Time")
-                        ax.legend(loc="upper right")
-                        ax.set_title(f"Motor Evoked Potential")
-
-                        j += 1
-
                     """ Plots """
                     sns.scatterplot(
                         data=temp_df,
@@ -256,26 +212,30 @@ class Baseline(MepDataset):
                         ax=axes[i, j + 1]
                     )
 
+                    """ Threshold KDE """
                     sns.kdeplot(
                         x=threshold_posterior[:, r],
                         color="b",
                         ax=axes[i, j + 1],
                         alpha=.4
                     )
-                    sns.lineplot(
-                        x=x_space,
-                        y=mu_posterior_mean[:, r],
-                        label="Mean Posterior",
-                        color="r",
-                        alpha=0.4,
-                        ax=axes[i, j + 1]
-                    )
-
                     sns.kdeplot(
                         x=threshold_posterior[:, r],
                         color="b",
                         ax=axes[i, j + 2]
                     )
+
+                    """ Plots: Recruitment curve """
+                    sns.lineplot(
+                        x=x_space,
+                        y=mu_posterior_mean[:, r],
+                        label="Mean Recruitment Curve",
+                        color="r",
+                        alpha=0.4,
+                        ax=axes[i, j + 1]
+                    )
+
+                    """ Plots: Threshold estimate """
                     axes[i, j + 2].axvline(
                         threshold[r],
                         linestyle="--",
@@ -295,26 +255,20 @@ class Baseline(MepDataset):
                     )
 
                     """ Labels """
-                    title = f"{response} - {tuple(self.columns)} - {combination}"
+                    title = f"{response} - {tuple(self.columns)}\nencoded: {combination}"
+                    combination_inverse = self._invert_combination(
+                        combination=combination,
+                        columns=self.columns,
+                        encoder_dict=encoder_dict
+                    )
+                    title += f"\ndecoded: {tuple(combination_inverse)}"
                     axes[i, j].set_title(title)
-
-                    """ Inverted labels """
-                    if encoder_dict is not None:
-                        combination_inverse = self._invert_combination(
-                            combination=combination,
-                            colums=self.columns,
-                            encoder_dict=encoder_dict
-                        )
-                        title = f"{response} - {tuple(combination_inverse)}"
-                    else:
-                        title = f"{response} - Model Fit"
-
-                    axes[i, j + 1].set_title(title)
+                    axes[i, j + 1].set_title("Model Fit")
 
                     skew = stats.skew(a=threshold_posterior[:, r])
                     kurt = stats.kurtosis(a=threshold_posterior[:, r])
 
-                    title = f"{response} - TH: {threshold[r]:.2f}"
+                    title = f"TH: {threshold[r]:.2f}"
                     title += f", CI: ({hpdi_interval[:, r][0]:.1f}, {hpdi_interval[:, r][1]:.1f})"
                     title += f", LEN: {hpdi_interval[:, r][1] - hpdi_interval[:, r][0]:.1f}"
                     title += r', $\overline{\mu_3}$'
@@ -330,8 +284,9 @@ class Baseline(MepDataset):
                         ax.set_xlim(left=min_intensity, right=max_intensity)
 
                     """ Legends """
-                    axes[i, j + 1].legend(loc="upper left")
-                    axes[i, j + 2].legend(loc="upper right")
+                    for k in [j + 1, j + 2]:
+                        ax = axes[i, k]
+                        ax.legend(loc="upper left")
 
                 combination_counter += 1
 

@@ -51,8 +51,7 @@ class MepDataset:
         shutil.copy(src, dst)
         return
 
-    def _make_combinations(self, df: pd.DataFrame, columns: list[str]):
-        assert set(columns) <= set(df.columns)
+    def _make_combinations(self, df: pd.DataFrame, columns: list[str]) -> list[tuple[int]]:
         combinations = df \
             .groupby(by=columns) \
             .size() \
@@ -70,7 +69,7 @@ class MepDataset:
             combination: tuple[int],
             columns: list[str],
             encoder_dict: dict[str,  LabelEncoder]
-    ):
+    ) -> tuple:
         combination_inverse = []
         for (column, value) in zip(columns, combination):
             value_inverse = encoder_dict[column].inverse_transform(np.array([value]))[0]
@@ -79,61 +78,29 @@ class MepDataset:
         combination_inverse = tuple(combination_inverse)
         return combination_inverse
 
-    @timing
-    def preprocess(
-        self,
-        df: pd.DataFrame,
-        scalar_intensity: float,
-        scalar_response: list[float],
-        min_observations: int,
-        mat: Optional[np.ndarray] = None
-        ) -> tuple[pd.DataFrame, dict, dict[str,  LabelEncoder]]:
-        assert len(self.response) == len(scalar_response)
-
-        """ Remove zero AUC response """
-        ind = df[self.response].isin([0]).any(axis=1)
+    def _preprocess(self, df: pd.DataFrame) -> tuple[pd.DataFrame, dict[str,  LabelEncoder]]:
+        """ Positive observation constraint  """
+        ind = (df[self.response] <= 0).any(axis=1)
         if ind.sum():
             df = df[~ind].copy()
-            if mat is not None: mat = mat[ind, :, :]
             logger.info(
-                f"Removed {ind.sum()} observation(s) containing zero response"
+                f"Removed {ind.sum()} non-positive observation(s)"
             )
 
-        """ Rescale data """
-        df[self.intensity] = df[self.intensity].apply(lambda x: x * scalar_intensity)
-        df[self.response] = df[self.response] * scalar_response
-
-        """ Mininum-observations constraint """
-        temp_df = df \
-            .groupby(by=[self.subject] + self.features) \
-            .size() \
-            .to_frame('counts') \
-            .reset_index() \
-            .copy()
-
-        temp_df = temp_df[temp_df.counts >= min_observations].copy()
-        keep = list(temp_df[[self.subject] + self.features].apply(tuple, axis=1))
-        ind = df[[self.subject] + self.features].apply(tuple, axis=1).isin(keep)
-        df = df[ind].copy()
-        if mat is not None: mat = mat[ind, :, :]
-
-        """ Encode participants and features """
+        """ Encode """
         encoder_dict = defaultdict(LabelEncoder)
-        df[[self.subject] + self.features] = df[[self.subject] + self.features] \
+        df[self.columns] = df[self.columns] \
             .apply(lambda x: encoder_dict[x.name].fit_transform(x)) \
             .copy()
 
         df.reset_index(inplace=True, drop=True)
-        return df, encoder_dict, mat
+        return df, encoder_dict
 
     @timing
-    def build(
-        self,
-        df: Optional[pd.DataFrame] = None,
-        mat: Optional[np.ndarray] = None
-    ):
+    def build(self, df: Optional[pd.DataFrame] = None) -> tuple[pd.DataFrame, dict[str,  LabelEncoder]]:
         self._make_dir(dir=self.run_dir)
         logger.info(f"Initialized {self.run_dir} for storing artefacts")
+
         self._copy(src=self.toml_path, dst=self.run_dir)
         logger.info(f"Copied config to {self.run_dir}")
 
@@ -142,31 +109,21 @@ class MepDataset:
             logger.info(f"Reading data from {csv_path} ...")
             df = pd.read_csv(csv_path)
 
-        df[[f"{RAW}" + r for r in self.response]] = df[self.response]
         logger.info("Processing data ...")
-        df, encoder_dict, mat = self.preprocess(df=df, **self.preprocess_params, mat=mat)
-        return df, encoder_dict, mat
+        df, encoder_dict = self._preprocess(df=df)
+        return df, encoder_dict
 
     @timing
     def plot(
         self,
         df: pd.DataFrame,
-        encoder_dict: dict,
-        mat: Optional[np.ndarray] = None,
-        time: Optional[np.ndarray] = None,
-        auc_window: Optional[list[float]] = None
+        encoder_dict: dict[str,  LabelEncoder]
     ):
-        if mat is not None:
-            assert time is not None
-            assert auc_window is not None
-
         """ Setup pdf layout """
         combinations = self._make_combinations(df=df, columns=self.columns)
         n_combinations = len(combinations)
 
         n_columns_per_response = 1
-        if mat is not None: n_columns_per_response += 1
-
         n_fig_rows = 10
         n_fig_columns = 2 + n_columns_per_response * self.n_response
 
@@ -235,41 +192,6 @@ class MepDataset:
 
                 j = 2
                 for response in self.response:
-                    """ EEG data """
-                    if mat is not None:
-                        ax = axes[i, j]
-                        temp_mat = mat[ind, :, r]
-
-                        for k in range(temp_mat.shape[0]):
-                            x = temp_mat[k, :]/60 + temp_df[self.intensity].values[k]
-                            ax.plot(x, time, color="green", alpha=.4)
-
-                        ax.axhline(
-                            y=auc_window[0],
-                            color="red",
-                            linestyle='--',
-                            alpha=.4,
-                            label=f"AUC Window {auc_window}"
-                        )
-                        ax.axhline(
-                            y=auc_window[1],
-                            color="red",
-                            linestyle='--',
-                            alpha=.4
-                        )
-
-                        ax.set_xticks(ticks=x_ticks)
-                        ax.tick_params(axis="x", rotation=90)
-                        ax.set_xlim(left=min_intensity, right=max_intensity)
-                        ax.set_ylim(bottom=-0.001, top=auc_window[1] + .005)
-
-                        ax.set_xlabel(f"{self.intensity}")
-                        ax.set_ylabel(f"Time")
-                        ax.legend(loc="upper right")
-                        ax.set_title(f"Motor Evoked Potential")
-
-                        j += 1
-
                     """ Plots """
                     ax = axes[i, j]
                     sns.scatterplot(data=temp_df, x=self.intensity, y=response, ax=ax)
