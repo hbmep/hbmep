@@ -1,7 +1,6 @@
 PATHS = "paths"
 CSV_PATH = "csv"
 BUILD_DIR = "build_dir"
-RUN_ID = "run_id"
 
 VARIABLES = "vars"
 SUBJECT = "subject"
@@ -22,6 +21,13 @@ BASE = "base"
 
 MODEL = "model"
 LINK = "link"
+
+OPTIONAL = "optional"
+MEP_DATA = "mep_data"
+MEP_MATRIX_PATH = "mep_matrix_path"
+MEP_TIME_RANGE = "mep_time_range"
+MEP_SIZE_WINDOW = "mep_size_window"
+MEP_SIZE_TIME_RANGE = "mep_size_time_range"
 
 RAW = "raw_"
 DATASET_PLOT = "dataset.pdf"

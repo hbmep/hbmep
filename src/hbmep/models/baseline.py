@@ -43,9 +43,9 @@ class Baseline(MepDataset):
         self.base = config.BASE
         self.mcmc_params = config.MCMC_PARAMS
 
-        self.recruitment_curves_path = os.path.join(self.run_dir, RECRUITMENT_CURVES)
-        self.prior_predictive_path = os.path.join(self.run_dir, PRIOR_PREDICTIVE)
-        self.posterior_predictive = os.path.join(self.run_dir, POSTERIOR_PREDICTIVE)
+        self.recruitment_curves_path = os.path.join(self.build_dir, RECRUITMENT_CURVES)
+        self.prior_predictive_path = os.path.join(self.build_dir, PRIOR_PREDICTIVE)
+        self.posterior_predictive = os.path.join(self.build_dir, POSTERIOR_PREDICTIVE)
 
     def _model(self, subject, features, intensity, response_obs=None):
         pass
@@ -130,16 +130,24 @@ class Baseline(MepDataset):
         encoder_dict: dict,
         posterior_samples: dict[str,  LabelEncoder]
     ):
+        if self.mep_matrix is not None:
+            mep_matrix = np.load(self.mep_matrix)
+            a, b = self.mep_window
+            time = np.linspace(a, b, mep_matrix.shape[1])
+
         """ Setup pdf layout """
         combinations = self._make_combinations(df=df, columns=self.columns)
         n_combinations = len(combinations)
 
         n_columns_per_response = 3
+        if self.mep_matrix is not None: n_columns_per_response += 1
+
         n_fig_rows = 10
         n_fig_columns = n_columns_per_response * self.n_response
 
         n_pdf_pages = n_combinations // n_fig_rows
         if n_combinations % n_fig_rows: n_pdf_pages += 1
+        logger.info("Rendering recruitment curves ...")
 
         """ Iterate over pdf pages """
         pdf = PdfPages(self.recruitment_curves_path)
@@ -196,6 +204,34 @@ class Baseline(MepDataset):
                 """ Iterate over responses """
                 for (r, response) in enumerate(self.response):
                     j = n_columns_per_response * r
+
+                    """ MEP data """
+                    if self.mep_matrix is not None:
+                        ax = axes[i, j]
+                        temp_mep_matrix = mep_matrix[ind, :, r]
+
+                        for k in range(temp_mep_matrix.shape[0]):
+                            x = temp_mep_matrix[k, :] / 60 + temp_df[self.intensity].values[k]
+                            ax.plot(x, time, color="g", alpha=.4)
+
+                        if self.mep_size_window is not None:
+                            ax.axhline(
+                                y=self.mep_size_window[0], color="r", linestyle="--", alpha=.4, label="MEP Size Window"
+                            )
+                            ax.axhline(
+                                y=self.mep_size_window[1], color="r", linestyle="--", alpha=.4
+                            )
+
+                        ax.set_xticks(ticks=x_ticks)
+                        ax.tick_params(axis="x", rotation=90)
+                        ax.set_xlim(left=min_intensity, right=max_intensity)
+                        ax.set_ylim(bottom=-0.001, top=self.mep_size_window[1] + .005)
+                        ax.set_xlabel(f"{self.intensity}")
+                        ax.set_ylabel(f"Time")
+                        ax.legend(loc="upper right")
+                        ax.set_title(f"{response} - MEP")
+
+                        j += 1
 
                     """ Plots """
                     sns.scatterplot(
@@ -323,6 +359,7 @@ class Baseline(MepDataset):
 
         n_pdf_pages = n_combinations // n_fig_rows
         if n_combinations % n_fig_rows: n_pdf_pages += 1
+        logger.info(f"Rendering {check_type} Predictive Check ...")
 
         """ Iterate over pdf pages """
         pdf = PdfPages(dest_path)

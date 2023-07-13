@@ -24,8 +24,6 @@ class MepDataset:
         self.toml_path = config.TOML_PATH
         self.csv_path = config.CSV_PATH
         self.build_dir = config.BUILD_DIR
-        self.run_id = config.RUN_ID
-        self.run_dir = os.path.join(self.build_dir, self.run_id)
 
         self.subject = config.SUBJECT
         self.features = config.FEATURES
@@ -35,10 +33,13 @@ class MepDataset:
         self.n_features = len(self.features)
         self.n_response = len(self.response)
         self.columns = [self.subject] + self.features
-
         self.preprocess_params = config.PREPROCESS_PARAMS
-        self.dataset_plot_path = os.path.join(self.run_dir, DATASET_PLOT)
 
+        self.mep_matrix = config.MEP_MATRIX_PATH
+        self.mep_window = config.MEP_TIME_RANGE
+        self.mep_size_window = config.MEP_SIZE_TIME_RANGE
+
+        self.dataset_plot_path = os.path.join(self.build_dir, DATASET_PLOT)
         self.base = config.BASE
         self.subplot_cell_width = 5
         self.subplot_cell_height = 3
@@ -79,14 +80,6 @@ class MepDataset:
         return combination_inverse
 
     def _preprocess(self, df: pd.DataFrame) -> tuple[pd.DataFrame, dict[str,  LabelEncoder]]:
-        """ Positive observation constraint  """
-        ind = (df[self.response] <= 0).any(axis=1)
-        if ind.sum():
-            df = df[~ind].copy()
-            logger.info(
-                f"Removed {ind.sum()} non-positive observation(s)"
-            )
-
         """ Encode """
         encoder_dict = defaultdict(LabelEncoder)
         df[self.columns] = df[self.columns] \
@@ -98,11 +91,11 @@ class MepDataset:
 
     @timing
     def build(self, df: Optional[pd.DataFrame] = None) -> tuple[pd.DataFrame, dict[str,  LabelEncoder]]:
-        self._make_dir(dir=self.run_dir)
-        logger.info(f"Initialized {self.run_dir} for storing artefacts")
+        self._make_dir(dir=self.build_dir)
+        logger.info(f"Artefacts will be stored here - {self.build_dir}")
 
-        self._copy(src=self.toml_path, dst=self.run_dir)
-        logger.info(f"Copied config to {self.run_dir}")
+        self._copy(src=self.toml_path, dst=self.build_dir)
+        logger.info(f"Copied config to {self.build_dir}")
 
         if df is None:
             csv_path = self.csv_path
@@ -119,16 +112,24 @@ class MepDataset:
         df: pd.DataFrame,
         encoder_dict: dict[str,  LabelEncoder]
     ):
+        if self.mep_matrix is not None:
+            mep_matrix = np.load(self.mep_matrix)
+            a, b = self.mep_window
+            time = np.linspace(a, b, mep_matrix.shape[1])
+
         """ Setup pdf layout """
         combinations = self._make_combinations(df=df, columns=self.columns)
         n_combinations = len(combinations)
 
         n_columns_per_response = 1
+        if self.mep_matrix is not None: n_columns_per_response += 1
+
         n_fig_rows = 10
         n_fig_columns = 2 + n_columns_per_response * self.n_response
 
         n_pdf_pages = n_combinations // n_fig_rows
         if n_combinations % n_fig_rows: n_pdf_pages += 1
+        logger.info("Plotting dataset ...")
 
         """ Iterate over pdf pages """
         pdf = PdfPages(self.dataset_plot_path)
@@ -191,7 +192,35 @@ class MepDataset:
                 )
 
                 j = 2
-                for response in self.response:
+                for r, response in enumerate(self.response):
+                    """ MEP data """
+                    if self.mep_matrix is not None:
+                        ax = axes[i, j]
+                        temp_mep_matrix = mep_matrix[ind, :, r]
+
+                        for k in range(temp_mep_matrix.shape[0]):
+                            x = temp_mep_matrix[k, :] / 60 + temp_df[self.intensity].values[k]
+                            ax.plot(x, time, color="g", alpha=.4)
+
+                        if self.mep_size_window is not None:
+                            ax.axhline(
+                                y=self.mep_size_window[0], color="r", linestyle="--", alpha=.4, label="MEP Size Window"
+                            )
+                            ax.axhline(
+                                y=self.mep_size_window[1], color="r", linestyle="--", alpha=.4
+                            )
+
+                        ax.set_xticks(ticks=x_ticks)
+                        ax.tick_params(axis="x", rotation=90)
+                        ax.set_xlim(left=min_intensity, right=max_intensity)
+                        ax.set_ylim(bottom=-0.001, top=self.mep_size_window[1] + .005)
+                        ax.set_xlabel(f"{self.intensity}")
+                        ax.set_ylabel(f"Time")
+                        ax.legend(loc="upper right")
+                        ax.set_title(f"{response} - MEP")
+
+                        j += 1
+
                     """ Plots """
                     ax = axes[i, j]
                     sns.scatterplot(data=temp_df, x=self.intensity, y=response, ax=ax)
