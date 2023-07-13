@@ -3,11 +3,8 @@ CWD := $(dir $(abspath $(lastword $(MAKEFILE_LIST))))
 
 export
 
-python ?= 3.11
-job ?= inference
-model ?= Baseline
-dataset ?= rats
-tag ?= latest
+PY_VERSION ?= 3.11
+
 
 .PHONY: check-env
 check-env:
@@ -16,27 +13,28 @@ ifeq ('$(PYTHON3_OK)','')
     $(error package 'python3' not found)
 endif
 
-.PHONY: build-base
-build-base: check-env
-	@python$(python) -m venv .venv
+.PHONY: venv-base
+venv-base: check-env
+	@python$(PY_VERSION) -m venv .venv
 
-.PHONY: build
-build: build-base
+.PHONY: venv
+venv: venv-base
 	@source .venv/bin/activate && \
 	pip install --upgrade pip && \
 	pip install .
 
-.PHONY: build-dev
-build-dev: build-base
+.PHONY: venv-dev
+venv-dev: venv-base
 	@source .venv/bin/activate && \
 	pip install --upgrade pip && \
 	pip install -e .[dev]
 
-run:
+.PHONY: venv-docs
+venv-docs: venv-base
 	@source .venv/bin/activate && \
-	python -m hbmep run \
-	--job=$(job) \
-	--model=$(model) \
-	--dataset=$(dataset) \
-	--id=$(id) \
-	--tag=$(tag)
+	pip install --upgrade pip && \
+	pip install -e .[docs]
+
+.PHONY: clean
+clean:
+	rm -rf .venv
