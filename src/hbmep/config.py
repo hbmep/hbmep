@@ -9,7 +9,7 @@ from hbmep.utils import constants as const
 logger = logging.getLogger(__name__)
 
 
-class MepConfig():
+class Config():
     def __init__(self, toml_path: str):
         """ Load TOML config and validate """
         with open(toml_path, "rb") as f:

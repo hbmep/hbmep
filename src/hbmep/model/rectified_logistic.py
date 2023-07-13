@@ -5,7 +5,7 @@ import jax.numpy as jnp
 import numpyro
 import numpyro.distributions as dist
 
-from hbmep.config import MepConfig
+from hbmep.config import Config
 from hbmep.model import Baseline
 from hbmep.model.utils import Site as site
 from hbmep.utils.constants import RECTIFIED_LOGISTIC
@@ -14,7 +14,7 @@ logger = logging.getLogger(__name__)
 
 
 class RectifiedLogistic(Baseline):
-    def __init__(self, config: MepConfig):
+    def __init__(self, config: Config):
         super(RectifiedLogistic, self).__init__(config=config)
         self.link = RECTIFIED_LOGISTIC
 

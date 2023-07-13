@@ -14,8 +14,8 @@ import jax
 import numpyro
 from numpyro.infer import MCMC, NUTS, Predictive
 
-from hbmep.config import MepConfig
-from hbmep.dataset import MepDataset
+from hbmep.config import Config
+from hbmep.dataset import Dataset
 from hbmep.model.utils import Site as site
 from hbmep.utils import (
     timing,
@@ -34,8 +34,8 @@ from hbmep.utils.constants import (
 logger = logging.getLogger(__name__)
 
 
-class Baseline(MepDataset):
-    def __init__(self, config: MepConfig):
+class Baseline(Dataset):
+    def __init__(self, config: Config):
         super(Baseline, self).__init__(config=config)
         self.link = BASELINE
         self.random_state = 0

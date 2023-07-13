@@ -12,15 +12,15 @@ import seaborn as sns
 import matplotlib.pyplot as plt
 from matplotlib.backends.backend_pdf import PdfPages
 
-from hbmep.config import MepConfig
+from hbmep.config import Config
 from hbmep.utils import (timing, floor, ceil)
-from hbmep.utils.constants import (RAW, DATASET_PLOT)
+from hbmep.utils.constants import DATASET_PLOT
 
 logger = logging.getLogger(__name__)
 
 
-class MepDataset:
-    def __init__(self, config: MepConfig):
+class Dataset:
+    def __init__(self, config: Config):
         self.toml_path = config.TOML_PATH
         self.csv_path = config.CSV_PATH
         self.build_dir = config.BUILD_DIR
