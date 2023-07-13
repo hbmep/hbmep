@@ -42,7 +42,7 @@ dependencies = [
 dev = [
     "jupyter==1.0.0"
 ]
-test = [
+docs = [
     "jupyter==1.0.0",
     "Sphinx==7.0.1"
 ]
