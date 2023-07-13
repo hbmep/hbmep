@@ -5,7 +5,7 @@ import pandas as pd
 import numpyro
 
 from hbmep.config import MepConfig
-from hbmep.models import (
+from hbmep.model import (
     Baseline,
     RectifiedLogistic
 )

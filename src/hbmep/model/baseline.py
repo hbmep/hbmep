@@ -16,7 +16,7 @@ from numpyro.infer import MCMC, NUTS, Predictive
 
 from hbmep.config import MepConfig
 from hbmep.dataset import MepDataset
-from hbmep.models.utils import Site as site
+from hbmep.model.utils import Site as site
 from hbmep.utils import (
     timing,
     floor,
