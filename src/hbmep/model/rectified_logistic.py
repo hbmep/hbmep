@@ -6,8 +6,8 @@ import numpyro
 import numpyro.distributions as dist
 
 from hbmep.config import MepConfig
-from hbmep.models import Baseline
-from hbmep.models.utils import Site as site
+from hbmep.model import Baseline
+from hbmep.model.utils import Site as site
 from hbmep.utils.constants import RECTIFIED_LOGISTIC
 
 logger = logging.getLogger(__name__)

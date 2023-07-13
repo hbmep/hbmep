@@ -1,5 +1,6 @@
 import logging
 import tomllib
+from typing import Optional
 
 import pandas as pd
 
@@ -21,11 +22,13 @@ class MepConfig():
             aes = cfg[const.AESTHETICS]
             model = cfg[const.MODEL]
 
+            mep_data = cfg.get(const.OPTIONAL).get(const.MEP_DATA)
+            mep_size_window = cfg.get(const.OPTIONAL).get(const.MEP_SIZE_WINDOW)
+
         """ Paths """
         self.TOML_PATH: str = toml_path
         self.CSV_PATH: str = paths[const.CSV_PATH]
         self.BUILD_DIR: str = paths[const.BUILD_DIR]
-        self.RUN_ID: str = paths[const.RUN_ID]
 
         """ Variables """
         self.SUBJECT: str = vars[const.SUBJECT]
@@ -48,11 +51,16 @@ class MepConfig():
         }
 
         """ Aesthetics """
-        self.BASE = aes[const.BASE]
+        self.BASE: float = aes[const.BASE]
 
         """ Model """
-        self.LINK = model[const.LINK]
-        self.PRIORS = cfg[self.LINK]
+        self.LINK: str = model[const.LINK]
+        self.PRIORS: dict[str, float] = cfg[self.LINK]
+
+        """ MEP data """
+        self.MEP_MATRIX_PATH: Optional[str] = mep_data.get(const.MEP_MATRIX_PATH)
+        self.MEP_TIME_RANGE: Optional[list[float]] = mep_data.get(const.MEP_TIME_RANGE)
+        self.MEP_SIZE_TIME_RANGE: Optional[list[float]] = mep_size_window.get(const.MEP_SIZE_TIME_RANGE)
 
     def _validate(self):
         logger.info("Verifying configuration ...")
