@@ -1,20 +1,16 @@
-.. hbmep documentation master file, created by
-   sphinx-quickstart on Thu Jul 13 14:13:40 2023.
-   You can adapt this file completely to your liking, but it should at least
-   contain the root `toctree` directive.
+:github_url: https://github.com/hbmep/hbmep/docs
 
-Welcome to hbmep's documentation!
+HBMep documentation
 =================================
 
 .. toctree::
-   :maxdepth: 2
-   :caption: Contents:
+    :maxdepth: 1
 
+    installation
+    getting_started
 
+.. toctree::
+    :maxdepth: 1
+    :caption: User Reference
 
-Indices and tables
-==================
-
-* :ref:`genindex`
-* :ref:`modindex`
-* :ref:`search`
+    hbmep-configuration
