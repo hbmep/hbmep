@@ -42,6 +42,11 @@ dependencies = [
 dev = [
     "jupyter==1.0.0"
 ]
+docs = [
+    "jupyter==1.0.0",
+    "Sphinx<=7.0.1",
+    "sphinx_rtd_theme==1.2.2"
+]
 
 [project.urls]
 "Homepage" = "https://github.com/hbmep/hbmep"

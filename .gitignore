@@ -1,8 +1,20 @@
-.venv
 .DS_Store
-*.egg-info
-**/__pycache__
 data/
 reports/
+
+# Byte-compiled / optimized / DLL files
+**/__pycache__
+
+# Distribution / packaging
+*.egg-info
 dist/
 build/
+
+# Environments
+.venv
+
+# Jupyter Notebook
+.ipynb_checkpoints
+
+# Sphinx documentation
+docs/build
