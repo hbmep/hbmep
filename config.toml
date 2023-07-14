@@ -16,11 +16,11 @@ samples = 6000
 [model]
 link = "rectified_logistic"
 
-[optional.mep_data]
+[optional-mep-data]
 mep_matrix_path = "/home/vishu/data/mock/mep_matrix.npy"    # In .npy format with shape: (No. of rows in csv) x (time) x (No. of responses)
 mep_time_range = [-0.01, 0.025]
 
-[optional.mep_size_window]
+[optional-mep-size-window]
 mep_size_time_range = [0.0015, 0.01]
 
 [rectified_logistic]
