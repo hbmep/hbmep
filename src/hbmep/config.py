@@ -22,8 +22,8 @@ class Config():
             aes = cfg[const.AESTHETICS]
             model = cfg[const.MODEL]
 
-            mep_data = cfg.get(const.OPTIONAL).get(const.MEP_DATA)
-            mep_size_window = cfg.get(const.OPTIONAL).get(const.MEP_SIZE_WINDOW)
+            mep_data = cfg.get(const.MEP_DATA)
+            mep_size_window = cfg.get(const.MEP_SIZE_WINDOW)
 
         """ Paths """
         self.TOML_PATH: str = toml_path
@@ -58,9 +58,16 @@ class Config():
         self.PRIORS: dict[str, float] = cfg[self.LINK]
 
         """ MEP data """
-        self.MEP_MATRIX_PATH: Optional[str] = mep_data.get(const.MEP_MATRIX_PATH)
-        self.MEP_TIME_RANGE: Optional[list[float]] = mep_data.get(const.MEP_TIME_RANGE)
-        self.MEP_SIZE_TIME_RANGE: Optional[list[float]] = mep_size_window.get(const.MEP_SIZE_TIME_RANGE)
+        self.MEP_MATRIX_PATH: Optional[str] = None
+        self.MEP_TIME_RANGE: Optional[list[float]] = None
+        self.MEP_SIZE_TIME_RANGE: Optional[list[float]] = None
+
+        if mep_data is not None:
+            self.MEP_MATRIX_PATH = mep_data.get(const.MEP_MATRIX_PATH)
+            self.MEP_TIME_RANGE = mep_data.get(const.MEP_TIME_RANGE)
+
+        if mep_size_window is not None:
+            self.MEP_SIZE_TIME_RANGE: Optional[list[float]] = mep_size_window.get(const.MEP_SIZE_TIME_RANGE)
 
     def _validate(self):
         logger.info("Verifying configuration ...")
