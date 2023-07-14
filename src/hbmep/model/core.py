@@ -4,7 +4,7 @@ from typing import Optional
 import pandas as pd
 import numpyro
 
-from hbmep.config import MepConfig
+from hbmep.config import Config
 from hbmep.model import (
     Baseline,
     RectifiedLogistic
@@ -14,7 +14,7 @@ logger = logging.getLogger(__name__)
 
 
 class Model:
-    def __init__(self, config: MepConfig):
+    def __init__(self, config: Config):
         SUPPORTED_MODELS = [Baseline, RectifiedLogistic]
 
         model_instances = [m(config) for m in SUPPORTED_MODELS]

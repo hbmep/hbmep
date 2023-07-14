@@ -1,6 +1,6 @@
 [paths]
 csv = "/home/vishu/data/mock/mock.csv"
-build_dir = "/home/vishu/repos/hbmep/reports/test_run_02"
+build_dir = "/home/vishu/repos/reports/test_run_01"
 
 [vars]
 subject = "participant"
