@@ -24,8 +24,8 @@ class Model:
         self.model = model_by_link.get(config.LINK)
         logger.info(f"Initialized {self.model.link} model")
 
-    def load(self):
-        df, encoder_dict = self.model.load()
+    def load(self, df: Optional[pd.DataFrame] = None) -> tuple[pd.DataFrame, dict[str, LabelEncoder]]:
+        df, encoder_dict = self.model.load(df=df)
         return df, encoder_dict
 
     def run_inference(self, df: pd.DataFrame) -> tuple[numpyro.infer.mcmc.MCMC, dict]:
