@@ -81,23 +81,23 @@ class RectifiedLogistic(Baseline):
         """ Model """
         mu = numpyro.deterministic(
             site.mu,
-            L[feature0, subject] + \
-            jnp.maximum(
+            L[feature0, subject]
+            + jnp.maximum(
                 0,
-                -1 + \
-                (H[feature0, subject] + 1) / \
-                jnp.power(
-                    1 + \
-                    (jnp.power(1 + H[feature0, subject], v[feature0, subject]) - 1) * \
-                    jnp.exp(-b[feature0, subject] * (intensity - a[feature0, subject])),
+                -1
+                + (H[feature0, subject] + 1)
+                / jnp.power(
+                    1
+                    + (jnp.power(1 + H[feature0, subject], v[feature0, subject]) - 1)
+                    * jnp.exp(-b[feature0, subject] * (intensity - a[feature0, subject])),
                     1 / v[feature0, subject]
                 )
             )
         )
         beta = numpyro.deterministic(
             site.beta,
-            g_1[feature0, subject] + \
-            g_2[feature0, subject] * jnp.power(1 / mu, p[feature0, subject])
+            g_1[feature0, subject]
+            + g_2[feature0, subject] * jnp.power(1 / mu, p[feature0, subject])
         )
 
         with numpyro.plate(site.data, n_data):
