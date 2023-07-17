@@ -26,6 +26,12 @@ venv-dev: venv-base
 	pip install --upgrade pip && \
 	pip install -e .[dev]
 
+.PHONY: venv-test
+venv-test: venv-base
+	@source .venv/bin/activate && \
+	pip install --upgrade pip && \
+	pip install -e .[test]
+
 .PHONY: venv-docs
 venv-docs: venv-base
 	@source .venv/bin/activate && \
@@ -38,5 +44,8 @@ clean:
 
 run:
 	@source .venv/bin/activate && \
-	python -m hbmep \
-	--config=$(config)
+	python -m hbmep $(config)
+
+test:
+	@source .venv/bin/activate && \
+	pytest

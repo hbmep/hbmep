@@ -67,7 +67,7 @@ class Config():
             self.MEP_TIME_RANGE = mep_data.get(const.MEP_TIME_RANGE)
 
         if mep_size_window is not None:
-            self.MEP_SIZE_TIME_RANGE: Optional[list[float]] = mep_size_window.get(const.MEP_SIZE_TIME_RANGE)
+            self.MEP_SIZE_TIME_RANGE = mep_size_window.get(const.MEP_SIZE_TIME_RANGE)
 
     def _validate(self):
         logger.info("Verifying configuration ...")

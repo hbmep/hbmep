@@ -137,7 +137,7 @@ class Baseline(Dataset):
         self,
         df: pd.DataFrame,
         encoder_dict: dict,
-        posterior_samples: dict[str,  LabelEncoder]
+        posterior_samples: dict[str, LabelEncoder]
     ):
         if self.mep_matrix is not None:
             mep_matrix = np.load(self.mep_matrix)

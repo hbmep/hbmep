@@ -69,7 +69,7 @@ class Dataset:
             self,
             combination: tuple[int],
             columns: list[str],
-            encoder_dict: dict[str,  LabelEncoder]
+            encoder_dict: dict[str, LabelEncoder]
     ) -> tuple:
         combination_inverse = []
         for (column, value) in zip(columns, combination):
@@ -79,7 +79,7 @@ class Dataset:
         combination_inverse = tuple(combination_inverse)
         return combination_inverse
 
-    def _preprocess(self, df: pd.DataFrame) -> tuple[pd.DataFrame, dict[str,  LabelEncoder]]:
+    def _preprocess(self, df: pd.DataFrame) -> tuple[pd.DataFrame, dict[str, LabelEncoder]]:
         """ Encode """
         encoder_dict = defaultdict(LabelEncoder)
         df[self.columns] = df[self.columns] \
@@ -90,7 +90,7 @@ class Dataset:
         return df, encoder_dict
 
     @timing
-    def load(self, df: Optional[pd.DataFrame] = None) -> tuple[pd.DataFrame, dict[str,  LabelEncoder]]:
+    def load(self, df: Optional[pd.DataFrame] = None) -> tuple[pd.DataFrame, dict[str, LabelEncoder]]:
         self._make_dir(dir=self.build_dir)
         logger.info(f"Artefacts will be stored here - {self.build_dir}")
 
@@ -107,7 +107,11 @@ class Dataset:
         return df, encoder_dict
 
     @timing
-    def plot(self, df: pd.DataFrame, encoder_dict: dict[str,  LabelEncoder]):
+    def plot(
+        self,
+        df: pd.DataFrame,
+        encoder_dict: dict[str, LabelEncoder]
+    ):
         if self.mep_matrix is not None:
             mep_matrix = np.load(self.mep_matrix)
             a, b = self.mep_window
@@ -222,7 +226,7 @@ class Dataset:
                     sns.scatterplot(data=temp_df, x=self.intensity, y=response, ax=ax)
 
                     ax.set_xticks(ticks=x_ticks)
-                    ax.tick_params(axis="x",rotation=90)
+                    ax.tick_params(axis="x", rotation=90)
                     ax.set_xlim(left=min_intensity, right=max_intensity)
                     ax.set_xlabel(f"{self.intensity}")
                     ax.set_ylabel(f"{response}")

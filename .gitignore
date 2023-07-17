@@ -18,3 +18,7 @@ build/
 
 # Sphinx documentation
 docs/build
+
+# Unit test / coverage reports
+.coverage
+out/

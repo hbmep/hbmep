@@ -42,11 +42,22 @@ dependencies = [
 dev = [
     "jupyter==1.0.0"
 ]
+test = [
+    "pytest>=7.4.0",
+    "pytest-pycodestyle>=2.3.1",
+    "pytest-cov>=4.1.0"
+]
 docs = [
     "jupyter==1.0.0",
     "Sphinx<=7.0.1",
     "sphinx_rtd_theme==1.2.2"
 ]
+
+[tool.pytest.ini_options]
+minversion = 6.0
+addopts = "-v --color=yes --junit-xml=out/junit/junit.xml --pycodestyle src --cov --cov-report term-missing --doctest-modules"
+junit_family = "xunit2"
+testpaths = ["tests"]
 
 [project.urls]
 "Homepage" = "https://github.com/hbmep/hbmep"

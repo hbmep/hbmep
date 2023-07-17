@@ -31,7 +31,7 @@ class Model:
     def run_inference(self, df: pd.DataFrame) -> tuple[numpyro.infer.mcmc.MCMC, dict]:
         return self.model.run_inference(df)
 
-    def plot(self, df: pd.DataFrame, encoder_dict: dict[str,  LabelEncoder]):
+    def plot(self, df: pd.DataFrame, encoder_dict: dict[str, LabelEncoder]):
         self.model.plot(df=df, encoder_dict=encoder_dict)
         return
 
