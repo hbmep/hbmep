@@ -3,6 +3,7 @@ from typing import Optional
 
 import pandas as pd
 import numpyro
+from sklearn.preprocessing import LabelEncoder
 
 from hbmep.config import Config
 from hbmep.model import (
@@ -21,9 +22,18 @@ class Model:
         model_by_link = {m.link: m for m in model_instances}
 
         self.model = model_by_link.get(config.LINK)
+        logger.info(f"Initialized {self.model.link} model")
+
+    def load(self):
+        df, encoder_dict = self.model.load()
+        return df, encoder_dict
 
     def run_inference(self, df: pd.DataFrame) -> tuple[numpyro.infer.mcmc.MCMC, dict]:
         return self.model.run_inference(df)
+
+    def plot(self, df: pd.DataFrame, encoder_dict: dict[str,  LabelEncoder]):
+        self.model.plot(df=df, encoder_dict=encoder_dict)
+        return
 
     def render_recruitment_curves(
         self,
@@ -49,3 +59,6 @@ class Model:
             posterior_samples=posterior_samples
         )
         return
+
+    def save(self, mcmc: numpyro.infer.mcmc.MCMC):
+        self.model.save(mcmc=mcmc)

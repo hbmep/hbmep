@@ -28,11 +28,11 @@ mep_size_time_range = [0.0015, 0.01]
 "σ_a" = 20
 "σ_b" = 0.5
 "σ_L" = 0.05
-"σ_H" = 50
+"σ_H" = 5
 "σ_v" = 5
+"p" = 10
 "g_1" = 20
 "g_2" = 20
-"p" = 10
 
 [saturated_relu]
 "µ_a" = [150, 50]
@@ -53,4 +53,4 @@ mep_size_time_range = [0.0015, 0.01]
 "g_2" = 20
 
 [aesthetics]
-base = 200
+base = 20
