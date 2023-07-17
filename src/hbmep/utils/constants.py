@@ -15,6 +15,7 @@ SAMPLES = "samples"
 NUM_CHAINS = "num_chains"
 NUM_WARMUP = "num_warmup"
 NUM_SAMPLES = "num_samples"
+SIMULATION = "simulation"
 
 AESTHETICS = "aesthetics"
 BASE = "base"

@@ -1,4 +1,6 @@
 import os
+import random
+import itertools
 import logging
 from typing import Optional
 
@@ -56,8 +58,45 @@ class Baseline(Dataset):
         self.loo_path = os.path.join(self.build_dir, LOO_CSV)
         self.waic_path = os.path.join(self.build_dir, WAIC_CSV)
 
+        self.sim_max_intensity = config.PRIORS[site.mu_a][0] + 2 * config.PRIORS[site.mu_a][1]
+        self.sim_feature_choices = [2, 3, 4]
+        self.sim_max_combinations = 5
+
     def _model(self, subject, features, intensity, response_obs=None):
         pass
+
+    @timing
+    def simulate(self):
+        min_intensity = 0
+        max_intensity = ceil(self.sim_max_intensity, base=self.base)
+        # x_space = np.arange(min_intensity, max_intensity, self.base)
+        x_space = np.arange(0, 360, 4)
+
+        n_subject = 3
+        n_features = [n_subject]
+
+        for _ in range(self.n_features - 1):
+            n_features.append(random.sample(self.sim_feature_choices, k=1)[0])
+
+        n_features.append(2)
+
+        combinations = itertools.product(*[range(i) for i in n_features])
+        combinations = list(combinations)
+
+        n_combinations = min(self.sim_max_combinations, len(combinations))
+        combinations = random.sample(combinations, k=n_combinations)
+
+        combination = combinations[0]
+        logger.info("Simulating data ...")
+        obs = self._predict(intensity=x_space, combination=combination, num_samples=n_combinations)[site.obs]
+
+        df = pd.DataFrame(combinations, columns=self.columns) \
+            .merge(pd.DataFrame(x_space, columns=[self.intensity]), how="cross") \
+            .copy()
+        df = df.sort_values(by=self.columns + [self.intensity]).copy()
+        df[self.response] = obs.reshape(-1, self.n_response)
+        df.reset_index(inplace=True, drop=True)
+        return df
 
     @timing
     def run_inference(self, df: pd.DataFrame) -> tuple[numpyro.infer.mcmc.MCMC, dict]:
