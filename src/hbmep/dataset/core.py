@@ -90,7 +90,7 @@ class Dataset:
         return df, encoder_dict
 
     @timing
-    def build(self, df: Optional[pd.DataFrame] = None) -> tuple[pd.DataFrame, dict[str,  LabelEncoder]]:
+    def load(self, df: Optional[pd.DataFrame] = None) -> tuple[pd.DataFrame, dict[str,  LabelEncoder]]:
         self._make_dir(dir=self.build_dir)
         logger.info(f"Artefacts will be stored here - {self.build_dir}")
 
@@ -107,11 +107,7 @@ class Dataset:
         return df, encoder_dict
 
     @timing
-    def plot(
-        self,
-        df: pd.DataFrame,
-        encoder_dict: dict[str,  LabelEncoder]
-    ):
+    def plot(self, df: pd.DataFrame, encoder_dict: dict[str,  LabelEncoder]):
         if self.mep_matrix is not None:
             mep_matrix = np.load(self.mep_matrix)
             a, b = self.mep_window

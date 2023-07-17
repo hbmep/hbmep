@@ -2,6 +2,7 @@ import os
 import logging
 from typing import Optional
 
+import arviz as az
 import pandas as pd
 import numpy as np
 from sklearn.preprocessing import LabelEncoder
@@ -28,7 +29,11 @@ from hbmep.utils.constants import (
     BASELINE,
     RECRUITMENT_CURVES,
     PRIOR_PREDICTIVE,
-    POSTERIOR_PREDICTIVE
+    POSTERIOR_PREDICTIVE,
+    MCMC_NC,
+    DIAGNOSTICS_CSV,
+    LOO_CSV,
+    WAIC_CSV
 )
 
 logger = logging.getLogger(__name__)
@@ -45,7 +50,11 @@ class Baseline(Dataset):
 
         self.recruitment_curves_path = os.path.join(self.build_dir, RECRUITMENT_CURVES)
         self.prior_predictive_path = os.path.join(self.build_dir, PRIOR_PREDICTIVE)
-        self.posterior_predictive = os.path.join(self.build_dir, POSTERIOR_PREDICTIVE)
+        self.posterior_predictive_path = os.path.join(self.build_dir, POSTERIOR_PREDICTIVE)
+        self.mcmc_path = os.path.join(self.build_dir, MCMC_NC)
+        self.diagnostics_path = os.path.join(self.build_dir, DIAGNOSTICS_CSV)
+        self.loo_path = os.path.join(self.build_dir, LOO_CSV)
+        self.waic_path = os.path.join(self.build_dir, WAIC_CSV)
 
     def _model(self, subject, features, intensity, response_obs=None):
         pass
@@ -344,7 +353,7 @@ class Baseline(Dataset):
     ):
         """ Posterior / Prior Predictive Check """
         is_posterior_check = True
-        dest_path = self.posterior_predictive
+        dest_path = self.posterior_predictive_path
         if posterior_samples is None: is_posterior_check = False
         if posterior_samples is None: dest_path = self.prior_predictive_path
         check_type = "Posterior" if is_posterior_check else "Prior"
@@ -557,3 +566,26 @@ class Baseline(Dataset):
 
         logger.info(f"Saved to {dest_path}")
         return
+
+    @timing
+    def save(self, mcmc: numpyro.infer.mcmc.MCMC):
+        """ Save inference data """
+        logger.info("Saving inference data ...")
+        numpyro_data = az.from_numpyro(mcmc)
+        numpyro_data.to_netcdf(self.mcmc_path)
+        logger.info(f"Saved to {self.mcmc_path}")
+
+        """ Save convergence diagnostics """
+        logger.info("Rendering convergence diagnostics ...")
+        az.summary(data=numpyro_data, hdi_prob=.95).to_csv(self.diagnostics_path)
+        logger.info(f"Saved to {self.diagnostics_path}")
+
+        """ Model evaluation """
+        logger.info("Evaluating model ...")
+        score = az.loo(numpyro_data)
+        logger.info(f"ELPD LOO (Log): {score.elpd_loo:.2f}")
+        score.to_csv(self.loo_path)
+
+        score = az.waic(numpyro_data)
+        logger.info(f"ELPD WAIC (Log): {score.elpd_waic:.2f}")
+        score.to_csv(self.waic_path)

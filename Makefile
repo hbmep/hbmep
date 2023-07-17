@@ -1,10 +1,7 @@
 SHELL := /bin/bash
 CWD := $(dir $(abspath $(lastword $(MAKEFILE_LIST))))
 
-export
-
 PY_VERSION ?= 3.11
-
 
 .PHONY: check-env
 check-env:
@@ -38,3 +35,8 @@ venv-docs: venv-base
 .PHONY: clean
 clean:
 	rm -rf .venv
+
+run:
+	@source .venv/bin/activate && \
+	python -m hbmep \
+	--config=$(config)
