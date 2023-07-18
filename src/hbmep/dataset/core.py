@@ -30,9 +30,11 @@ class Dataset:
         self.intensity = config.INTENSITY
         self.response = config.RESPONSE
 
+        self.combination_columns = [self.subject] + self.features
+        self.regressors = self.combination_columns + [self.intensity]
+
         self.n_features = len(self.features)
         self.n_response = len(self.response)
-        self.columns = [self.subject] + self.features
         self.preprocess_params = config.PREPROCESS_PARAMS
 
         self.mep_matrix = config.MEP_MATRIX_PATH
@@ -82,7 +84,7 @@ class Dataset:
     def _preprocess(self, df: pd.DataFrame) -> tuple[pd.DataFrame, dict[str, LabelEncoder]]:
         """ Encode """
         encoder_dict = defaultdict(LabelEncoder)
-        df[self.columns] = df[self.columns] \
+        df[self.combination_columns] = df[self.combination_columns] \
             .apply(lambda x: encoder_dict[x.name].fit_transform(x)) \
             .copy()
 
@@ -102,6 +104,8 @@ class Dataset:
             logger.info(f"Reading data from {csv_path} ...")
             df = pd.read_csv(csv_path)
 
+        assert not (df[self.response] <= 0).any(axis=1).sum()
+
         logger.info("Processing data ...")
         df, encoder_dict = self._preprocess(df=df)
         return df, encoder_dict
@@ -118,7 +122,7 @@ class Dataset:
             time = np.linspace(a, b, mep_matrix.shape[1])
 
         """ Setup pdf layout """
-        combinations = self._make_combinations(df=df, columns=self.columns)
+        combinations = self._make_combinations(df=df, columns=self.combination_columns)
         n_combinations = len(combinations)
 
         n_columns_per_response = 1
@@ -157,7 +161,7 @@ class Dataset:
                 combination = combinations[combination_counter]
 
                 """ Filter dataframe """
-                ind = df[self.columns].apply(tuple, axis=1).isin([combination])
+                ind = df[self.combination_columns].apply(tuple, axis=1).isin([combination])
                 temp_df = df[ind].reset_index(drop=True).copy()
 
                 """ Tickmarks """
@@ -174,11 +178,11 @@ class Dataset:
                 sns.kdeplot(np.log(temp_df[self.response]), ax=axes[i, 1])
 
                 """ Labels """
-                title = f"{tuple(self.columns)} - encoded: {combination}"
+                title = f"{tuple(self.combination_columns)} - encoded: {combination}"
                 axes[i, 0].set_title(title)
                 combination_inverse = self._invert_combination(
                     combination=combination,
-                    columns=self.columns,
+                    columns=self.combination_columns,
                     encoder_dict=encoder_dict
                 )
                 title = f"decoded: {combination_inverse}"

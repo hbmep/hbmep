@@ -10,6 +10,7 @@ from hbmep.model import (
     Baseline,
     RectifiedLogistic
 )
+from hbmep.utils.constants import SIMULATION
 
 logger = logging.getLogger(__name__)
 
@@ -24,8 +25,11 @@ class Model:
         self.model = model_by_link.get(config.LINK)
         logger.info(f"Initialized {self.model.link} model")
 
-    def load(self):
-        df, encoder_dict = self.model.load()
+    def load(self, df: Optional[pd.DataFrame] = None) -> tuple[pd.DataFrame, dict[str, LabelEncoder]]:
+        if df is None and self.model.csv_path == SIMULATION:
+            df = self.model.simulate()
+
+        df, encoder_dict = self.model.load(df=df)
         return df, encoder_dict
 
     def run_inference(self, df: pd.DataFrame) -> tuple[numpyro.infer.mcmc.MCMC, dict]:

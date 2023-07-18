@@ -1,17 +1,21 @@
 import os
+import random
+import itertools
 import logging
 from typing import Optional
 
-import arviz as az
-import pandas as pd
 import numpy as np
-from sklearn.preprocessing import LabelEncoder
+import pandas as pd
 import scipy.stats as stats
+from sklearn.preprocessing import LabelEncoder
+
+import arviz as az
 import seaborn as sns
 import matplotlib.pyplot as plt
 from matplotlib.backends.backend_pdf import PdfPages
 
 import jax
+import jax.numpy as jnp
 import numpyro
 from numpyro.infer import MCMC, NUTS, Predictive
 
@@ -58,6 +62,42 @@ class Baseline(Dataset):
 
     def _model(self, subject, features, intensity, response_obs=None):
         pass
+
+    @timing
+    def simulate(self):
+        x_space = np.arange(0, 360, 4)
+
+        n_subject = 3
+        n_features = [n_subject]
+        n_features += jax.random.choice(self.rng_key, jnp.array([2, 3, 4]), shape=(self.n_features,)).tolist()
+        n_features[-1] = 2
+
+        combinations = itertools.product(*[range(i) for i in n_features])
+        combinations = list(combinations)
+
+        n_combinations = min(10, len(combinations))
+        ind = jax.random.choice(self.rng_key, len(combinations), shape=(n_combinations,), replace=False)
+        combinations = [combinations[i] for i in ind]
+        combinations = sorted(combinations)
+
+        obs = None
+        num_samples = 100
+        ind = jax.random.choice(self.rng_key, num_samples, shape=(n_combinations,))
+
+        logger.info("Simulating data ...")
+        for i, combination in enumerate(combinations):
+            pred = self._predict(intensity=x_space, combination=combination, num_samples=num_samples)
+            pred = pred[site.obs][ind[i], ...]
+            obs = pred if obs is None else jnp.concatenate([obs, pred], axis=0)
+
+        df = pd.DataFrame(combinations, columns=self.combination_columns) \
+            .merge(pd.DataFrame(x_space, columns=[self.intensity]), how="cross") \
+            .sort_values(by=self.regressors) \
+            .reset_index(drop=True) \
+            .copy()
+
+        df[self.response] = obs
+        return df
 
     @timing
     def run_inference(self, df: pd.DataFrame) -> tuple[numpyro.infer.mcmc.MCMC, dict]:
@@ -136,8 +176,8 @@ class Baseline(Dataset):
     def render_recruitment_curves(
         self,
         df: pd.DataFrame,
-        encoder_dict: dict,
-        posterior_samples: dict[str, LabelEncoder]
+        encoder_dict: dict[str, LabelEncoder],
+        posterior_samples: dict
     ):
         if self.mep_matrix is not None:
             mep_matrix = np.load(self.mep_matrix)
@@ -145,7 +185,7 @@ class Baseline(Dataset):
             time = np.linspace(a, b, mep_matrix.shape[1])
 
         """ Setup pdf layout """
-        combinations = self._make_combinations(df=df, columns=self.columns)
+        combinations = self._make_combinations(df=df, columns=self.combination_columns)
         n_combinations = len(combinations)
 
         n_columns_per_response = 3
@@ -184,7 +224,7 @@ class Baseline(Dataset):
                 combination = combinations[combination_counter]
 
                 """ Filter dataframe """
-                ind = df[self.columns].apply(tuple, axis=1).isin([combination])
+                ind = df[self.combination_columns].apply(tuple, axis=1).isin([combination])
                 temp_df = df[ind].reset_index(drop=True).copy()
 
                 """ Tickmarks """
@@ -300,10 +340,10 @@ class Baseline(Dataset):
                     )
 
                     """ Labels """
-                    title = f"{response} - {tuple(self.columns)}\nencoded: {combination}"
+                    title = f"{response} - {tuple(self.combination_columns)}\nencoded: {combination}"
                     combination_inverse = self._invert_combination(
                         combination=combination,
-                        columns=self.columns,
+                        columns=self.combination_columns,
                         encoder_dict=encoder_dict
                     )
                     title += f"\ndecoded: {tuple(combination_inverse)}"
@@ -348,7 +388,7 @@ class Baseline(Dataset):
     def render_predictive_check(
         self,
         df: pd.DataFrame,
-        encoder_dict: dict,
+        encoder_dict: dict[str, LabelEncoder],
         posterior_samples: Optional[dict] = None
     ):
         """ Posterior / Prior Predictive Check """
@@ -359,7 +399,7 @@ class Baseline(Dataset):
         check_type = "Posterior" if is_posterior_check else "Prior"
 
         """ Setup pdf layout """
-        combinations = self._make_combinations(df=df, columns=self.columns)
+        combinations = self._make_combinations(df=df, columns=self.combination_columns)
         n_combinations = len(combinations)
 
         n_columns_per_response = 3
@@ -397,7 +437,7 @@ class Baseline(Dataset):
                 combination = combinations[combination_counter]
 
                 """ Filter dataframe """
-                ind = df[self.columns].apply(tuple, axis=1).isin([combination])
+                ind = df[self.combination_columns].apply(tuple, axis=1).isin([combination])
                 temp_df = df[ind].reset_index(drop=True).copy()
 
                 """ Tickmarks """
@@ -533,10 +573,10 @@ class Baseline(Dataset):
                     )
 
                     """ Labels """
-                    title = f"{response} - {tuple(self.columns)}\nencoded: {combination}"
+                    title = f"{response} - {tuple(self.combination_columns)}\nencoded: {combination}"
                     combination_inverse = self._invert_combination(
                         combination=combination,
-                        columns=self.columns,
+                        columns=self.combination_columns,
                         encoder_dict=encoder_dict
                     )
                     title += f" - decoded: {tuple(combination_inverse)}"
