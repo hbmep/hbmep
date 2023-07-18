@@ -26,7 +26,7 @@ class Model:
         logger.info(f"Initialized {self.model.link} model")
 
     def load(self, df: Optional[pd.DataFrame] = None) -> tuple[pd.DataFrame, dict[str, LabelEncoder]]:
-        if self.model.csv_path == SIMULATION:
+        if df is None and self.model.csv_path == SIMULATION:
             df = self.model.simulate()
 
         df, encoder_dict = self.model.load(df=df)
