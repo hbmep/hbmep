@@ -27,10 +27,10 @@ class RectifiedLogistic(Baseline):
         self.sigma_H = config.PRIORS[site.sigma_H]
         self.sigma_v = config.PRIORS[site.sigma_v]
 
+        self.p = config.PRIORS[site.p]
+
         self.g_1 = config.PRIORS[site.g_1]
         self.g_2 = config.PRIORS[site.g_2]
-
-        self.p = config.PRIORS[site.p]
 
     def _model(self, subject, features, intensity, response_obs=None):
         intensity = intensity.reshape(-1, 1)
@@ -69,14 +69,14 @@ class RectifiedLogistic(Baseline):
                     H = numpyro.sample(site.H, dist.HalfNormal(sigma_H))
                     v = numpyro.sample(site.v, dist.HalfNormal(sigma_v))
 
+                    p = numpyro.sample(site.p, dist.HalfCauchy(self.p))
+
                     g_1 = numpyro.sample(
                         site.g_1, dist.HalfCauchy(self.g_1)
                     )
                     g_2 = numpyro.sample(
                         site.g_2, dist.HalfCauchy(self.g_2)
                     )
-
-                    p = numpyro.sample(site.p, dist.HalfNormal(self.p))
 
         """ Model """
         mu = numpyro.deterministic(
@@ -97,7 +97,7 @@ class RectifiedLogistic(Baseline):
         beta = numpyro.deterministic(
             site.beta,
             g_1[feature0, subject]
-            + g_2[feature0, subject] * jnp.power(1 / mu, p[feature0, subject])
+            + g_2[feature0, subject] * jnp.power(1 / (mu + 1), p[feature0, subject])
         )
 
         with numpyro.plate(site.data, n_data):
