@@ -46,7 +46,7 @@ to point to your dataset.
 - ``response`` list of dataset columns for the observed MEPs.
 
 See the :ref:`MEP Data Specification <declaring-mep-data>` for
-declating the optional motor evoked potential data in the ``[optional.mep_data]``
+declaring the optional motor evoked potential data in the ``[optional.mep_data]``
 table.
 
 Configuring sampler

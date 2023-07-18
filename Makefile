@@ -46,6 +46,10 @@ run:
 	@source .venv/bin/activate && \
 	python -m hbmep $(config)
 
+html:
+	@source .venv/bin/activate && \
+	sphinx-build -M html docs/source docs/build
+
 test:
 	@source .venv/bin/activate && \
 	pytest
