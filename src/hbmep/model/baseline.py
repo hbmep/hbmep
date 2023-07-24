@@ -183,8 +183,8 @@ class Baseline(Dataset):
         encoder_dict: dict[str, LabelEncoder],
         posterior_samples: dict
     ):
-        if self.mep_matrix is not None:
-            mep_matrix = np.load(self.mep_matrix)
+        if self.mep_matrix_path is not None:
+            mep_matrix = np.load(self.mep_matrix_path)
             a, b = self.mep_window
             time = np.linspace(a, b, mep_matrix.shape[1])
 
@@ -193,7 +193,7 @@ class Baseline(Dataset):
         n_combinations = len(combinations)
 
         n_columns_per_response = 3
-        if self.mep_matrix is not None: n_columns_per_response += 1
+        if self.mep_matrix_path is not None: n_columns_per_response += 1
 
         n_fig_rows = 10
         n_fig_columns = n_columns_per_response * self.n_response
@@ -259,7 +259,7 @@ class Baseline(Dataset):
                     j = n_columns_per_response * r
 
                     """ MEP data """
-                    if self.mep_matrix is not None:
+                    if self.mep_matrix_path is not None:
                         ax = axes[i, j]
                         temp_mep_matrix = mep_matrix[ind, :, r]
 
