@@ -1,6 +1,6 @@
 [paths]
 csv = "/home/vishu/data/mock/mock.csv"
-build_dir = "/home/vishu/repos/reports/test_run_01"
+build_dir = "/home/vishu/hbmep/reports/mock_test"
 
 [vars]
 subject = "participant"
@@ -24,33 +24,14 @@ mep_time_range = [-0.01, 0.025]
 mep_size_time_range = [0.0015, 0.01]
 
 [rectified_logistic]
-"µ_a" = [150, 20]
-"σ_a" = 20
-"σ_b" = 0.5
-"σ_L" = 0.05
-"σ_H" = 5
-"σ_v" = 5
-"p" = 10
-"g_1" = 20
-"g_2" = 20
-
-[saturated_relu]
 "µ_a" = [150, 50]
 "σ_a" = 50
 "σ_b" = 0.1
 "σ_L" = 0.05
 "σ_H" = 5
 "σ_v" = 10
-
-[relu]
-"µ_a" = [150, 50]
-"σ_a" = 50
-"σ_b" = 0.1
-"σ_L" = 0.05
-"σ_H" = 5
-"σ_v" = 10
-"g_1" = 20
-"g_2" = 20
+"g_1" = 0.01
+"g_2" = 0.01
 
 [aesthetics]
 base = 20

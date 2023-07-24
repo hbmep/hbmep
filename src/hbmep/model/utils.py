@@ -10,8 +10,6 @@ class Site:
     g_1 = "g_1"
     g_2 = "g_2"
 
-    p = "p"
-
     """ Hyper-priors """
     mu_a = "µ_a"
     sigma_a = "σ_a"

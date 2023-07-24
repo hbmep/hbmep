@@ -14,9 +14,10 @@ logger = logging.getLogger(__name__)
 
 
 class RectifiedLogistic(Baseline):
+    LINK = RECTIFIED_LOGISTIC
+
     def __init__(self, config: Config):
         super(RectifiedLogistic, self).__init__(config=config)
-        self.link = RECTIFIED_LOGISTIC
 
         self.mu_a = config.PRIORS[site.mu_a]
         self.sigma_a = config.PRIORS[site.sigma_a]
@@ -26,8 +27,6 @@ class RectifiedLogistic(Baseline):
         self.sigma_L = config.PRIORS[site.sigma_L]
         self.sigma_H = config.PRIORS[site.sigma_H]
         self.sigma_v = config.PRIORS[site.sigma_v]
-
-        self.p = config.PRIORS[site.p]
 
         self.g_1 = config.PRIORS[site.g_1]
         self.g_2 = config.PRIORS[site.g_2]
@@ -69,14 +68,8 @@ class RectifiedLogistic(Baseline):
                     H = numpyro.sample(site.H, dist.HalfNormal(sigma_H))
                     v = numpyro.sample(site.v, dist.HalfNormal(sigma_v))
 
-                    p = numpyro.sample(site.p, dist.HalfCauchy(self.p))
-
-                    g_1 = numpyro.sample(
-                        site.g_1, dist.HalfCauchy(self.g_1)
-                    )
-                    g_2 = numpyro.sample(
-                        site.g_2, dist.HalfCauchy(self.g_2)
-                    )
+                    g_1 = numpyro.sample(site.g_1, dist.Exponential(self.g_1))
+                    g_2 = numpyro.sample(site.g_2, dist.Exponential(self.g_2))
 
         """ Model """
         mu = numpyro.deterministic(
@@ -96,13 +89,13 @@ class RectifiedLogistic(Baseline):
         )
         beta = numpyro.deterministic(
             site.beta,
-            g_1[feature0, subject]
-            + g_2[feature0, subject] * jnp.power(1 / (mu + 1), p[feature0, subject])
+            g_1[feature0, subject] + g_2[feature0, subject] * (1 / mu)
         )
 
+        """ Observation """
         with numpyro.plate(site.data, n_data):
             return numpyro.sample(
                 site.obs,
-                dist.Gamma(mu * beta, beta).to_event(1),
+                dist.Gamma(concentration=mu * beta, rate=beta).to_event(1),
                 obs=response_obs
             )
