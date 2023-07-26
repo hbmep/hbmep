@@ -37,7 +37,7 @@ class Dataset:
         self.n_response = len(self.response)
         self.preprocess_params = config.PREPROCESS_PARAMS
 
-        self.mep_matrix = config.MEP_MATRIX_PATH
+        self.mep_matrix_path = config.MEP_MATRIX_PATH
         self.mep_window = config.MEP_TIME_RANGE
         self.mep_size_window = config.MEP_SIZE_TIME_RANGE
 
@@ -116,8 +116,8 @@ class Dataset:
         df: pd.DataFrame,
         encoder_dict: dict[str, LabelEncoder]
     ):
-        if self.mep_matrix is not None:
-            mep_matrix = np.load(self.mep_matrix)
+        if self.mep_matrix_path is not None:
+            mep_matrix = np.load(self.mep_matrix_path)
             a, b = self.mep_window
             time = np.linspace(a, b, mep_matrix.shape[1])
 
@@ -126,7 +126,7 @@ class Dataset:
         n_combinations = len(combinations)
 
         n_columns_per_response = 1
-        if self.mep_matrix is not None: n_columns_per_response += 1
+        if self.mep_matrix_path is not None: n_columns_per_response += 1
 
         n_fig_rows = 10
         n_fig_columns = 2 + n_columns_per_response * self.n_response
@@ -198,7 +198,7 @@ class Dataset:
                 j = 2
                 for r, response in enumerate(self.response):
                     """ MEP data """
-                    if self.mep_matrix is not None:
+                    if self.mep_matrix_path is not None:
                         ax = axes[i, j]
                         temp_mep_matrix = mep_matrix[ind, :, r]
 

@@ -18,12 +18,10 @@ logger = logging.getLogger(__name__)
 class Model:
     def __init__(self, config: Config):
         SUPPORTED_MODELS = [Baseline, RectifiedLogistic]
-
-        model_instances = [m(config) for m in SUPPORTED_MODELS]
-        model_by_link = {m.link: m for m in model_instances}
+        model_by_link = {m.LINK: m for m in SUPPORTED_MODELS}
 
         self.model = model_by_link.get(config.LINK)
-        logger.info(f"Initialized {self.model.link} model")
+        self.model = self.model(config=config)
 
     def load(self, df: Optional[pd.DataFrame] = None) -> tuple[pd.DataFrame, dict[str, LabelEncoder]]:
         if df is None and self.model.csv_path == SIMULATION:

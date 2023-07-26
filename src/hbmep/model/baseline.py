@@ -1,5 +1,4 @@
 import os
-import random
 import itertools
 import logging
 from typing import Optional
@@ -37,16 +36,19 @@ from hbmep.utils.constants import (
     MCMC_NC,
     DIAGNOSTICS_CSV,
     LOO_CSV,
-    WAIC_CSV
+    WAIC_CSV,
+    RESPONSE
 )
 
 logger = logging.getLogger(__name__)
 
 
 class Baseline(Dataset):
+    LINK = BASELINE
+
     def __init__(self, config: Config):
         super(Baseline, self).__init__(config=config)
-        self.link = BASELINE
+
         self.random_state = 0
         self.rng_key = jax.random.PRNGKey(self.random_state)
         self.base = config.BASE
@@ -59,6 +61,8 @@ class Baseline(Dataset):
         self.diagnostics_path = os.path.join(self.build_dir, DIAGNOSTICS_CSV)
         self.loo_path = os.path.join(self.build_dir, LOO_CSV)
         self.waic_path = os.path.join(self.build_dir, WAIC_CSV)
+
+        logger.info(f"Initialized model with {self.LINK} link")
 
     def _model(self, subject, features, intensity, response_obs=None):
         pass
@@ -112,7 +116,7 @@ class Baseline(Dataset):
         mcmc = MCMC(nuts_kernel, **self.mcmc_params)
         rng_key = jax.random.PRNGKey(self.random_state)
 
-        logger.info(f"Running inference with {self.link} ...")
+        logger.info(f"Running inference with {self.LINK} ...")
         mcmc.run(rng_key, subject, features, intensity, response)
         posterior_samples = mcmc.get_samples()
         return mcmc, posterior_samples
@@ -179,8 +183,8 @@ class Baseline(Dataset):
         encoder_dict: dict[str, LabelEncoder],
         posterior_samples: dict
     ):
-        if self.mep_matrix is not None:
-            mep_matrix = np.load(self.mep_matrix)
+        if self.mep_matrix_path is not None:
+            mep_matrix = np.load(self.mep_matrix_path)
             a, b = self.mep_window
             time = np.linspace(a, b, mep_matrix.shape[1])
 
@@ -189,7 +193,7 @@ class Baseline(Dataset):
         n_combinations = len(combinations)
 
         n_columns_per_response = 3
-        if self.mep_matrix is not None: n_columns_per_response += 1
+        if self.mep_matrix_path is not None: n_columns_per_response += 1
 
         n_fig_rows = 10
         n_fig_columns = n_columns_per_response * self.n_response
@@ -255,7 +259,7 @@ class Baseline(Dataset):
                     j = n_columns_per_response * r
 
                     """ MEP data """
-                    if self.mep_matrix is not None:
+                    if self.mep_matrix_path is not None:
                         ax = axes[i, j]
                         temp_mep_matrix = mep_matrix[ind, :, r]
 
@@ -340,13 +344,14 @@ class Baseline(Dataset):
                     )
 
                     """ Labels """
-                    title = f"{response} - {tuple(self.combination_columns)}\nencoded: {combination}"
+                    title = f"{tuple(list(self.combination_columns)[::-1] + [RESPONSE])}"
+                    title += f": {tuple(list(combination)[::-1] + [r])}"
                     combination_inverse = self._invert_combination(
                         combination=combination,
                         columns=self.combination_columns,
                         encoder_dict=encoder_dict
                     )
-                    title += f"\ndecoded: {tuple(combination_inverse)}"
+                    title += f"\ndecoded: {tuple(list(combination_inverse)[::-1] + [response])}"
                     axes[i, j].set_title(title)
                     axes[i, j + 1].set_title("Model Fit")
 
@@ -573,13 +578,14 @@ class Baseline(Dataset):
                     )
 
                     """ Labels """
-                    title = f"{response} - {tuple(self.combination_columns)}\nencoded: {combination}"
+                    title = f"{tuple(list(self.combination_columns)[::-1] + [RESPONSE])}"
+                    title += f": {tuple(list(combination)[::-1] + [r])}"
                     combination_inverse = self._invert_combination(
                         combination=combination,
                         columns=self.combination_columns,
                         encoder_dict=encoder_dict
                     )
-                    title += f" - decoded: {tuple(combination_inverse)}"
+                    title += f"\ndecoded: {tuple(list(combination_inverse)[::-1] + [response])}"
                     axes[i, j].set_title(title)
                     axes[i, j + 1].set_title(f"{check_type} Predictive")
                     axes[i, j + 2].set_title(f"{check_type} Predictive Recruitment Curves")
