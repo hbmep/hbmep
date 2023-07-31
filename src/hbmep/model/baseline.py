@@ -137,6 +137,14 @@ class Baseline(Dataset):
         posterior_samples = mcmc.get_samples()
         return mcmc, posterior_samples
 
+    @timing
+    def run_trace(self, df: pd.DataFrame):
+        with numpyro.handlers.seed(rng_seed=self.random_state):
+            trace = numpyro.handlers.trace(self._model).get_trace(
+                *self._collect_regressors(df=df), *self._collect_response(df=df)
+            )
+        return trace
+
     def _estimate_threshold(
         self,
         combination: tuple[int],
