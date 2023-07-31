@@ -165,10 +165,11 @@ class Dataset:
                 temp_df = df[ind].reset_index(drop=True).copy()
 
                 """ Tickmarks """
-                min_intensity = temp_df[self.intensity].min()
+                min_intensity, max_intensity_ = temp_df[self.intensity].agg([min, max])
                 min_intensity = floor(min_intensity, base=self.base)
-                max_intensity = temp_df[self.intensity].max()
-                max_intensity = ceil(max_intensity, base=self.base)
+                max_intensity = ceil(max_intensity_, base=self.base)
+                if max_intensity == max_intensity_:
+                    max_intensity += self.base
                 x_ticks = np.arange(min_intensity, max_intensity, self.base)
 
                 """ Response KDE """
@@ -216,10 +217,12 @@ class Dataset:
 
                         ax.set_xticks(ticks=x_ticks)
                         ax.tick_params(axis="x", rotation=90)
-                        ax.set_xlim(left=min_intensity, right=max_intensity)
+
                         ax.set_ylim(bottom=-0.001, top=self.mep_size_window[1] + .005)
+
                         ax.set_xlabel(f"{self.intensity}")
                         ax.set_ylabel(f"Time")
+
                         ax.legend(loc="upper right")
                         ax.set_title(f"{response} - MEP")
 
@@ -231,9 +234,10 @@ class Dataset:
 
                     ax.set_xticks(ticks=x_ticks)
                     ax.tick_params(axis="x", rotation=90)
-                    ax.set_xlim(left=min_intensity, right=max_intensity)
+
                     ax.set_xlabel(f"{self.intensity}")
                     ax.set_ylabel(f"{response}")
+
                     ax.set_title(f"{response} - MEP Size")
 
                     j += 1
