@@ -104,20 +104,36 @@ class Baseline(Dataset):
         return df
 
     @timing
-    def run_inference(self, df: pd.DataFrame) -> tuple[numpyro.infer.mcmc.MCMC, dict]:
-        """ Prepare dataset """
+    def trace(self, df: pd.DataFrame):
+        with numpyro.handlers.seed(rng_seed=self.random_state):
+            trace = numpyro.handlers.trace(self._model).get_trace(
+                *self._make_exogenous_data(df=df),
+                *self._make_endogenous_data(df=df)
+            )
+        return trace
+
+    @timing
+    def _collect_regressors(self, df: pd.DataFrame):
         subject = df[self.subject].to_numpy().reshape(-1,)
         features = df[self.features].to_numpy().T
         intensity = df[self.intensity].to_numpy().reshape(-1,)
-        response = df[self.response].to_numpy()
+        return subject, features, intensity,
 
-        """ MCMC """
+    @timing
+    def _collect_response(self, df: pd.DataFrame):
+        response = df[self.response].to_numpy()
+        return response,
+
+    @timing
+    def run_inference(self, df: pd.DataFrame) -> tuple[numpyro.infer.mcmc.MCMC, dict]:
+        """ Set up NUTS sampler """
         nuts_kernel = NUTS(self._model)
         mcmc = MCMC(nuts_kernel, **self.mcmc_params)
         rng_key = jax.random.PRNGKey(self.random_state)
 
+        """ MCMC inference """
         logger.info(f"Running inference with {self.LINK} ...")
-        mcmc.run(rng_key, subject, features, intensity, response)
+        mcmc.run(rng_key, *self._collect_regressors(df=df), *self._collect_response(df=df))
         posterior_samples = mcmc.get_samples()
         return mcmc, posterior_samples
 
@@ -232,10 +248,12 @@ class Baseline(Dataset):
                 temp_df = df[ind].reset_index(drop=True).copy()
 
                 """ Tickmarks """
-                min_intensity = temp_df[self.intensity].min()
+                min_intensity, max_intensity_ = temp_df[self.intensity].agg([min, max])
                 min_intensity = floor(min_intensity, base=self.base)
-                max_intensity = temp_df[self.intensity].max()
-                max_intensity = ceil(max_intensity, base=self.base)
+                max_intensity = ceil(max_intensity_, base=self.base)
+                if max_intensity == max_intensity_:
+                    max_intensity += self.base
+                x_ticks = np.arange(min_intensity, max_intensity, self.base)
 
                 n_points = min(2000, ceil((max_intensity - min_intensity) / 5, base=100))
                 x_space = np.linspace(min_intensity, max_intensity, n_points)
