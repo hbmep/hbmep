@@ -152,8 +152,6 @@ class Baseline(Dataset):
 
     @timing
     def simulate(self):
-        x_space = np.arange(0, 360, 4)
-
         n_subject = 3
         n_features = [n_subject]
         n_features += jax.random.choice(self.rng_key, jnp.array([2, 3, 4]), shape=(self.n_features,)).tolist()
@@ -161,29 +159,19 @@ class Baseline(Dataset):
 
         combinations = itertools.product(*[range(i) for i in n_features])
         combinations = list(combinations)
-
-        n_combinations = min(10, len(combinations))
-        ind = jax.random.choice(self.rng_key, len(combinations), shape=(n_combinations,), replace=False)
-        combinations = [combinations[i] for i in ind]
         combinations = sorted(combinations)
 
-        obs = None
-        num_samples = 100
-        ind = jax.random.choice(self.rng_key, num_samples, shape=(n_combinations,))
-
         logger.info("Simulating data ...")
-        for i, combination in enumerate(combinations):
-            pred = self._predict(intensity=x_space, combination=combination, num_samples=num_samples)
-            pred = pred[site.obs][ind[i], ...]
-            obs = pred if obs is None else jnp.concatenate([obs, pred], axis=0)
+        x_space = np.arange(0, 360, 4)
+        df = pd.DataFrame(combinations, columns=self.combination_columns)
+        df[self.intensity] = df.apply(lambda _: x_space, axis=1)
+        df = df.explode(column=self.intensity).reset_index(drop=True).copy()
+        df[self.intensity] = df[self.intensity].astype(float)
 
-        df = pd.DataFrame(combinations, columns=self.combination_columns) \
-            .merge(pd.DataFrame(x_space, columns=[self.intensity]), how="cross") \
-            .sort_values(by=self.regressors) \
-            .reset_index(drop=True) \
-            .copy()
+        pred = self.predict(df=df)
+        obs = pred[site.obs]
 
-        df[self.response] = obs
+        df[self.response] = obs[0, ...]
         return df
 
     @timing
