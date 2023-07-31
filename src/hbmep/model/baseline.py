@@ -17,6 +17,7 @@ import jax
 import jax.numpy as jnp
 import numpyro
 from numpyro.infer import MCMC, NUTS, Predictive
+from numpyro.diagnostics import hpdi
 
 from hbmep.config import Config
 from hbmep.dataset import Dataset
@@ -67,90 +68,74 @@ class Baseline(Dataset):
     def _model(self, subject, features, intensity, response_obs=None):
         pass
 
-    @timing
-    def simulate(self):
-        x_space = np.arange(0, 360, 4)
-
-        n_subject = 3
-        n_features = [n_subject]
-        n_features += jax.random.choice(self.rng_key, jnp.array([2, 3, 4]), shape=(self.n_features,)).tolist()
-        n_features[-1] = 2
-
-        combinations = itertools.product(*[range(i) for i in n_features])
-        combinations = list(combinations)
-
-        n_combinations = min(10, len(combinations))
-        ind = jax.random.choice(self.rng_key, len(combinations), shape=(n_combinations,), replace=False)
-        combinations = [combinations[i] for i in ind]
-        combinations = sorted(combinations)
-
-        obs = None
-        num_samples = 100
-        ind = jax.random.choice(self.rng_key, num_samples, shape=(n_combinations,))
-
-        logger.info("Simulating data ...")
-        for i, combination in enumerate(combinations):
-            pred = self._predict(intensity=x_space, combination=combination, num_samples=num_samples)
-            pred = pred[site.obs][ind[i], ...]
-            obs = pred if obs is None else jnp.concatenate([obs, pred], axis=0)
-
-        df = pd.DataFrame(combinations, columns=self.combination_columns) \
-            .merge(pd.DataFrame(x_space, columns=[self.intensity]), how="cross") \
-            .sort_values(by=self.regressors) \
-            .reset_index(drop=True) \
-            .copy()
-
-        df[self.response] = obs
-        return df
-
-    @timing
-    def run_inference(self, df: pd.DataFrame) -> tuple[numpyro.infer.mcmc.MCMC, dict]:
-        """ Prepare dataset """
+    def _collect_regressors(self, df: pd.DataFrame):
         subject = df[self.subject].to_numpy().reshape(-1,)
         features = df[self.features].to_numpy().T
         intensity = df[self.intensity].to_numpy().reshape(-1,)
-        response = df[self.response].to_numpy()
+        return subject, features, intensity,
 
-        """ MCMC """
+    def _collect_response(self, df: pd.DataFrame):
+        response = df[self.response].to_numpy()
+        return response,
+
+    def _make_index_from_combination(self, combination: tuple[int]):
+        ind = [slice(None)] + list(combination) + [slice(None)]
+        ind = ind[::-1]
+        return tuple(ind)
+
+    def _collect_samples_at_combination(self, combination: tuple[int], samples: np.ndarray):
+        return samples[*self._make_index_from_combination(combination=combination)]
+
+    def _make_prediction_dataset(self, df: pd.DataFrame):
+        pred_df = df \
+            .groupby(by=self.combination_columns) \
+            .agg({self.intensity: [min, max]}) \
+            .copy()
+
+        pred_df.columns = pred_df.columns.map(lambda x: x[1])
+        pred_df = pred_df.reset_index().copy()
+
+        pred_df["min"] = pred_df["min"].apply(lambda x: floor(x, base=self.base))
+        pred_df["max"] = pred_df["max"] \
+            .apply(lambda x: (x, ceil(x, base=self.base))) \
+            .apply(lambda x: x[0] + self.base if x[0] == x[1] else x[1])
+
+        pred_df[self.intensity] = pred_df[["min", "max"]] \
+            .apply(lambda x: (x[0], x[1], min(2000, ceil((x[1] - x[0]) / 5, base=100))), axis=1) \
+            .apply(lambda x: np.linspace(x[0], x[1], x[2]))
+        pred_df = pred_df.explode(column=self.intensity)[self.regressors].copy()
+        pred_df[self.intensity] = pred_df[self.intensity].astype(float)
+
+        pred_df.reset_index(drop=True, inplace=True)
+        return pred_df
+
+    @timing
+    def run_trace(self, df: pd.DataFrame):
+        with numpyro.handlers.seed(rng_seed=self.random_state):
+            trace = numpyro.handlers.trace(self._model).get_trace(
+                *self._collect_regressors(df=df), *self._collect_response(df=df)
+            )
+        return trace
+
+    @timing
+    def run_inference(self, df: pd.DataFrame) -> tuple[numpyro.infer.mcmc.MCMC, dict]:
+        """ Set up NUTS sampler """
         nuts_kernel = NUTS(self._model)
         mcmc = MCMC(nuts_kernel, **self.mcmc_params)
         rng_key = jax.random.PRNGKey(self.random_state)
 
+        """ MCMC inference """
         logger.info(f"Running inference with {self.LINK} ...")
-        mcmc.run(rng_key, subject, features, intensity, response)
+        mcmc.run(rng_key, *self._collect_regressors(df=df), *self._collect_response(df=df))
         posterior_samples = mcmc.get_samples()
         return mcmc, posterior_samples
 
-    def _estimate_threshold(
+    @timing
+    def predict(
         self,
-        combination: tuple[int],
-        posterior_samples: dict,
-        prob: float = .95
-    ):
-        """ Set index """
-        ind = [slice(None)] + list(combination) + [slice(None)]
-        ind = ind[::-1]
-
-        """ Posterior mean """
-        posterior_samples = posterior_samples[site.a][tuple(ind)]
-        threshold = evaluate_posterior_mean(
-            posterior_samples=posterior_samples,
-            prob=prob
-        )
-
-        """ HPDI Interval """
-        hpdi_interval = evaluate_hpdi_interval(
-            posterior_samples=posterior_samples,
-            prob=prob
-        )
-        return threshold, posterior_samples, hpdi_interval
-
-    def _predict(
-        self,
-        intensity: np.ndarray,
-        combination: tuple[int],
-        posterior_samples: Optional[dict] = None,
-        num_samples: int = 100
+        df: pd.DataFrame,
+        num_samples: int = 100,
+        posterior_samples: Optional[dict] = None
     ):
         if posterior_samples is None:   # Prior predictive
             predictive = Predictive(
@@ -161,20 +146,33 @@ class Baseline(Dataset):
                 model=self._model, posterior_samples=posterior_samples
             )
 
-        """ Prepare dataset """
-        combination = np.array(list(combination))
-        combination = np.tile(combination, (intensity.shape[0], 1)).T
-        subject = combination[0]
-        features = combination[1:]
-
-        """ Predictions """
-        predictions = predictive(
-            self.rng_key,
-            subject=subject,
-            features=features,
-            intensity=intensity
-        )
+        """ Generate predictions """
+        predictions = predictive(self.rng_key, *self._collect_regressors(df=df))
         return predictions
+
+    @timing
+    def simulate(self):
+        n_subject = 3
+        n_features = [n_subject]
+        n_features += jax.random.choice(self.rng_key, jnp.array([2, 3, 4]), shape=(self.n_features,)).tolist()
+        n_features[-1] = 2
+
+        combinations = itertools.product(*[range(i) for i in n_features])
+        combinations = list(combinations)
+        combinations = sorted(combinations)
+
+        logger.info("Simulating data ...")
+        x_space = np.arange(0, 360, 4)
+        df = pd.DataFrame(combinations, columns=self.combination_columns)
+        df[self.intensity] = df.apply(lambda _: x_space, axis=1)
+        df = df.explode(column=self.intensity).reset_index(drop=True).copy()
+        df[self.intensity] = df[self.intensity].astype(float)
+
+        pred = self.predict(df=df)
+        obs = pred[site.obs]
+
+        df[self.response] = obs[0, ...]
+        return df
 
     @timing
     def render_recruitment_curves(
@@ -188,6 +186,12 @@ class Baseline(Dataset):
             a, b = self.mep_window
             time = np.linspace(a, b, mep_matrix.shape[1])
 
+        """ Generate predictions """
+        logger.info("Generating predictions ...")
+        pred_df = self._make_prediction_dataset(df=df)
+        mu_posterior = self.predict(df=pred_df, posterior_samples=posterior_samples)[site.mu]
+        mu_posterior = np.array(mu_posterior)
+
         """ Setup pdf layout """
         combinations = self._make_combinations(df=df, columns=self.combination_columns)
         n_combinations = len(combinations)
@@ -200,18 +204,21 @@ class Baseline(Dataset):
 
         n_pdf_pages = n_combinations // n_fig_rows
         if n_combinations % n_fig_rows: n_pdf_pages += 1
-        logger.info("Rendering recruitment curves ...")
 
-        """ Iterate over pdf pages """
+        """ Recruitment curves """
+        logger.info("Rendering recruitment curves ...")
         pdf = PdfPages(self.recruitment_curves_path)
         combination_counter = 0
 
+        """ Iterate over pdf pages """
         for page in range(n_pdf_pages):
+            """ No. of rows for current page """
             n_rows_current_page = min(
                 n_fig_rows,
                 n_combinations - page * n_fig_rows
             )
 
+            """ Figure for current page """
             fig, axes = plt.subplots(
                 n_rows_current_page,
                 n_fig_columns,
@@ -227,32 +234,32 @@ class Baseline(Dataset):
             for i in range(n_rows_current_page):
                 combination = combinations[combination_counter]
 
-                """ Filter dataframe """
+                """ Filter prediction dataframe based on current combination """
+                ind = pred_df[self.combination_columns].apply(tuple, axis=1).isin([combination])
+                temp_pred_df = pred_df[ind].reset_index(drop=True).copy()
+
+                """ Predictions for current combination """
+                curr_mu_posterior = mu_posterior[:, ind, :]
+                curr_mu_posterior_mean = curr_mu_posterior.mean(axis=0)
+
+                """ Filter dataframe based on current combination """
                 ind = df[self.combination_columns].apply(tuple, axis=1).isin([combination])
                 temp_df = df[ind].reset_index(drop=True).copy()
 
                 """ Tickmarks """
-                min_intensity = temp_df[self.intensity].min()
+                min_intensity, max_intensity_ = temp_df[self.intensity].agg([min, max])
                 min_intensity = floor(min_intensity, base=self.base)
-                max_intensity = temp_df[self.intensity].max()
-                max_intensity = ceil(max_intensity, base=self.base)
-
-                n_points = min(2000, ceil((max_intensity - min_intensity) / 5, base=100))
-                x_space = np.linspace(min_intensity, max_intensity, n_points)
+                max_intensity = ceil(max_intensity_, base=self.base)
+                if max_intensity == max_intensity_:
+                    max_intensity += self.base
                 x_ticks = np.arange(min_intensity, max_intensity, self.base)
 
-                """ Predictions """
-                predictions = self._predict(
-                    intensity=x_space,
-                    combination=combination,
-                    posterior_samples=posterior_samples
+                """ Estimate threshold """
+                threshold_posterior = self._collect_samples_at_combination(
+                    combination=combination, samples=posterior_samples[site.a]
                 )
-                mu = predictions[site.mu]
-                mu_posterior_mean = evaluate_posterior_mean(mu)
-
-                """ Threshold estimate """
-                threshold, threshold_posterior, hpdi_interval = \
-                    self._estimate_threshold(combination, posterior_samples)
+                threshold = threshold_posterior.mean(axis=0)
+                hpdi_interval = hpdi(threshold_posterior, prob=0.95)
 
                 """ Iterate over responses """
                 for (r, response) in enumerate(self.response):
@@ -277,10 +284,12 @@ class Baseline(Dataset):
 
                         ax.set_xticks(ticks=x_ticks)
                         ax.tick_params(axis="x", rotation=90)
-                        ax.set_xlim(left=min_intensity, right=max_intensity)
+
                         ax.set_ylim(bottom=-0.001, top=self.mep_size_window[1] + .005)
+
                         ax.set_xlabel(f"{self.intensity}")
                         ax.set_ylabel(f"Time")
+
                         ax.legend(loc="upper right")
                         ax.set_title(f"{response} - MEP")
 
@@ -316,8 +325,8 @@ class Baseline(Dataset):
 
                     """ Plots: Recruitment curve """
                     sns.lineplot(
-                        x=x_space,
-                        y=mu_posterior_mean[:, r],
+                        x=temp_pred_df[self.intensity],
+                        y=curr_mu_posterior_mean[:, r],
                         label="Mean Recruitment Curve",
                         color="r",
                         alpha=0.4,
@@ -371,7 +380,11 @@ class Baseline(Dataset):
                         ax = axes[i, k]
                         ax.set_xticks(ticks=x_ticks)
                         ax.tick_params(axis="x", rotation=90)
-                        ax.set_xlim(left=min_intensity, right=max_intensity)
+
+                        left, right = ax.get_xlim()
+                        left = max(left, min_intensity - self.base)
+                        right = min(right, max_intensity + self.base)
+                        ax.set_xlim(left=left, right=right)
 
                     """ Legends """
                     for k in [j + 1, j + 2]:
@@ -403,6 +416,13 @@ class Baseline(Dataset):
         if posterior_samples is None: dest_path = self.prior_predictive_path
         check_type = "Posterior" if is_posterior_check else "Prior"
 
+        """ Generate predictions """
+        logger.info("Generating predictions ...")
+        pred_df = self._make_prediction_dataset(df=df)
+        obs_posterior = self.predict(df=pred_df, posterior_samples=posterior_samples)
+        mu_posterior = np.array(obs_posterior[site.mu])
+        obs_posterior = np.array(obs_posterior[site.obs])
+
         """ Setup pdf layout """
         combinations = self._make_combinations(df=df, columns=self.combination_columns)
         n_combinations = len(combinations)
@@ -413,19 +433,21 @@ class Baseline(Dataset):
 
         n_pdf_pages = n_combinations // n_fig_rows
         if n_combinations % n_fig_rows: n_pdf_pages += 1
-        logger.info(f"Rendering {check_type} Predictive Check ...")
 
-        """ Iterate over pdf pages """
+        """ Predictive check """
+        logger.info(f"Rendering {check_type} Predictive Check ...")
         pdf = PdfPages(dest_path)
         combination_counter = 0
-        predictions = None
 
+        """ Iterate over pdf pages """
         for page in range(n_pdf_pages):
+            """ No. of rows for current page """
             n_rows_current_page = min(
                 n_fig_rows,
                 n_combinations - page * n_fig_rows
             )
 
+            """ Figure for current page """
             fig, axes = plt.subplots(
                 n_rows_current_page,
                 n_fig_columns,
@@ -441,43 +463,39 @@ class Baseline(Dataset):
             for i in range(n_rows_current_page):
                 combination = combinations[combination_counter]
 
-                """ Filter dataframe """
+                """ Filter prediction dataframe based on current combination """
+                ind = pred_df[self.combination_columns].apply(tuple, axis=1).isin([combination])
+                temp_pred_df = pred_df[ind].reset_index(drop=True).copy()
+
+                """ Predictions for current combination """
+                curr_obs_posterior = obs_posterior[:, ind, :]
+                curr_mu_posterior = mu_posterior[:, ind, :]
+
+                """ Filter dataframe based on current combination """
                 ind = df[self.combination_columns].apply(tuple, axis=1).isin([combination])
                 temp_df = df[ind].reset_index(drop=True).copy()
 
                 """ Tickmarks """
-                min_intensity = temp_df[self.intensity].min()
+                min_intensity, max_intensity_ = temp_df[self.intensity].agg([min, max])
                 min_intensity = floor(min_intensity, base=self.base)
-                max_intensity = temp_df[self.intensity].max()
-                max_intensity = ceil(max_intensity, base=self.base)
-
-                n_points = min(2000, ceil((max_intensity - min_intensity) / 5, base=100))
-                x_space = np.linspace(min_intensity, max_intensity, n_points)
+                max_intensity = ceil(max_intensity_, base=self.base)
+                if max_intensity == max_intensity_:
+                    max_intensity += self.base
                 x_ticks = np.arange(min_intensity, max_intensity, self.base)
 
-                if is_posterior_check or predictions is None:
-                    """ Predictions """
-                    predictions = self._predict(
-                        intensity=x_space,
-                        combination=combination,
-                        posterior_samples=posterior_samples
-                    )
-                    obs = predictions[site.obs]
-                    mu = predictions[site.mu]
+                """ Posterior mean """
+                curr_obs_posterior_mean = curr_obs_posterior.mean(axis=0)
+                curr_mu_posterior_mean = curr_mu_posterior.mean(axis=0)
 
-                    """ Posterior mean """
-                    obs_posterior_mean = evaluate_posterior_mean(obs)
-                    mu_posterior_mean = evaluate_posterior_mean(mu)
+                """ HPDI intervals """
+                hpdi_obs_95 = hpdi(curr_obs_posterior, prob=.95)
+                hpdi_obs_85 = hpdi(curr_obs_posterior, prob=.85)
+                hpdi_obs_65 = hpdi(curr_obs_posterior, prob=.65)
 
-                    """ HPDI intervals """
-                    hpdi_obs_95 = evaluate_hpdi_interval(obs, prob=.95)
-                    hpdi_obs_85 = evaluate_hpdi_interval(obs, prob=.85)
-                    hpdi_obs_65 = evaluate_hpdi_interval(obs, prob=.65)
-
-                    hpdi_mu_95 = evaluate_hpdi_interval(mu, prob=.95)
-                    if not is_posterior_check:
-                        hpdi_mu_85 = evaluate_hpdi_interval(mu, prob=.85)
-                        hpdi_mu_65 = evaluate_hpdi_interval(mu, prob=.65)
+                hpdi_mu_95 = hpdi(curr_mu_posterior, prob=.95)
+                if not is_posterior_check:
+                    hpdi_mu_85 = hpdi(curr_mu_posterior, prob=.85)
+                    hpdi_mu_65 = hpdi(curr_mu_posterior, prob=.65)
 
                 """ Iterate over responses """
                 for (r, response) in enumerate(self.response):
@@ -492,8 +510,8 @@ class Baseline(Dataset):
                         ax=axes[i, j]
                     )
                     sns.lineplot(
-                        x=x_space,
-                        y=mu_posterior_mean[:, r],
+                        x=temp_pred_df[self.intensity],
+                        y=curr_mu_posterior_mean[:, r],
                         label=f"Mean Recruitment Curve",
                         color="r",
                         alpha=0.4,
@@ -502,28 +520,28 @@ class Baseline(Dataset):
 
                     """ Plots: Predictions """
                     sns.lineplot(
-                        x=x_space,
-                        y=obs_posterior_mean[:, r],
+                        x=temp_pred_df[self.intensity],
+                        y=curr_obs_posterior_mean[:, r],
                         color="k",
                         label=f"Mean Prediction",
                         ax=axes[i, j + 1]
                     )
                     axes[i, j + 1].fill_between(
-                        x_space,
+                        temp_pred_df[self.intensity],
                         hpdi_obs_95[0, :, r],
                         hpdi_obs_95[1, :, r],
                         color="C1",
                         label="95% HPDI"
                     )
                     axes[i, j + 1].fill_between(
-                        x_space,
+                        temp_pred_df[self.intensity],
                         hpdi_obs_85[0, :, r],
                         hpdi_obs_85[1, :, r],
                         color="C2",
                         label="85% HPDI"
                     )
                     axes[i, j + 1].fill_between(
-                        x_space,
+                        temp_pred_df[self.intensity],
                         hpdi_obs_65[0, :, r],
                         hpdi_obs_65[1, :, r],
                         color="C3",
@@ -540,14 +558,14 @@ class Baseline(Dataset):
 
                     """ Plots: Recruitment curves """
                     sns.lineplot(
-                        x=x_space,
-                        y=mu_posterior_mean[:, r],
+                        x=temp_pred_df[self.intensity],
+                        y=curr_mu_posterior_mean[:, r],
                         color="k",
                         label=f"Mean Recruitment Curve",
                         ax=axes[i, j + 2]
                     )
                     axes[i, j + 2].fill_between(
-                        x_space,
+                        temp_pred_df[self.intensity],
                         hpdi_mu_95[0, :, r],
                         hpdi_mu_95[1, :, r],
                         color="C1",
@@ -555,14 +573,14 @@ class Baseline(Dataset):
                     )
                     if not is_posterior_check:
                         axes[i, j + 2].fill_between(
-                            x_space,
+                            temp_pred_df[self.intensity],
                             hpdi_mu_85[0, :, r],
                             hpdi_mu_85[1, :, r],
                             color="C2",
                             label="85% HPDI"
                         )
                         axes[i, j + 2].fill_between(
-                            x_space,
+                            temp_pred_df[self.intensity],
                             hpdi_mu_65[0, :, r],
                             hpdi_mu_65[1, :, r],
                             color="C3",
@@ -595,7 +613,11 @@ class Baseline(Dataset):
                         ax = axes[i, k]
                         ax.set_xticks(ticks=x_ticks)
                         ax.tick_params(axis="x", rotation=90)
-                        ax.set_xlim(left=min_intensity, right=max_intensity)
+
+                        left, right = ax.get_xlim()
+                        left = max(left, left - self.base)
+                        right = min(right, right + self.base)
+                        ax.set_xlim(left=left, right=right)
 
                     """ Legends """
                     axes[i, j].legend(loc="upper left")
