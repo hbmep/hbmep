@@ -104,7 +104,8 @@ class Dataset:
             logger.info(f"Reading data from {csv_path} ...")
             df = pd.read_csv(csv_path)
 
-        assert not (df[self.response] <= 0).any(axis=1).sum()
+        if set(self.response).issubset(set(df.columns)):
+            assert not (df[self.response] <= 0).any(axis=1).sum()
 
         logger.info("Processing data ...")
         df, encoder_dict = self._preprocess(df=df)
