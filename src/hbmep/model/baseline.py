@@ -151,28 +151,34 @@ class Baseline(Dataset):
         return predictions
 
     @timing
-    def simulate(self):
-        n_subject = 3
-        n_features = [n_subject]
-        n_features += jax.random.choice(self.rng_key, jnp.array([2, 3, 4]), shape=(self.n_features,)).tolist()
-        n_features[-1] = 2
-
+    def simulate(
+        self,
+        n_subject=3,
+        n_feature0=2,
+        n_draws=5,
+        n_repeats=10
+    ):
+        n_features = [n_subject, n_feature0]
         combinations = itertools.product(*[range(i) for i in n_features])
         combinations = list(combinations)
         combinations = sorted(combinations)
 
         logger.info("Simulating data ...")
-        x_space = np.arange(0, 360, 4)
         df = pd.DataFrame(combinations, columns=self.combination_columns)
+        x_space = np.arange(0, 360, 4)
+
         df[self.intensity] = df.apply(lambda _: x_space, axis=1)
         df = df.explode(column=self.intensity).reset_index(drop=True).copy()
         df[self.intensity] = df[self.intensity].astype(float)
 
-        pred = self.predict(df=df)
-        obs = pred[site.obs]
+        pred_df = pd.concat([df] * n_repeats).reset_index(drop=True).copy()
 
-        df[self.response] = obs[0, ...]
-        return df
+        posterior_samples = self.predict(df=pred_df, num_samples=n_draws)
+        posterior_samples = {u: np.array(v) for u, v in posterior_samples.items()}
+        for u in {site.mu, site.obs}:
+            posterior_samples[u] = posterior_samples[u].reshape(n_draws, n_repeats, -1, self.n_response)
+
+        return df, posterior_samples
 
     @timing
     def render_recruitment_curves(
@@ -597,7 +603,7 @@ class Baseline(Dataset):
 
                     """ Labels """
                     title = f"{tuple(list(self.combination_columns)[::-1] + [RESPONSE])}"
-                    title += f": {tuple(list(combination)[::-1] + [r])}"
+                    title += f"\nencoded: {tuple(list(combination)[::-1] + [r])}"
                     combination_inverse = self._invert_combination(
                         combination=combination,
                         columns=self.combination_columns,

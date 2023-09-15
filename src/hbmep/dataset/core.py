@@ -180,14 +180,14 @@ class Dataset:
                 sns.kdeplot(np.log(temp_df[self.response]), ax=axes[i, 1])
 
                 """ Labels """
-                title = f"{tuple(self.combination_columns)} - encoded: {combination}"
+                title = f"{tuple(self.combination_columns)} -\nencoded: {combination}"
                 axes[i, 0].set_title(title)
                 combination_inverse = self._invert_combination(
                     combination=combination,
                     columns=self.combination_columns,
                     encoder_dict=encoder_dict
                 )
-                title = f"decoded: {combination_inverse}"
+                title = f"decoded:\n{combination_inverse}"
                 axes[i, 1].set_title(title)
 
                 """ Legends """
