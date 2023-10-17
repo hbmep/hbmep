@@ -59,11 +59,13 @@ class Config():
 
         """ MEP data """
         self.MEP_MATRIX_PATH: Optional[str] = None
+        self.MEP_RESPONSE: Optional[str] = None
         self.MEP_TIME_RANGE: Optional[list[float]] = None
         self.MEP_SIZE_TIME_RANGE: Optional[list[float]] = None
 
         if mep_data is not None:
             self.MEP_MATRIX_PATH = mep_data.get(const.MEP_MATRIX_PATH)
+            self.MEP_RESPONSE = mep_data.get(const.MEP_RESPONSE)
             self.MEP_TIME_RANGE = mep_data.get(const.MEP_TIME_RANGE)
 
         if mep_size_window is not None:
