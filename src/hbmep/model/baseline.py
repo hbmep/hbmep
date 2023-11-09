@@ -100,7 +100,6 @@ class Baseline(Dataset):
     def _collect_samples_at_combination(self, combination: tuple[int], samples: np.ndarray):
         return samples[*self._make_index_from_combination(combination=combination)]
 
-
     def _plot_staging(
         self,
         destination_path: str,
@@ -240,6 +239,8 @@ class Baseline(Dataset):
                         ax.set_ylabel("Time")
                         ax.set_title(prefix + postfix)
                         ax.legend(loc="upper right")
+                        if ax.get_legend():
+                            ax.get_legend().remove()
                         ax.sharex(axes[i, 0])
 
                         if j // n_columns_per_response:
@@ -276,6 +277,8 @@ class Baseline(Dataset):
                         )
                         ax.set_title(postfix)
                         ax.legend(loc="upper right")
+                        if ax.get_legend():
+                            ax.get_legend().remove()
                         ax.sharex(axes[i, 0])
                         ax.sharey(axes[i, j - 1])
 
@@ -312,6 +315,8 @@ class Baseline(Dataset):
                         ax.set_xlabel(self.intensity)
                         ax.set_title(postfix)
                         ax.legend(loc="upper right")
+                        if ax.get_legend():
+                            ax.get_legend().remove()
 
                         if j // n_columns_per_response:
                             ax.get_legend().remove()
@@ -329,6 +334,238 @@ class Baseline(Dataset):
 
         logger.info(f"Saved to {destination_path}")
         return
+
+
+    # def _plot(
+    #     self,
+    #     df: pd.DataFrame,
+    #     combination_columns: list[str],
+    #     intensity: str,
+    #     response: list[str],
+    #     destination_path: str,
+    #     posterior_samples: Optional[dict] = None,
+    #     prediction_df: Optional[pd.DataFrame] = None,
+    #     posterior_predictive: Optional[dict] = None,
+    #     encoder_dict: Optional[dict[str, LabelEncoder]] = None
+    # ):
+    #     if self.mep_matrix_path is not None:
+    #         mep_matrix = np.load(self.mep_matrix_path)
+    #         a, b = self.mep_window
+    #         time = np.linspace(a, b, mep_matrix.shape[1])
+    #         within_mep_size_window = (time > self.mep_size_window[0]) & (time < self.mep_size_window[1])
+
+    #     if posterior_samples is not None:
+    #         assert (prediction_df is not None) and (posterior_predictive is not None)
+    #         mu_posterior_predictive = np.array(posterior_predictive[site.mu])
+
+    #     """ Setup pdf layout """
+    #     combinations = self._make_combinations(df=df, columns=self.combination_columns)
+    #     n_combinations = len(combinations)
+
+    #     n_columns_per_response = 1
+    #     if self.mep_matrix_path is not None: n_columns_per_response += 1
+    #     if posterior_samples is not None: n_columns_per_response += 2
+
+    #     n_fig_rows = 10
+    #     n_fig_columns = n_columns_per_response * self.n_response
+
+    #     n_pdf_pages = n_combinations // n_fig_rows
+    #     if n_combinations % n_fig_rows: n_pdf_pages += 1
+    #     logger.info("Rendering ...")
+
+    #     """ Iterate over pdf pages """
+    #     pdf = PdfPages(destination_path)
+    #     combination_counter = 0
+
+    #     for page in range(n_pdf_pages):
+    #         n_rows_current_page = min(
+    #             n_fig_rows,
+    #             n_combinations - page * n_fig_rows
+    #         )
+
+    #         fig, axes = plt.subplots(
+    #             n_rows_current_page,
+    #             n_fig_columns,
+    #             figsize=(
+    #                 n_fig_columns * self.subplot_cell_width,
+    #                 n_rows_current_page * self.subplot_cell_height
+    #             ),
+    #             constrained_layout=True,
+    #             squeeze=False
+    #         )
+
+    #         """ Iterate over combinations """
+    #         for i in range(n_rows_current_page):
+    #             curr_combination = combinations[combination_counter]
+    #             curr_combination_inverse = ""
+
+    #             if encoder_dict is not None:
+    #                 curr_combination_inverse = self._invert_combination(
+    #                     combination=curr_combination,
+    #                     columns=self.combination_columns,
+    #                     encoder_dict=encoder_dict
+    #                 )
+    #                 curr_combination_inverse = ", ".join(map(str, curr_combination_inverse))
+    #                 curr_combination_inverse += "\n"
+
+    #             """ Filter dataframe based on current combination """
+    #             df_ind = df[self.combination_columns].apply(tuple, axis=1).isin([curr_combination])
+    #             curr_df = df[df_ind].reset_index(drop=True).copy()
+
+    #             if posterior_samples is not None:
+    #                 """ Filter prediction dataframe based on current combination """
+    #                 prediction_df_ind = prediction_df[self.combination_columns].apply(tuple, axis=1).isin([curr_combination])
+    #                 curr_prediction_df = prediction_df[prediction_df_ind].reset_index(drop=True).copy()
+
+    #                 """ Predictions for current combination """
+    #                 curr_mu_posterior_predictive = mu_posterior_predictive[:, prediction_df_ind, :]
+    #                 curr_mu_posterior_predictive_map = curr_mu_posterior_predictive.mean(axis=0)
+
+    #                 """ Threshold estimate for current combination """
+    #                 curr_threshold_posterior = self._collect_samples_at_combination(
+    #                     combination=curr_combination, samples=posterior_samples[site.a]
+    #                 )
+    #                 curr_threshold = curr_threshold_posterior.mean(axis=0)
+    #                 curr_hpdi_interval = hpdi(curr_threshold_posterior, prob=0.95)
+
+    #             """ Tickmarks """
+    #             min_intensity, max_intensity_ = curr_df[self.intensity].agg([min, max])
+    #             min_intensity = floor(min_intensity, base=self.base)
+    #             max_intensity = ceil(max_intensity_, base=self.base)
+    #             if max_intensity == max_intensity_:
+    #                 max_intensity += self.base
+    #             curr_x_ticks = np.arange(min_intensity, max_intensity, self.base)
+
+    #             axes[i, 0].set_xlabel(self.intensity)
+    #             axes[i, 0].set_xticks(ticks=curr_x_ticks)
+    #             axes[i, 0].set_xlim(left=min_intensity - (self.base // 2), right=max_intensity + (self.base // 2))
+
+    #             """ Iterate over responses """
+    #             j = 0
+    #             for r, response in enumerate(self.response):
+    #                 """ Labels """
+    #                 prefix = f"{tuple(list(curr_combination)[::-1] + [r])}: {response} - MEP"
+
+    #                 if not j:
+    #                     prefix = curr_combination_inverse + prefix
+
+    #                 """ MEP data """
+    #                 if self.mep_matrix_path is not None:
+    #                     postfix = " - MEP"
+    #                     ax = axes[i, j]
+    #                     mep_response_ind = [i for i, _response in enumerate(self.mep_response) if _response == response][0]
+    #                     curr_mep_matrix = mep_matrix[df_ind, :, mep_response_ind]
+    #                     max_amplitude = curr_mep_matrix[..., within_mep_size_window].max()
+
+    #                     for k in range(curr_mep_matrix.shape[0]):
+    #                         x = (curr_mep_matrix[k, :] / max_amplitude) * (self.base // 2)
+    #                         x += curr_df[self.intensity].values[k]
+    #                         ax.plot(x, time, color=self.response_colors[r], alpha=.4)
+
+    #                     if self.mep_size_window is not None:
+    #                         ax.axhline(
+    #                             y=self.mep_size_window[0], color="r", linestyle="--", alpha=.4, label="MEP Size Window"
+    #                         )
+    #                         ax.axhline(
+    #                             y=self.mep_size_window[1], color="r", linestyle="--", alpha=.4
+    #                         )
+    #                         ax.set_ylim(bottom=-0.001, top=self.mep_size_window[1] + (self.mep_size_window[0] - (-0.001)))
+
+    #                     ax.set_ylabel("Time")
+    #                     ax.set_title(prefix + postfix)
+    #                     ax.legend(loc="upper right")
+    #                     ax.sharex(axes[i, 0])
+    #                     ax.tick_params(axis="x", rotation=90)
+
+    #                     if j // n_columns_per_response:
+    #                         ax.get_legend().remove()
+
+    #                     j += 1
+
+    #                 """ Plots: Scatter Plot """
+    #                 postfix = " - MEP Size"
+    #                 ax = axes[i, j]
+    #                 sns.scatterplot(data=curr_df, x=self.intensity, y=response, color=self.response_colors[r], ax=ax)
+
+    #                 ax.set_ylabel(response)
+    #                 ax.set_title(prefix + postfix)
+    #                 ax.sharex(axes[i, 0])
+    #                 ax.tick_params(axis="x", rotation=90)
+
+    #                 j += 1
+
+    #                 if posterior_samples is not None:
+    #                     """ Plots: Scatter Plot and Recruitment curve """
+    #                     postfix = "Recruitment Curve Fit"
+    #                     ax = axes[i, j]
+    #                     sns.scatterplot(data=curr_df, x=self.intensity, y=response, color=self.response_colors[r], ax=ax)
+    #                     sns.lineplot(
+    #                         x=curr_prediction_df[self.intensity],
+    #                         y=curr_mu_posterior_predictive_map[:, r],
+    #                         ax=ax,
+    #                         **self.recruitment_curve_props,
+    #                     )
+    #                     sns.kdeplot(
+    #                         x=curr_threshold_posterior[:, r],
+    #                         ax=ax,
+    #                         **self.threshold_posterior_props
+    #                     )
+    #                     ax.set_title(postfix)
+    #                     ax.legend(loc="upper right")
+    #                     ax.sharex(axes[i, 0])
+    #                     ax.sharey(axes[i, j - 1])
+    #                     ax.tick_params(axis="x", rotation=90)
+
+    #                     j += 1
+
+    #                     """ Plots: Threshold estimate """
+    #                     ax = axes[i, j]
+    #                     postfix = "Threshold Estimate"
+    #                     sns.kdeplot(
+    #                         x=curr_threshold_posterior[:, r],
+    #                         ax=ax,
+    #                         **self.threshold_posterior_props
+    #                     )
+    #                     ax.axvline(
+    #                         curr_threshold[r],
+    #                         linestyle="--",
+    #                         color=self.response_colors[r],
+    #                         label="Threshold"
+    #                     )
+    #                     ax.axvline(
+    #                         curr_hpdi_interval[:, r][0],
+    #                         linestyle="--",
+    #                         color="black",
+    #                         alpha=.4,
+    #                         label="95% HPDI"
+    #                     )
+    #                     ax.axvline(
+    #                         curr_hpdi_interval[:, r][1],
+    #                         linestyle="--",
+    #                         color="black",
+    #                         alpha=.4
+    #                     )
+
+    #                     ax.set_xlabel(self.intensity)
+    #                     ax.set_title(postfix)
+    #                     ax.legend(loc="upper right")
+
+    #                     if j // n_columns_per_response:
+    #                         ax.get_legend().remove()
+    #                         axes[i, j - 1].get_legend().remove()
+
+    #                     j += 1
+
+    #             combination_counter += 1
+
+    #         pdf.savefig(fig)
+    #         plt.close()
+
+    #     pdf.close()
+    #     plt.show()
+
+    #     logger.info(f"Saved to {destination_path}")
+    #     return
 
 
     def _plot(
@@ -431,7 +668,6 @@ class Baseline(Dataset):
                 axes[i, 0].set_xlabel(self.intensity)
                 axes[i, 0].set_xticks(ticks=curr_x_ticks)
                 axes[i, 0].set_xlim(left=min_intensity - (self.base // 2), right=max_intensity + (self.base // 2))
-                axes[i, 0].tick_params(axis="x", rotation=90)
 
                 """ Iterate over responses """
                 j = 0
@@ -467,10 +703,14 @@ class Baseline(Dataset):
                         ax.set_ylabel("Time")
                         ax.set_title(prefix + postfix)
                         ax.legend(loc="upper right")
+                        if ax.get_legend():
+                            ax.get_legend().remove()
                         ax.sharex(axes[i, 0])
+                        ax.tick_params(axis="x", rotation=90)
 
                         if j // n_columns_per_response:
-                            ax.get_legend().remove()
+                            if ax.get_legend() is not None:
+                                ax.get_legend().remove()
 
                         j += 1
 
@@ -482,6 +722,7 @@ class Baseline(Dataset):
                     ax.set_ylabel(response)
                     ax.set_title(prefix + postfix)
                     ax.sharex(axes[i, 0])
+                    ax.tick_params(axis="x", rotation=90)
 
                     j += 1
 
@@ -503,8 +744,11 @@ class Baseline(Dataset):
                         )
                         ax.set_title(postfix)
                         ax.legend(loc="upper right")
+                        if ax.get_legend():
+                            ax.get_legend().remove()
                         ax.sharex(axes[i, 0])
                         ax.sharey(axes[i, j - 1])
+                        ax.tick_params(axis="x", rotation=90)
 
                         j += 1
 
@@ -539,10 +783,14 @@ class Baseline(Dataset):
                         ax.set_xlabel(self.intensity)
                         ax.set_title(postfix)
                         ax.legend(loc="upper right")
+                        if ax.get_legend():
+                            ax.get_legend().remove()
 
                         if j // n_columns_per_response:
-                            ax.get_legend().remove()
-                            axes[i, j - 1].get_legend().remove()
+                            if ax.get_legend():
+                                ax.get_legend().remove()
+                            if axes[i, j - 1].get_legend():
+                                axes[i, j - 1].get_legend().remove()
 
                         j += 1
 
@@ -684,8 +932,11 @@ class Baseline(Dataset):
 
                     ax.sharex(axes[i, 0])
                     ax.legend(loc="upper right")
-                    if j // n_columns_per_response:
+                    if ax.get_legend():
                         ax.get_legend().remove()
+                    if j // n_columns_per_response:
+                        if ax.get_legend():
+                            ax.get_legend().remove()
                     j += 1
 
                     """ Plots: Observational predictive """
@@ -702,21 +953,21 @@ class Baseline(Dataset):
                         hpdi_curr_obs_95[0, :, r],
                         hpdi_curr_obs_95[1, :, r],
                         color="C1",
-                        label="95% HPDI"
+                        # label="95% HPDI"
                     )
                     ax.fill_between(
                         curr_prediction_df[self.intensity],
                         hpdi_curr_obs_85[0, :, r],
                         hpdi_curr_obs_85[1, :, r],
                         color="C2",
-                        label="85% HPDI"
+                        # label="85% HPDI"
                     )
                     ax.fill_between(
                         curr_prediction_df[self.intensity],
                         hpdi_curr_obs_65[0, :, r],
                         hpdi_curr_obs_65[1, :, r],
                         color="C3",
-                        label="65% HPDI"
+                        # label="65% HPDI"
                     )
                     sns.scatterplot(
                         data=curr_df,
@@ -731,9 +982,12 @@ class Baseline(Dataset):
                     ax.sharey(axes[i, j - 1])
                     ax.set_title(f"{tuple(list(curr_combination)[::-1] + [r])}: {response} - Prediction")
                     ax.legend(loc="upper right")
+                    if ax.get_legend():
+                        ax.get_legend().remove()
 
                     if j // n_columns_per_response:
-                        ax.get_legend().remove()
+                        if ax.get_legend():
+                            ax.get_legend().remove()
                     j += 1
 
                     """ Plots: Mean predictive """
@@ -750,7 +1004,7 @@ class Baseline(Dataset):
                         hpdi_curr_mu_95[0, :, r],
                         hpdi_curr_mu_95[1, :, r],
                         color="C1",
-                        label="95% HPDI"
+                        # label="95% HPDI"
                     )
                     if not is_posterior_check:
                         ax.fill_between(
@@ -758,14 +1012,14 @@ class Baseline(Dataset):
                             hpdi_curr_mu_85[0, :, r],
                             hpdi_curr_mu_85[1, :, r],
                             color="C2",
-                            label="85% HPDI"
+                            # label="85% HPDI"
                         )
                         ax.fill_between(
                             curr_prediction_df[self.intensity],
                             hpdi_curr_mu_65[0, :, r],
                             hpdi_curr_mu_65[1, :, r],
                             color="C3",
-                            label="65% HPDI"
+                            # label="65% HPDI"
                         )
                     sns.scatterplot(
                         data=curr_df,
@@ -780,8 +1034,11 @@ class Baseline(Dataset):
                     ax.sharey(axes[i, j - 2])
                     ax.set_title(f"{tuple(list(curr_combination)[::-1] + [r])}: {response} - Fit")
                     ax.legend(loc="upper right")
-                    if j // n_columns_per_response:
+                    if ax.get_legend():
                         ax.get_legend().remove()
+                    if j // n_columns_per_response:
+                        if ax.get_legend():
+                            ax.get_legend().remove()
                     j += 1
 
                 combination_counter += 1

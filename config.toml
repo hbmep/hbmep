@@ -19,10 +19,10 @@ link = "rectified_logistic"
 [optional-mep-data]
 mep_matrix_path = "/home/vishu/data/mock/mep_matrix.npy"    # In .npy format with shape: (No. of rows in csv) x (time) x (No. of responses)
 mep_response = ["auc_1", "auc_3"]              # Order of responses in MEP matrix
-# mep_time_range = [-0.01, 0.025]
+mep_time_range = [-0.01, 0.025]
 
 [optional-mep-size-window]
-mep_size_time_range = [0.015, 0.075]
+mep_size_time_range = [0.0015, 0.01]
 
 [rectified_logistic]
 "µ_a" = [150, 50]
