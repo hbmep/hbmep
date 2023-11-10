@@ -7,7 +7,7 @@ from sklearn.preprocessing import LabelEncoder
 
 from hbmep.config import Config
 from hbmep.model import (
-    Baseline,
+    BaseModel,
     RectifiedLogistic
 )
 from hbmep.utils.constants import SIMULATION
@@ -17,7 +17,7 @@ logger = logging.getLogger(__name__)
 
 class Model:
     def __init__(self, config: Config):
-        SUPPORTED_MODELS = [Baseline, RectifiedLogistic]
+        SUPPORTED_MODELS = [BaseModel, RectifiedLogistic]
         model_by_link = {m.LINK: m for m in SUPPORTED_MODELS}
 
         self.model = model_by_link.get(config.LINK)

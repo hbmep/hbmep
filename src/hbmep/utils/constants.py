@@ -38,7 +38,7 @@ DIAGNOSTICS_CSV = "diagnostics.csv"
 LOO_CSV = "loo.csv"
 WAIC_CSV = "waic.csv"
 
-BASELINE = "baseline"
+BASE_MODEL = "base_model"
 RELU = "relu"
 SATURATED_RELU = "saturated_relu"
 RECTIFIED_LOGISTIC = "rectified_logistic"
