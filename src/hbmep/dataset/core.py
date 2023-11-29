@@ -26,10 +26,8 @@ class Dataset:
 
         self.n_features = len(self.features)
         self.n_response = len(self.response)
-        self.combination_columns = [self.subject] + self.features
-        self.regressors = self.combination_columns + [self.intensity]
-
-        self.preprocess_params = config.PREPROCESS_PARAMS
+        self.combination_columns = None
+        self.regressors = [self.subject] + self.features + [self.intensity]
 
         self.mep_matrix_path = config.MEP_MATRIX_PATH
         self.mep_response = config.MEP_RESPONSE
@@ -96,13 +94,14 @@ class Dataset:
             df = pd.read_csv(csv_path)
 
         """ Positive response constraint """
-        if set(self.response).issubset(set(df.columns)):
-            ind = (df[self.response] <= 0).any(axis=1)
-            num_non_positive_observation = ind.sum()
+        num_non_positive_observation = (df[self.response] <= 0).any(axis=1).sum()
+        logger.warning(f"Total non-positive observations: {num_non_positive_observation}")
+        assert not num_non_positive_observation
 
-            if num_non_positive_observation:
-                df = df[~ind].reset_index(drop=True).copy()
-                logger.warning(f"Removed {num_non_positive_observation} non-negative observations")
+        """ Missing response constraint """
+        num_missing_observation = df[self.response].isna().any(axis=1).sum()
+        logger.warning(f"Total missing observations: {num_missing_observation}")
+        assert not num_missing_observation
 
         logger.info("Processing data ...")
         df, encoder_dict = self._preprocess(df=df)

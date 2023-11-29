@@ -49,15 +49,6 @@ class BaseModel(Dataset):
         self.rng_key = jax.random.PRNGKey(self.random_state)
         self.mcmc_params = config.MCMC_PARAMS
 
-        self.dataset_plot_path = os.path.join(self.build_dir, DATASET_PLOT)
-        self.recruitment_curves_path = os.path.join(self.build_dir, RECRUITMENT_CURVES)
-        self.prior_predictive_path = os.path.join(self.build_dir, PRIOR_PREDICTIVE)
-        self.posterior_predictive_path = os.path.join(self.build_dir, POSTERIOR_PREDICTIVE)
-        self.mcmc_path = os.path.join(self.build_dir, MCMC_NC)
-        self.diagnostics_path = os.path.join(self.build_dir, DIAGNOSTICS_CSV)
-        self.loo_path = os.path.join(self.build_dir, LOO_CSV)
-        self.waic_path = os.path.join(self.build_dir, WAIC_CSV)
-
         self.response_colors = plt.cm.rainbow(np.linspace(0, 1, self.n_response))
         self.base = config.BASE
         self.subplot_cell_width = 5
@@ -89,7 +80,6 @@ class BaseModel(Dataset):
 
     def _make_index_from_combination(self, combination: tuple[int]):
         ind = [slice(None)] + list(combination) + [slice(None)]
-        ind = ind[::-1]
         return tuple(ind)
 
     def _collect_samples_at_combination(self, combination: tuple[int], samples: np.ndarray):
@@ -103,7 +93,7 @@ class BaseModel(Dataset):
         prediction_df: pd.DataFrame | None = None,
         posterior_predictive: dict | None = None,
         encoder_dict: dict[str, LabelEncoder] | None = None,
-        mep_matrix_path: str | None = None,
+        mep_matrix: np.ndarray | None = None,
         **kwargs
     ):
         """
@@ -129,8 +119,8 @@ class BaseModel(Dataset):
         recruitment_curve_props = kwargs.get("recruitment_curve_props", self.recruitment_curve_props)
         threshold_posterior_props = kwargs.get("threshold_posterior_props", self.threshold_posterior_props)
 
-        if mep_matrix_path is not None:
-            mep_matrix = np.load(mep_matrix_path)
+        if mep_matrix is not None:
+            assert mep_matrix.shape[0] == df.shape[0]
             a, b = self.mep_window
             time = np.linspace(a, b, mep_matrix.shape[1])
             within_mep_size_window = (time > self.mep_size_window[0]) & (time < self.mep_size_window[1])
@@ -145,7 +135,7 @@ class BaseModel(Dataset):
         n_response = len(response)
 
         n_columns_per_response = 1
-        if mep_matrix_path is not None: n_columns_per_response += 1
+        if mep_matrix is not None: n_columns_per_response += 1
         if posterior_samples is not None: n_columns_per_response += 2
 
         n_fig_rows = 10
@@ -228,7 +218,7 @@ class BaseModel(Dataset):
                     if not j: prefix = curr_combination_inverse + prefix
 
                     """ MEP data """
-                    if mep_matrix_path is not None:
+                    if mep_matrix is not None:
                         postfix = " - MEP"
                         ax = axes[i, j]
                         mep_response_ind = [i for i, _response_muscle in enumerate(self.mep_response) if _response_muscle == response_muscle][0]
@@ -339,16 +329,16 @@ class BaseModel(Dataset):
         df: pd.DataFrame,
         encoder_dict: dict[str, LabelEncoder] | None = None,
         destination_path: str | None = None,
-        mep_matrix_path: str | None = None,
         **kwargs
     ):
-        if destination_path is None: destination_path = self.dataset_plot_path
+        if destination_path is None: destination_path = os.path.join(
+            self.build_dir, DATASET_PLOT
+        )
         logger.info("Rendering ...")
         return self.mep_renderer(
             df=df,
             destination_path=destination_path,
             encoder_dict=encoder_dict,
-            mep_matrix_path=mep_matrix_path,
             **kwargs
         )
 
@@ -361,10 +351,11 @@ class BaseModel(Dataset):
         posterior_predictive: dict,
         encoder_dict: dict[str, LabelEncoder] | None = None,
         destination_path: str | None = None,
-        mep_matrix_path: str | None = None,
         **kwargs
     ):
-        if destination_path is None: destination_path = self.recruitment_curves_path
+        if destination_path is None: destination_path = os.path.join(
+            self.build_dir, RECRUITMENT_CURVES
+        )
         logger.info("Rendering recruitment curves ...")
         return self.mep_renderer(
             df=df,
@@ -373,7 +364,6 @@ class BaseModel(Dataset):
             prediction_df=prediction_df,
             posterior_predictive=posterior_predictive,
             encoder_dict=encoder_dict,
-            mep_matrix_path=mep_matrix_path,
             **kwargs
         )
 
@@ -467,7 +457,6 @@ class BaseModel(Dataset):
 
                 axes[i, 0].set_xticks(ticks=curr_x_ticks)
                 axes[i, 0].set_xlim(left=min_intensity - (self.base // 2), right=max_intensity + (self.base // 2))
-                axes[i, 0].tick_params(axis="x", rotation=90)
 
                 """ Iterate over responses """
                 j = 0
@@ -488,6 +477,7 @@ class BaseModel(Dataset):
 
                     ax.set_title(prefix + postfix)
                     ax.sharex(axes[i, 0])
+                    ax.tick_params(axis="x", rotation=90)
                     j += 1
 
                     """ Observational predictive """
@@ -529,6 +519,7 @@ class BaseModel(Dataset):
                     ax.sharex(axes[i, 0])
                     ax.sharey(axes[i, j - 1])
                     ax.set_title(postfix)
+                    ax.tick_params(axis="x", rotation=90)
                     j += 1
 
                     """ Recruitment curve predictive """
@@ -558,6 +549,7 @@ class BaseModel(Dataset):
                     ax.sharex(axes[i, 0])
                     ax.sharey(axes[i, j - 2])
                     ax.set_title(postfix)
+                    ax.tick_params(axis="x", rotation=90)
                     j += 1
 
                 combination_counter += 1
@@ -578,19 +570,23 @@ class BaseModel(Dataset):
         prediction_df: pd.DataFrame,
         prior_predictive: dict | None = None,
         posterior_predictive: dict | None = None,
-        encoder_dict: dict[str, LabelEncoder] | None = None
+        encoder_dict: dict[str, LabelEncoder] | None = None,
+        destination_path: str | None = None
     ):
         assert (prior_predictive is not None) or (posterior_predictive is not None)
 
         if posterior_predictive is not None:
+            PREDICTIVE = POSTERIOR_PREDICTIVE
             predictive = posterior_predictive
-            destination_path = self.posterior_predictive_path
             msg = "Rendering posterior predictive checks ..."
         else:
+            PREDICTIVE = PRIOR_PREDICTIVE
             predictive = prior_predictive
-            destination_path = self.prior_predictive_path
             msg = "Rendering prior predictive checks ..."
 
+        if destination_path is None: destination_path = os.path.join(
+            self.build_dir, PREDICTIVE
+        )
         logger.info(msg)
         return self.predictive_checks_renderer(
             df=df,
@@ -609,9 +605,9 @@ class BaseModel(Dataset):
         return trace
 
     @timing
-    def run_inference(self, df: pd.DataFrame, sampler: MCMCKernel = None) -> tuple[MCMC, dict]:
+    def run_inference(self, df: pd.DataFrame, sampler: MCMCKernel = None, **kwargs) -> tuple[MCMC, dict]:
         """ Set up sampler """
-        if sampler is None: sampler = NUTS(self._model)
+        if sampler is None: sampler = NUTS(self._model, **kwargs)
         mcmc = MCMC(sampler, **self.mcmc_params)
 
         """ Run MCMC inference """
@@ -619,7 +615,7 @@ class BaseModel(Dataset):
         mcmc.run(self.rng_key, *self._collect_regressor(df=df), *self._collect_response(df=df))
 
         posterior_samples = mcmc.get_samples()
-        posterior_samples = {u: np.array(v) for u, v in posterior_samples.items()}
+        posterior_samples = {k: np.array(v) for k, v in posterior_samples.items()}
         return mcmc, posterior_samples
 
     @timing
@@ -667,24 +663,37 @@ class BaseModel(Dataset):
         return predictions
 
     @timing
-    def save(self, mcmc: numpyro.infer.mcmc.MCMC):
+    def save(self, mcmc: numpyro.infer.mcmc.MCMC, **kwargs):
+        mcmc_path = kwargs.get(
+            "mcmc_path", os.path.join(self.build_dir, MCMC_NC)
+        )
+        diagnostics_path = kwargs.get(
+            "diagnostics_path", os.path.join(self.build_dir, DIAGNOSTICS_CSV)
+        )
+        loo_path = kwargs.get(
+            "loo_path", os.path.join(self.build_dir, LOO_CSV)
+        )
+        waic_path = kwargs.get(
+            "waic_path", os.path.join(self.build_dir, WAIC_CSV)
+        )
+
         """ Save inference data """
         logger.info("Saving inference data ...")
         numpyro_data = az.from_numpyro(mcmc)
-        numpyro_data.to_netcdf(self.mcmc_path)
-        logger.info(f"Saved to {self.mcmc_path}")
+        numpyro_data.to_netcdf(mcmc_path)
+        logger.info(f"Saved to {mcmc_path}")
 
         """ Save convergence diagnostics """
         logger.info("Rendering convergence diagnostics ...")
         az.summary(data=numpyro_data, hdi_prob=.95).to_csv(self.diagnostics_path)
-        logger.info(f"Saved to {self.diagnostics_path}")
+        logger.info(f"Saved to {diagnostics_path}")
 
         """ Model evaluation """
         logger.info("Evaluating model ...")
         score = az.loo(numpyro_data)
         logger.info(f"ELPD LOO (Log): {score.elpd_loo:.2f}")
-        score.to_csv(self.loo_path)
+        score.to_csv(loo_path)
 
         score = az.waic(numpyro_data)
         logger.info(f"ELPD WAIC (Log): {score.elpd_waic:.2f}")
-        score.to_csv(self.waic_path)
+        score.to_csv(waic_path)
