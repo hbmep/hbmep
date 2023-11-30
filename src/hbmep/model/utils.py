@@ -4,20 +4,21 @@ class Site:
     b = "b"
 
     L = "L"
+    ell = "ℓ"
     H = "H"
     v = "v"
 
     g_1 = "g_1"
     g_2 = "g_2"
 
-    """ Observation """
-    obs = "obs"
+    """ Deterministic """
+    mu = "µ"
+    beta = "β"
 
     """ Plates """
     n_subject = "n_subject"
     n_response = "n_response"
     n_data = "n_data"
 
-    """ Deterministic """
-    mu = "µ"
-    beta = "β"
+    """ Observation """
+    obs = "obs"
