@@ -45,7 +45,12 @@ class Dataset:
             pass
         return
 
-    def _make_combinations(self, df: pd.DataFrame, columns: list[str]) -> list[tuple[int]]:
+    def _make_combinations(
+        self,
+        df: pd.DataFrame,
+        columns: list[str],
+        orderby = None
+    ) -> list[tuple[int]]:
         combinations = df \
             .groupby(by=columns) \
             .size() \
@@ -55,7 +60,7 @@ class Dataset:
         combinations = combinations[columns] \
             .apply(tuple, axis=1) \
             .tolist()
-        combinations = sorted(combinations)
+        combinations = sorted(combinations, key=orderby)
         return combinations
 
     def _invert_combination(

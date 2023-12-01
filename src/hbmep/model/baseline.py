@@ -99,6 +99,7 @@ class BaseModel(Dataset):
         """
         **kwargs:
             combination_columns: list[str]
+            orderby: lambda function
             intensity: str
             response: list[str]
             response_colors: list[str] | np.ndarray
@@ -109,6 +110,7 @@ class BaseModel(Dataset):
             threshold_posterior_props: dict
         """
         combination_columns = kwargs.get("combination_columns", self.combination_columns)
+        orderby = kwargs.get("orderby")
         intensity = kwargs.get("intensity", self.intensity)
         response = kwargs.get("response", self.response)
         response_colors = kwargs.get("response_colors", self.response_colors)
@@ -130,7 +132,7 @@ class BaseModel(Dataset):
             mu_posterior_predictive = posterior_predictive[site.mu]
 
         """ Setup pdf layout """
-        combinations = self._make_combinations(df=df, columns=combination_columns)
+        combinations = self._make_combinations(df=df, columns=combination_columns, orderby=orderby)
         n_combinations = len(combinations)
         n_response = len(response)
 
@@ -374,13 +376,14 @@ class BaseModel(Dataset):
         prediction_df: pd.DataFrame,
         predictive: dict,
         destination_path: str,
-        encoder_dict: dict[str, LabelEncoder] | None = None
+        encoder_dict: dict[str, LabelEncoder] | None = None,
+        orderby = None
     ):
         """ Prior / Posterior predictive samples """
         obs, mu = predictive[site.obs], predictive[site.mu]
 
         """ Setup pdf layout """
-        combinations = self._make_combinations(df=df, columns=self.combination_columns)
+        combinations = self._make_combinations(df=df, columns=self.combination_columns, orderby=orderby)
         n_combinations = len(combinations)
 
         n_columns_per_response = 3
@@ -571,7 +574,8 @@ class BaseModel(Dataset):
         prior_predictive: dict | None = None,
         posterior_predictive: dict | None = None,
         encoder_dict: dict[str, LabelEncoder] | None = None,
-        destination_path: str | None = None
+        destination_path: str | None = None,
+        orderby = None
     ):
         assert (prior_predictive is not None) or (posterior_predictive is not None)
 
@@ -593,7 +597,8 @@ class BaseModel(Dataset):
             prediction_df=prediction_df,
             predictive=predictive,
             destination_path=destination_path,
-            encoder_dict=encoder_dict
+            encoder_dict=encoder_dict,
+            orderby=orderby
         )
 
     @timing
