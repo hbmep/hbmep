@@ -216,7 +216,7 @@ class BaseModel(Dataset):
                 j = 0
                 for r, response_muscle in enumerate(response):
                     """ Labels """
-                    prefix = f"{tuple(list(curr_combination)[::-1] + [r])}: {response_muscle} - MEP"
+                    prefix = f"{tuple(list(curr_combination) + [r])}: {response_muscle} - MEP"
                     if not j: prefix = curr_combination_inverse + prefix
 
                     """ MEP data """
@@ -464,7 +464,7 @@ class BaseModel(Dataset):
                 """ Iterate over responses """
                 j = 0
                 for r, response in enumerate(self.response):
-                    prefix = f"{tuple(list(curr_combination)[::-1] + [r])}: {response} - MEP"
+                    prefix = f"{tuple(list(curr_combination) + [r])}: {response} - MEP"
                     if not j: prefix = curr_combination_inverse + prefix
 
                     """ MEP Size scatter plot and recruitment curve """
@@ -624,7 +624,12 @@ class BaseModel(Dataset):
         return mcmc, posterior_samples
 
     @timing
-    def make_prediction_dataset(self, df: pd.DataFrame, num: int = 100):
+    def make_prediction_dataset(
+        self, df: pd.DataFrame,
+        num: int = 100,
+        min_intensity: float | None = None,
+        max_intensity: float | None = None
+    ):
         pred_df = df \
             .groupby(by=self.combination_columns) \
             .agg({self.intensity: [min, max]}) \
@@ -632,10 +637,17 @@ class BaseModel(Dataset):
         pred_df.columns = pred_df.columns.map(lambda x: x[1])
         pred_df = pred_df.reset_index().copy()
 
-        pred_df["min"] = pred_df["min"].apply(lambda x: floor(x, base=self.base))
-        pred_df["max"] = pred_df["max"] \
-            .apply(lambda x: (x, ceil(x, base=self.base))) \
-            .apply(lambda x: x[0] + self.base if x[0] == x[1] else x[1])
+        if min_intensity is not None:
+            pred_df["min"] = min_intensity
+        else:
+            pred_df["min"] = pred_df["min"].apply(lambda x: floor(x, base=self.base))
+
+        if max_intensity is not None:
+            pred_df["max"] = max_intensity
+        else:
+            pred_df["max"] = pred_df["max"] \
+                .apply(lambda x: (x, ceil(x, base=self.base))) \
+                .apply(lambda x: x[0] + self.base if x[0] == x[1] else x[1])
 
         pred_df[self.intensity] = pred_df[["min", "max"]] \
             .apply(lambda x: (x[0], x[1], min(2000, ceil((x[1] - x[0]) / 5, base=100))), axis=1) \
