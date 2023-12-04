@@ -663,18 +663,20 @@ class BaseModel(Dataset):
         self,
         df: pd.DataFrame,
         num_samples: int = 100,
-        posterior_samples: dict | None = None
+        posterior_samples: dict | None = None,
+        return_sites: list[str] | None = None
     ):
         if posterior_samples is None:   # Prior predictive
             predictive = Predictive(
                 model=self._model,
-                num_samples=num_samples
+                num_samples=num_samples,
+                return_sites=return_sites
             )
         else:   # Posterior predictive
             predictive = Predictive(
                 model=self._model,
                 posterior_samples=posterior_samples,
-                return_sites=[site.mu, site.beta, site.obs]
+                return_sites=return_sites
             )
 
         """ Generate predictions """
