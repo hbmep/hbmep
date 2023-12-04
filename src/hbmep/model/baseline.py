@@ -667,11 +667,14 @@ class BaseModel(Dataset):
     ):
         if posterior_samples is None:   # Prior predictive
             predictive = Predictive(
-                model=self._model, num_samples=num_samples
+                model=self._model,
+                num_samples=num_samples
             )
         else:   # Posterior predictive
             predictive = Predictive(
-                model=self._model, posterior_samples=posterior_samples
+                model=self._model,
+                posterior_samples=posterior_samples,
+                return_sites=[site.mu, site.beta, site.obs]
             )
 
         """ Generate predictions """
