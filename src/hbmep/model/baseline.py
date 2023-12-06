@@ -59,20 +59,15 @@ class BaseModel(Dataset):
         self.threshold_posterior_props = {"color": "green", "alpha": 0.4}
         logger.info(f"Initialized {self.NAME}")
 
-    def _model(self, subject, features, intensity, response_obs=None):
+    def _model(self, features, intensity, response_obs=None):
         raise NotImplementedError
 
     def _collect_regressor(self, df: pd.DataFrame):
-        subject = df[self.subject].to_numpy().reshape(-1,)
-        n_subject = df[self.subject].nunique()
-
         features = df[self.features].to_numpy().T
         n_features = df[self.features].nunique().tolist()
-
         intensity = df[self.intensity].to_numpy().reshape(-1,)
         n_data = intensity.shape[0]
-
-        return (subject, n_subject), (features, n_features), (intensity, n_data),
+        return (features, n_features), (intensity, n_data),
 
     def _collect_response(self, df: pd.DataFrame):
         response = df[self.response].to_numpy()
@@ -109,12 +104,11 @@ class BaseModel(Dataset):
             recruitment_curve_props: dict
             threshold_posterior_props: dict
         """
-        combination_columns = kwargs.get("combination_columns", self.combination_columns)
+        combination_columns = kwargs.get("combination_columns", self.features)
         orderby = kwargs.get("orderby")
         intensity = kwargs.get("intensity", self.intensity)
         response = kwargs.get("response", self.response)
         response_colors = kwargs.get("response_colors", self.response_colors)
-
         base = kwargs.get("base", self.base)
         subplot_cell_width = kwargs.get("subplot_cell_width", self.subplot_cell_width)
         subplot_cell_height = kwargs.get("subplot_cell_height", self.subplot_cell_height)
@@ -142,7 +136,6 @@ class BaseModel(Dataset):
 
         n_fig_rows = 10
         n_fig_columns = n_columns_per_response * n_response
-
         n_pdf_pages = n_combinations // n_fig_rows
         if n_combinations % n_fig_rows: n_pdf_pages += 1
 
@@ -239,7 +232,6 @@ class BaseModel(Dataset):
                             y=self.mep_size_window[1], color="r", linestyle="--", alpha=.4
                         )
                         ax.set_ylim(bottom=-0.001, top=self.mep_size_window[1] + (self.mep_size_window[0] - (-0.001)))
-
                         ax.set_ylabel("Time")
                         ax.set_title(prefix + postfix)
                         ax.sharex(axes[i, 0])
@@ -251,7 +243,6 @@ class BaseModel(Dataset):
                     postfix = " - MEP Size"
                     ax = axes[i, j]
                     sns.scatterplot(data=curr_df, x=intensity, y=response_muscle, color=response_colors[r], ax=ax)
-
                     ax.set_ylabel(response_muscle)
                     ax.set_title(prefix + postfix)
                     ax.sharex(axes[i, 0])
@@ -274,7 +265,6 @@ class BaseModel(Dataset):
                             ax=ax,
                             **threshold_posterior_props
                         )
-
                         ax.set_title(postfix)
                         ax.sharex(axes[i, 0])
                         ax.sharey(axes[i, j - 1])
@@ -308,7 +298,6 @@ class BaseModel(Dataset):
                             color="black",
                             alpha=.4
                         )
-
                         ax.set_xlabel(intensity)
                         ax.set_title(postfix)
                         if j > 0 and ax.get_legend(): ax.get_legend().remove()
@@ -377,13 +366,27 @@ class BaseModel(Dataset):
         predictive: dict,
         destination_path: str,
         encoder_dict: dict[str, LabelEncoder] | None = None,
-        orderby = None
+        **kwargs
     ):
-        """ Prior / Posterior predictive samples """
+        """
+        **kwargs:
+            combination_columns: list[str]
+            orderby: lambda function
+            base: int
+            subplot_cell_width: float
+            subplot_cell_height: float
+        """
+        combination_columns = kwargs.get("combination_columns", self.features)
+        orderby = kwargs.get("orderby")
+        base = kwargs.get("base", self.base)
+        subplot_cell_width = kwargs.get("subplot_cell_width", self.subplot_cell_width)
+        subplot_cell_height = kwargs.get("subplot_cell_height", self.subplot_cell_height)
+
+        """ Predictive samples """
         obs, mu = predictive[site.obs], predictive[site.mu]
 
         """ Setup pdf layout """
-        combinations = self._make_combinations(df=df, columns=self.combination_columns, orderby=orderby)
+        combinations = self._make_combinations(df=df, columns=combination_columns, orderby=orderby)
         n_combinations = len(combinations)
 
         n_columns_per_response = 3
@@ -406,8 +409,8 @@ class BaseModel(Dataset):
                 nrows=n_rows_current_page,
                 ncols=n_fig_columns,
                 figsize=(
-                    n_fig_columns * self.subplot_cell_width,
-                    n_rows_current_page * self.subplot_cell_height
+                    n_fig_columns * subplot_cell_width,
+                    n_rows_current_page * subplot_cell_height
                 ),
                 sharex="row",
                 constrained_layout=True,
@@ -422,24 +425,23 @@ class BaseModel(Dataset):
                 if encoder_dict is not None:
                     curr_combination_inverse = self._invert_combination(
                         combination=curr_combination,
-                        columns=self.combination_columns,
+                        columns=combination_columns,
                         encoder_dict=encoder_dict
                     )
                     curr_combination_inverse = ", ".join(map(str, curr_combination_inverse))
                     curr_combination_inverse += "\n"
 
                 """ Filter dataframe based on current combination """
-                df_ind = df[self.combination_columns].apply(tuple, axis=1).isin([curr_combination])
+                df_ind = df[combination_columns].apply(tuple, axis=1).isin([curr_combination])
                 curr_df = df[df_ind].reset_index(drop=True).copy()
 
                 """ Filter prediction dataframe based on current combination """
-                prediction_df_ind = prediction_df[self.combination_columns].apply(tuple, axis=1).isin([curr_combination])
+                prediction_df_ind = prediction_df[combination_columns].apply(tuple, axis=1).isin([curr_combination])
                 curr_prediction_df = prediction_df[prediction_df_ind].reset_index(drop=True).copy()
 
                 """ Predictive for current combination """
                 curr_obs = obs[:, prediction_df_ind, :]
                 curr_obs_map = curr_obs.mean(axis=0)
-
                 curr_mu = mu[:, prediction_df_ind, :]
                 curr_mu_map = curr_mu.mean(axis=0)
 
@@ -447,19 +449,18 @@ class BaseModel(Dataset):
                 curr_obs_hpdi_95 = hpdi(curr_obs, prob=.95)
                 curr_obs_hpdi_85 = hpdi(curr_obs, prob=.85)
                 curr_obs_hpdi_65 = hpdi(curr_obs, prob=.65)
-
                 curr_mu_hpdi_95 = hpdi(curr_mu, prob=.95)
 
                 """ Tickmarks """
                 min_intensity, max_intensity_ = curr_df[self.intensity].agg([min, max])
-                min_intensity = floor(min_intensity, base=self.base)
-                max_intensity = ceil(max_intensity_, base=self.base)
+                min_intensity = floor(min_intensity, base=base)
+                max_intensity = ceil(max_intensity_, base=base)
                 if max_intensity == max_intensity_:
-                    max_intensity += self.base
-                curr_x_ticks = np.arange(min_intensity, max_intensity, self.base)
+                    max_intensity += base
+                curr_x_ticks = np.arange(min_intensity, max_intensity, base)
 
                 axes[i, 0].set_xticks(ticks=curr_x_ticks)
-                axes[i, 0].set_xlim(left=min_intensity - (self.base // 2), right=max_intensity + (self.base // 2))
+                axes[i, 0].set_xlim(left=min_intensity - (base // 2), right=max_intensity + (base // 2))
 
                 """ Iterate over responses """
                 j = 0
@@ -477,7 +478,6 @@ class BaseModel(Dataset):
                         ax=ax,
                         **self.recruitment_curve_props,
                     )
-
                     ax.set_title(prefix + postfix)
                     ax.sharex(axes[i, 0])
                     ax.tick_params(axis="x", rotation=90)
@@ -518,7 +518,6 @@ class BaseModel(Dataset):
                         edgecolor="black",
                         ax=ax
                     )
-
                     ax.sharex(axes[i, 0])
                     ax.sharey(axes[i, j - 1])
                     ax.set_title(postfix)
@@ -548,7 +547,6 @@ class BaseModel(Dataset):
                         edgecolor="black",
                         ax=ax
                     )
-
                     ax.sharex(axes[i, 0])
                     ax.sharey(axes[i, j - 2])
                     ax.set_title(postfix)
@@ -575,7 +573,7 @@ class BaseModel(Dataset):
         posterior_predictive: dict | None = None,
         encoder_dict: dict[str, LabelEncoder] | None = None,
         destination_path: str | None = None,
-        orderby = None
+        **kwargs
     ):
         assert (prior_predictive is not None) or (posterior_predictive is not None)
 
@@ -588,9 +586,9 @@ class BaseModel(Dataset):
             predictive = prior_predictive
             msg = "Rendering prior predictive checks ..."
 
-        if destination_path is None: destination_path = os.path.join(
-            self.build_dir, PREDICTIVE
-        )
+        if destination_path is None:
+            destination_path = os.path.join(self.build_dir, PREDICTIVE)
+
         logger.info(msg)
         return self.predictive_checks_renderer(
             df=df,
@@ -598,7 +596,7 @@ class BaseModel(Dataset):
             predictive=predictive,
             destination_path=destination_path,
             encoder_dict=encoder_dict,
-            orderby=orderby
+            **kwargs
         )
 
     @timing
@@ -618,7 +616,6 @@ class BaseModel(Dataset):
         """ Run MCMC inference """
         logger.info(f"Running inference with {self.NAME} ...")
         mcmc.run(self.rng_key, *self._collect_regressor(df=df), *self._collect_response(df=df))
-
         posterior_samples = mcmc.get_samples()
         posterior_samples = {k: np.array(v) for k, v in posterior_samples.items()}
         return mcmc, posterior_samples
@@ -631,7 +628,7 @@ class BaseModel(Dataset):
         max_intensity: float | None = None
     ):
         pred_df = df \
-            .groupby(by=self.combination_columns) \
+            .groupby(by=self.features) \
             .agg({self.intensity: [min, max]}) \
             .copy()
         pred_df.columns = pred_df.columns.map(lambda x: x[1])
@@ -654,7 +651,6 @@ class BaseModel(Dataset):
             .apply(lambda x: np.linspace(x[0], x[1], num))
         pred_df = pred_df.explode(column=self.intensity)[self.regressors].copy()
         pred_df[self.intensity] = pred_df[self.intensity].astype(float)
-
         pred_df.reset_index(drop=True, inplace=True)
         return pred_df
 
@@ -715,7 +711,6 @@ class BaseModel(Dataset):
         score = az.loo(numpyro_data)
         logger.info(f"ELPD LOO (Log): {score.elpd_loo:.2f}")
         score.to_csv(loo_path)
-
         score = az.waic(numpyro_data)
         logger.info(f"ELPD WAIC (Log): {score.elpd_waic:.2f}")
         score.to_csv(waic_path)

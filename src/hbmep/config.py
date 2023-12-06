@@ -25,16 +25,15 @@ class Config():
         self.BUILD_DIR: str = paths[const.BUILD_DIR]
 
         """ Regressors and response """
-        self.SUBJECT: str = vars[const.SUBJECT]
         self.FEATURES: list[str] = vars[const.FEATURES]
         self.INTENSITY: str = vars[const.INTENSITY]
         self.RESPONSE: list[str] = vars[const.RESPONSE]
 
         """ MCMC parameters """
         self.MCMC_PARAMS: dict[str, int] = {
-            const.NUM_CHAINS: mcmc[const.CHAINS],
-            const.NUM_WARMUP: mcmc[const.WARMUP],
-            const.NUM_SAMPLES: mcmc[const.SAMPLES]
+            "num_chains": mcmc[const.CHAINS],
+            "num_warmup": mcmc[const.WARMUP],
+            "num_samples": mcmc[const.SAMPLES]
         }
 
         """ Model """
