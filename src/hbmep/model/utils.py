@@ -16,7 +16,7 @@ class Site:
     beta = "β"
 
     """ Plates """
-    n_subject = "n_subject"
+    n_features = [f"n_feature{i}" for i in range(10)]
     n_response = "n_response"
     n_data = "n_data"
 

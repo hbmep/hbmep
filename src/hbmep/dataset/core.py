@@ -19,15 +19,13 @@ class Dataset:
         self.csv_path = config.CSV_PATH
         self.build_dir = config.BUILD_DIR
 
-        self.subject = config.SUBJECT
         self.features = config.FEATURES
         self.intensity = config.INTENSITY
         self.response = config.RESPONSE
 
         self.n_features = len(self.features)
         self.n_response = len(self.response)
-        self.combination_columns = None
-        self.regressors = [self.subject] + self.features + [self.intensity]
+        self.regressors = self.features + [self.intensity]
 
         self.mep_matrix_path = config.MEP_MATRIX_PATH
         self.mep_response = config.MEP_RESPONSE
@@ -69,18 +67,16 @@ class Dataset:
         columns: list[str],
         encoder_dict: dict[str, LabelEncoder]
     ) -> tuple:
-        combination_inverse = []
-        for (column, value) in zip(columns, combination):
-            combination_inverse.append(
-                encoder_dict[column].inverse_transform(np.array([value]))[0]
-            )
-        return tuple(combination_inverse)
+        return tuple(
+            encoder_dict[column].inverse_transform(np.array([value]))[0] \
+            for (column, value) in zip(columns, combination)
+        )
 
     def _preprocess(self, df: pd.DataFrame) -> tuple[pd.DataFrame, dict[str, LabelEncoder]]:
         """ Encode """
         encoder_dict = defaultdict(LabelEncoder)
-        df[self.combination_columns] = \
-            df[self.combination_columns] \
+        df[self.features] = \
+            df[self.features] \
             .apply(lambda x: encoder_dict[x.name].fit_transform(x)) \
             .copy()
         df.reset_index(inplace=True, drop=True)
