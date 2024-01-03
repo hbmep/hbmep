@@ -8,8 +8,8 @@ class Site:
     H = "H"
     v = "v"
 
-    g_1 = "g_1"
-    g_2 = "g_2"
+    c_1 = "c₁"
+    c_2 = "c₂"
 
     """ Deterministic """
     mu = "µ"
@@ -22,3 +22,7 @@ class Site:
 
     """ Observation """
     obs = "obs"
+
+    """ Outlier distribution """
+    outlier_prob = "p_outlier"
+    outlier_scale = "σ_outlier"
