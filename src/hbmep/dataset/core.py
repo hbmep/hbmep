@@ -9,6 +9,7 @@ from sklearn.preprocessing import LabelEncoder
 
 from hbmep.config import Config
 from hbmep.utils import timing
+from hbmep.utils import constants as const
 
 logger = logging.getLogger(__name__)
 
@@ -19,7 +20,9 @@ class Dataset:
         self.csv_path = config.CSV_PATH
         self.build_dir = config.BUILD_DIR
 
-        self.features = config.FEATURES
+        self._features = config.FEATURES
+        self.features = []
+        self._set_features()
         self.intensity = config.INTENSITY
         self.response = config.RESPONSE
 
@@ -31,6 +34,13 @@ class Dataset:
         self.mep_response = config.MEP_RESPONSE
         self.mep_window = config.MEP_TIME_RANGE
         self.mep_size_window = config.MEP_SIZE_TIME_RANGE
+
+    def _set_features(self):
+        for feature in self._features:
+            if isinstance(feature, list):
+                feature = const.SEP.join(feature)
+            self.features.append(feature)
+        return
 
     def _make_dir(self, dir: str):
         Path(dir).mkdir(parents=True, exist_ok=True)
@@ -93,6 +103,13 @@ class Dataset:
             csv_path = self.csv_path
             logger.info(f"Reading data from {csv_path} ...")
             df = pd.read_csv(csv_path)
+
+        """ Concatenate (necessary) features """
+        for i, feature in enumerate(self._features):
+            if isinstance(feature, list):
+                df[self.features[i]] = df[feature].apply(
+                    lambda x: const.SEP.join(x), axis=1
+                )
 
         """ Positive response constraint """
         num_non_positive_observation = (df[self.response] <= 0).any(axis=1).sum()
