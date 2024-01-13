@@ -2,17 +2,17 @@ class Site:
     """ Priors """
     a = "a"
     b = "b"
-
+    v = "v"
     L = "L"
     ell = "ℓ"
     H = "H"
-    v = "v"
 
     c_1 = "c₁"
     c_2 = "c₂"
 
     """ Deterministic """
     mu = "µ"
+    alpha = "α"
     beta = "β"
 
     """ Plates """
@@ -23,6 +23,6 @@ class Site:
     """ Observation """
     obs = "obs"
 
-    """ Outlier distribution """
+    """ Mixture """
     outlier_prob = "p_outlier"
     outlier_scale = "σ_outlier"
