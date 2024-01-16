@@ -35,6 +35,7 @@ LOO_CSV = "loo.csv"
 WAIC_CSV = "waic.csv"
 
 BASE_MODEL = "base_model"
+GAMMA_MODEL = "gamma_model"
 RELU = "relu"
 SATURATED_RELU = "saturated_relu"
 RECTIFIED_LOGISTIC = "rectified_logistic"

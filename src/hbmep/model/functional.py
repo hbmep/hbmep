@@ -1,6 +1,8 @@
 import jax
 import jax.numpy as jnp
 
+from hbmep.config import Config
+
 
 def relu(x, a, b, L):
     return (

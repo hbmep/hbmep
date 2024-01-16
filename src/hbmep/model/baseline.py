@@ -34,7 +34,8 @@ from hbmep.utils.constants import (
     MCMC_NC,
     DIAGNOSTICS_CSV,
     LOO_CSV,
-    WAIC_CSV
+    WAIC_CSV,
+    GAMMA_MODEL
 )
 
 logger = logging.getLogger(__name__)
@@ -714,3 +715,18 @@ class BaseModel(Dataset):
         score = az.waic(numpyro_data)
         logger.info(f"ELPD WAIC (Log): {score.elpd_waic:.2f}")
         score.to_csv(waic_path)
+
+
+class GammaModel(BaseModel):
+    NAME = GAMMA_MODEL
+
+    def __init__(self, config: Config):
+        super(GammaModel, self).__init__(config=config)
+
+    def rate(self, mu, c_1, c_2):
+        return (
+            c_1 + jnp.true_divide(c_2, mu)
+        )
+
+    def concentration(self, mu, beta):
+        return jnp.multiply(mu, beta)
