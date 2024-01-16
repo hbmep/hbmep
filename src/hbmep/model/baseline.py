@@ -661,7 +661,8 @@ class BaseModel(Dataset):
         df: pd.DataFrame,
         num_samples: int = 100,
         posterior_samples: dict | None = None,
-        return_sites: list[str] | None = None
+        return_sites: list[str] | None = None,
+        rng_key: jax.random.PRNGKey | None = None
     ):
         if posterior_samples is None:   # Prior predictive
             predictive = Predictive(
@@ -677,7 +678,8 @@ class BaseModel(Dataset):
             )
 
         """ Generate predictions """
-        predictions = predictive(self.rng_key, *self._collect_regressor(df=df))
+        if rng_key is None: rng_key = self.rng_key
+        predictions = predictive(rng_key, *self._collect_regressor(df=df))
         predictions = {u: np.array(v) for u, v in predictions.items()}
         return predictions
 
