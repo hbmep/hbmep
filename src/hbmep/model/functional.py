@@ -8,9 +8,9 @@ def relu(x, a, b, L):
     return (
         L
         + jnp.where(
-            x <= a,
+            jnp.less(x, a),
             0.,
-            jnp.multiply(b, (x - a))
+            jnp.multiply(b, x - a)
         )
     )
 

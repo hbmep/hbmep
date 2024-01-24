@@ -26,3 +26,5 @@ class Site:
     """ Mixture """
     outlier_prob = "p_outlier"
     outlier_scale = "σ_outlier"
+    q = "q"
+    bg_scale = "σ_bg"
