@@ -1,9 +1,11 @@
 import jax
+from jax import jit
 import jax.numpy as jnp
 
 from hbmep.config import Config
 
 
+@jit
 def relu(x, a, b, L):
     return (
         L
@@ -15,6 +17,7 @@ def relu(x, a, b, L):
     )
 
 
+@jit
 def logistic4(x, a, b, L, H):
     return (
         L + jnp.true_divide(
@@ -24,6 +27,7 @@ def logistic4(x, a, b, L, H):
     )
 
 
+@jit
 def logistic5(x, a, b, v, L, H):
     return (
         L + jnp.true_divide(
@@ -39,6 +43,7 @@ def logistic5(x, a, b, v, L, H):
     )
 
 
+@jit
 def rectified_logistic(x, a, b, v, L, ell, H):
     return (
         L
@@ -64,6 +69,7 @@ def rectified_logistic(x, a, b, v, L, ell, H):
     )
 
 
+@jit
 def prime(fn, x, *args):
     grad = jax.grad(fn, argnums=0)
     for _ in range(len(x.shape)):
