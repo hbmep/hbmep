@@ -127,7 +127,7 @@ class BaseModel(Dataset):
             mu_posterior_predictive = posterior_predictive[site.mu]
 
         """ Setup pdf layout """
-        combinations = self._make_combinations(df=df, columns=combination_columns, orderby=orderby)
+        combinations = self._get_combinations(df=df, columns=combination_columns, orderby=orderby)
         n_combinations = len(combinations)
         n_response = len(response)
 
@@ -166,7 +166,7 @@ class BaseModel(Dataset):
                 curr_combination_inverse = ""
 
                 if encoder_dict is not None:
-                    curr_combination_inverse = self._invert_combination(
+                    curr_combination_inverse = self._get_combination_inverse(
                         combination=curr_combination,
                         columns=combination_columns,
                         encoder_dict=encoder_dict
@@ -387,7 +387,7 @@ class BaseModel(Dataset):
         obs, mu = predictive[site.obs], predictive[site.mu]
 
         """ Setup pdf layout """
-        combinations = self._make_combinations(df=df, columns=combination_columns, orderby=orderby)
+        combinations = self._get_combinations(df=df, columns=combination_columns, orderby=orderby)
         n_combinations = len(combinations)
 
         n_columns_per_response = 3
@@ -424,7 +424,7 @@ class BaseModel(Dataset):
                 curr_combination_inverse = ""
 
                 if encoder_dict is not None:
-                    curr_combination_inverse = self._invert_combination(
+                    curr_combination_inverse = self._get_combination_inverse(
                         combination=curr_combination,
                         columns=combination_columns,
                         encoder_dict=encoder_dict
