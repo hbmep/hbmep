@@ -94,8 +94,7 @@ class Dataset:
     ) -> tuple[pd.DataFrame, dict[str, LabelEncoder]]:
         self._make_dir(dir=self.build_dir)
         logger.info(
-            "Artefacts will be stored here - ",
-            self.build_dir
+            f"Artefacts will be stored here - {self.build_dir}"
         )
 
         # Read data if not provided
@@ -118,9 +117,9 @@ class Dataset:
             .sum()
         )
         if num_non_positive_observation:
-            logger.warning(
+            logger.info(
                 "Total non-positive observations: ",
-                num_non_positive_observation
+                f"{num_non_positive_observation}"
             )
         assert not num_non_positive_observation
 
@@ -134,7 +133,7 @@ class Dataset:
         if num_missing_observation:
             logger.info(
                 "Total missing observations: ",
-                num_missing_observation
+                f"{num_missing_observation}"
             )
         assert not num_missing_observation
 

@@ -63,23 +63,53 @@ class BaseModel(Dataset):
     def _model(self, features, intensity, response_obs=None):
         raise NotImplementedError
 
-    def _collect_regressor(self, df: pd.DataFrame):
-        features = df[self.features].to_numpy().T
-        n_features = df[self.features].nunique().tolist()
-        intensity = df[self.intensity].to_numpy().reshape(-1,)
-        n_data = intensity.shape[0]
-        return (features, n_features), (intensity, n_data),
+    @staticmethod
+    def _get_input_from_dataframe(
+        df: pd.DataFrame,
+        columns: list[str]
+    ):
+        return df[columns].to_numpy()
 
-    def _collect_response(self, df: pd.DataFrame):
-        response = df[self.response].to_numpy()
-        return response,
-
-    def _make_index_from_combination(self, combination: tuple[int]):
+    @staticmethod
+    def _get_index_from_combination(combination: tuple[int]):
         ind = [slice(None)] + list(combination) + [slice(None)]
         return tuple(ind)
 
-    def _collect_samples_at_combination(self, combination: tuple[int], samples: np.ndarray):
-        return samples[*self._make_index_from_combination(combination=combination)]
+    @staticmethod
+    def _get_samples_at_combination(
+        samples: np.ndarray,
+        combination: tuple[int],
+    ):
+        return samples[
+            BaseModel._get_index_from_combination(combination=combination)
+        ]
+
+    @staticmethod
+    def _get_colors(n: int):
+        return plt.cm.rainbow(np.linspace(0, 1, n))
+
+    def render_mep(
+        *,
+        df: pd.DataFrame | None = None,
+        prediction_df: pd.DataFrame | None = None,
+        intensity: str | None = None,
+        response: list[str] | None = None,
+        columns: list[str] | None = None,
+        mu: np.ndarray | None = None,
+        obs: np.ndarray | None = None,
+        destination_path: str | None = None,
+        **kwargs
+    ):
+        response_colors = kwargs.get(
+            "response_colors",
+            BaseModel._get_colors(len(response))
+        )
+        intensity_base = kwargs.get("intensity_base", 10)
+        subplot_cell_width = kwargs.get("subplot_cell_width", self.subplot_cell_width)
+        subplot_cell_height = kwargs.get("subplot_cell_height", self.subplot_cell_height)
+        recruitment_curve_props = kwargs.get("recruitment_curve_props", self.recruitment_curve_props)
+        threshold_posterior_props = kwargs.get("threshold_posterior_props", self.threshold_posterior_props)
+
 
     def mep_renderer(
         self,
