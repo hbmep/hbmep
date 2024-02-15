@@ -42,13 +42,6 @@ class Plotter(Dataset):
         }
 
     @staticmethod
-    def _get_from_dataframe(
-        df: pd.DataFrame,
-        columns: list[str]
-    ):
-        return df[columns].to_numpy()
-
-    @staticmethod
     def _get_index_from_combination(combination: tuple[int]):
         ind = [slice(None)] + list(combination) + [slice(None)]
         return tuple(ind)
@@ -190,7 +183,7 @@ class Plotter(Dataset):
                     curr_mu_posterior_predictive_map = curr_mu_posterior_predictive.mean(axis=0)
 
                     # Threshold estimate for current combination
-                    curr_threshold_posterior = self._collect_samples_at_combination(
+                    curr_threshold_posterior = self._get_samples_at_combination(
                         combination=curr_combination, samples=posterior_samples[site.a]
                     )
                     curr_threshold_map = curr_threshold_posterior.mean(axis=0)

@@ -25,13 +25,22 @@ class BaseModel(Plotter):
         self.mcmc_params = config.MCMC_PARAMS
         logger.info(f"Initialized {self.NAME}")
 
+    @staticmethod
+    def _get_from_dataframe(
+        df: pd.DataFrame,
+        columns: list[str]
+    ):
+        return df[columns].to_numpy()
+
     def _get_regressors(self, df: pd.DataFrame):
-        return self._get_from_dataframe(df=df, columns=self.regressors)
+        intensity = self._get_from_dataframe(df=df, columns=[self.intensity])
+        features = self._get_from_dataframe(df=df, columns=self.features)
+        return intensity, features
 
     def _get_response(self, df: pd.DataFrame):
-        return self._get_from_dataframe(df=df, columns=self.response)
+        return self._get_from_dataframe(df=df, columns=self.response),
 
-    def _model(self, regressors, response=None):
+    def _model(self, model, features, response_obs=None):
         raise NotImplementedError
 
     @timing
@@ -56,7 +65,7 @@ class BaseModel(Plotter):
         return mcmc, posterior_samples
 
     @timing
-    def make_prediction_dataframe(
+    def make_prediction_dataset(
         self,
         df: pd.DataFrame,
         num_points: int = 100,
