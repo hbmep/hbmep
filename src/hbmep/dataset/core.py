@@ -19,19 +19,17 @@ class Dataset:
         self.csv_path = config.CSV_PATH
         self.build_dir = config.BUILD_DIR
 
+        self.intensity = config.INTENSITY
         self._features = config.FEATURES
         self.features = self._init_features(self._features)
-        self.intensity = config.INTENSITY
+        self.regressors = [self.intensity] + self.features
         self.response = config.RESPONSE
 
         self.n_features = len(self.features)
+        self.n_regressors = len(self.regressors)
         self.n_response = len(self.response)
-        self.regressors = self.features + [self.intensity]
 
-        self.mep_matrix_path = config.MEP_MATRIX_PATH
-        self.mep_response = config.MEP_RESPONSE
-        self.mep_window = config.MEP_TIME_RANGE
-        self.mep_size_window = config.MEP_SIZE_TIME_RANGE
+        self.mep_data = config.MEP_DATA
 
     @staticmethod
     def _init_features(_features: list[str]) -> list[str]:
@@ -93,9 +91,7 @@ class Dataset:
         df: pd.DataFrame | None = None
     ) -> tuple[pd.DataFrame, dict[str, LabelEncoder]]:
         self._make_dir(dir=self.build_dir)
-        logger.info(
-            f"Artefacts will be stored here - {self.build_dir}"
-        )
+        logger.info(f"Artefacts will be stored here - {self.build_dir}")
 
         # Read data if not provided
         if df is None:

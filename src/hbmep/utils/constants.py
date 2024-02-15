@@ -1,29 +1,25 @@
 PATHS = "paths"
-CSV_PATH = "csv"
-BUILD_DIR = "build_dir"
+CSV_PATH = "csv_path"
+BUILD_DIR = "build_directory"
 
-VARIABLES = "vars"
-FEATURES = "features"
+VARIABLES = "variables"
 INTENSITY = "intensity"
+FEATURES = "features"
 RESPONSE = "response"
 
 MCMC = "mcmc"
 CHAINS = "chains"
 WARMUP = "warmup"
 SAMPLES = "samples"
-SIMULATION = "simulation"
-
-AESTHETICS = "aesthetics"
-BASE = "base"
-
-MODEL = "model"
-LINK = "link"
 
 MEP_DATA = "optional-mep-data"
 MEP_MATRIX_PATH = "mep_matrix_path"
 MEP_RESPONSE = "mep_response"
 MEP_TIME_RANGE = "mep_time_range"
 MEP_SIZE_TIME_RANGE = "mep_size_time_range"
+
+MISC = "misc"
+BASE = "base"
 
 DATASET_PLOT = "dataset.pdf"
 RECRUITMENT_CURVES = "recruitment_curves.pdf"
