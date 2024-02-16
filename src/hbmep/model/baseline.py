@@ -38,7 +38,8 @@ class BaseModel(Plotter):
         return intensity, features
 
     def _get_response(self, df: pd.DataFrame):
-        return self._get_from_dataframe(df=df, columns=self.response),
+        response = self._get_from_dataframe(df=df, columns=self.response)
+        return response,
 
     def _model(self, model, features, response_obs=None):
         raise NotImplementedError
