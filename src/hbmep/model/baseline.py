@@ -21,7 +21,8 @@ class BaseModel(Plotter):
 
     def __init__(self, config: Config):
         super(BaseModel, self).__init__(config=config)
-        self.rng_key = random.PRNGKey(0)
+        self.random_state = 0
+        self.rng_key = random.PRNGKey(self.random_state)
         self.mcmc_params = config.MCMC_PARAMS
         logger.info(f"Initialized {self.NAME}")
 
