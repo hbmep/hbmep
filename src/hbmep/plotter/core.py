@@ -212,7 +212,12 @@ class Plotter(Dataset):
                     if mep_matrix is not None:
                         postfix = " - MEP"
                         ax = axes[i, j]
-                        mep_response_ind = [i for i, _response_muscle in enumerate(self.mep_response) if _response_muscle == response_muscle][0]
+                        mep_response_ind = [
+                            i
+                            for i, _response_muscle in enumerate(self.mep_response)
+                            if _response_muscle == response_muscle
+                        ]
+                        mep_response_ind = mep_response_ind[0]
                         curr_mep_matrix = mep_matrix[df_ind, :, mep_response_ind]
                         max_amplitude = curr_mep_matrix[..., is_within_mep_size_window].max()
                         curr_mep_matrix = (curr_mep_matrix / max_amplitude) * (base // 2)

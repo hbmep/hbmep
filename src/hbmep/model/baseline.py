@@ -120,7 +120,7 @@ class BaseModel(Plotter):
         num_samples: int = 100,
         posterior_samples: dict | None = None,
         return_sites: list[str] | None = None,
-        rng_key = None
+        rng_key=None
     ):
         if posterior_samples is None:   # Prior predictive
             predictive = Predictive(

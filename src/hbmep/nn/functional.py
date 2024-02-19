@@ -51,17 +51,16 @@ def rectified_logistic(x, a, b, v, L, ell, H):
     return (
         L
         + jax.nn.relu(
-            -ell
+            - ell
             + jnp.multiply(
                 H + ell,
                 jnp.power(
                     jax.nn.sigmoid(
                         _linear_transform(x, a, b)
                         - jnp.log(
-                            -1
+                            - 1
                             + jnp.power(
-                                1
-                                + jnp.true_divide(H, ell),
+                                1 + jnp.true_divide(H, ell),
                                 jnp.true_divide(1, 1 + v)
                             )
                         )

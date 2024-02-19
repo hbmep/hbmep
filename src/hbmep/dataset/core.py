@@ -1,6 +1,7 @@
 import logging
 from pathlib import Path
 from collections import defaultdict
+from typing import Callable
 
 import pandas as pd
 import numpy as np
@@ -50,7 +51,7 @@ class Dataset:
     def _get_combinations(
         df: pd.DataFrame,
         columns: list[str],
-        orderby = None
+        orderby=None
     ) -> list[tuple[int]]:
         combinations = (
             df[columns]
@@ -68,7 +69,7 @@ class Dataset:
         encoder_dict: dict[str, LabelEncoder]
     ) -> tuple:
         return tuple(
-            encoder_dict[column].inverse_transform(np.array([value]))[0] \
+            encoder_dict[column].inverse_transform(np.array([value]))[0]
             for (column, value) in zip(columns, combination)
         )
 
