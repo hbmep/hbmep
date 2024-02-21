@@ -31,7 +31,7 @@ dependencies = [
     "numpy==1.24.2",
     "pandas==2.0.2",
     "scikit-learn==1.2.1",
-    "jax[cpu]==0.4.14",
+    "jax[cpu]==0.4.24",
     "numpyro[cpu]==0.13.2",
     "arviz==0.16.1",
     "matplotlib==3.7.0",
