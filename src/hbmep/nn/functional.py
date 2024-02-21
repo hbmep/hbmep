@@ -2,6 +2,8 @@ import jax
 from jax import jit
 import jax.numpy as jnp
 
+EPSILON = 1e-15
+
 
 @jit
 def _linear_transform(
@@ -36,11 +38,12 @@ def logistic5(x, a, b, v, L, H):
         + jnp.multiply(
             H,
             jnp.power(
-                jax.nn.sigmoid(
+                EPSILON
+                + jax.nn.sigmoid(
                     _linear_transform(x, a, b)
-                    + jnp.log(1 + v)
+                    - jnp.log(v)
                 ),
-                1 + v
+                jnp.true_divide(1, v)
             )
         )
     )
@@ -55,17 +58,18 @@ def rectified_logistic(x, a, b, v, L, ell, H):
             + jnp.multiply(
                 H + ell,
                 jnp.power(
-                    jax.nn.sigmoid(
+                    EPSILON
+                    + jax.nn.sigmoid(
                         _linear_transform(x, a, b)
                         - jnp.log(
                             - 1
                             + jnp.power(
                                 1 + jnp.true_divide(H, ell),
-                                jnp.true_divide(1, 1 + v)
+                                v
                             )
                         )
                     ),
-                    1 + v
+                    jnp.true_divide(1, v)
                 )
             )
         )
