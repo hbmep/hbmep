@@ -76,7 +76,6 @@ def rectified_logistic(x, a, b, v, L, ell, H):
     )
 
 
-@jit
 def prime(fn, x, *args):
     grad = jax.grad(fn, argnums=0)
     for _ in range(len(x.shape)):
