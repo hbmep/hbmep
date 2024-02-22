@@ -151,7 +151,8 @@ class GammaModel(BaseModel):
 
     def rate(self, mu, c_1, c_2):
         return (
-            c_1 + jnp.true_divide(c_2, mu)
+            jnp.true_divide(1, c_1)
+            + jnp.true_divide(1, jnp.multiply(c_2, mu))
         )
 
     def concentration(self, mu, beta):
