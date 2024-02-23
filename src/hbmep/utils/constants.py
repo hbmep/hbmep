@@ -32,6 +32,7 @@ WAIC_CSV = "waic.csv"
 
 BASE_MODEL = "base_model"
 GAMMA_MODEL = "gamma_model"
+BOUNDED_OPTIMIZATION = "bound_constrained_optimization"
 RELU = "relu"
 SATURATED_RELU = "saturated_relu"
 RECTIFIED_LOGISTIC = "rectified_logistic"
