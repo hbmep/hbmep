@@ -68,6 +68,12 @@ class BoundedOptimization(BaseModel):
         grid = list(zip(*grid))
         return grid
 
+    def _get_named_params(self, params):
+        return {
+            u: dict(zip(self.named_params, v))
+            for u, v in params.items()
+        }
+
     def cost_function(self, x, y, *args):
         y_pred = self.functional(x, *args)
         return np.sum((y - y_pred) ** 2)
@@ -90,7 +96,7 @@ class BoundedOptimization(BaseModel):
 
         params = {}
         for combination in combinations:
-            for response in self.response:
+            for response_ind, response in enumerate(self.response):
                 ind = (
                     df[self.features]
                     .apply(tuple, axis=1)
@@ -120,9 +126,22 @@ class BoundedOptimization(BaseModel):
                 estimated_params = [r.x for r in res]
                 errors = [r.fun for r in res]
                 argmin = np.argmin(errors)
-                params[(combination, response)] = estimated_params[argmin]
+                params[(*combination, response_ind)] = estimated_params[argmin]
 
         if os.path.exists(temp_dir): shutil.rmtree(temp_dir)
+
+        named_params = self._get_named_params(params)
+        _, features = self._get_regressors(df)
+        n_features = np.max(features, axis=0) + 1
+
+        params = {}
+        for named_param in self.named_params:
+            params[named_param] = np.full((*n_features, self.n_response), np.nan)
+
+        for u, v in named_params.items():
+            for named_param, value in v.items():
+                params[named_param][*u] = value
+
         return params
 
     @timing
@@ -134,7 +153,7 @@ class BoundedOptimization(BaseModel):
         df = df.copy()
         combinations = self._get_combinations(df=df, columns=self.features)
 
-        for response in self.response:
+        for response_ind, response in enumerate(self.response):
             df[response] = 0
 
             for combination in combinations:
@@ -146,7 +165,10 @@ class BoundedOptimization(BaseModel):
                 temp_df = df[ind].reset_index(drop=True).copy()
                 y_pred = self.functional(
                     temp_df[self.intensity].values,
-                    *params[(combination, response)]
+                    *(
+                        params[named_param][*combination, response_ind]
+                        for named_param in self.named_params
+                    )
                 )
                 df.loc[ind, response] = y_pred
 
@@ -186,9 +208,6 @@ class BoundedOptimization(BaseModel):
 
         if params is not None:
             assert prediction_df is not None
-            named_params = {}
-            for u, v in params.items():
-                named_params[u] = dict(zip(self.named_params, v))
 
         # Setup pdf layout
         combinations = self._get_combinations(df=df, columns=combination_columns, orderby=orderby)
@@ -263,7 +282,7 @@ class BoundedOptimization(BaseModel):
                 j = 0
                 for r, response_muscle in enumerate(response):
                     if params is not None:
-                        curr_threshold = named_params[(curr_combination, response_muscle)][site.a]
+                        curr_threshold = params[site.a][*curr_combination, r]
 
                     # Labels
                     prefix = f"{tuple(list(curr_combination) + [r])}: {response_muscle} - MEP"
