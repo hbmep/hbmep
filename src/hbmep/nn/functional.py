@@ -13,7 +13,7 @@ def _linear_transform(
 
 
 @jit
-def relu(x, a, b, L):
+def rectified_linear(x, a, b, L):
     return (
         L
         + jax.nn.relu(_linear_transform(x, a, b))
