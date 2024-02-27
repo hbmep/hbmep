@@ -41,7 +41,7 @@ def logistic5(x, a, b, v, L, H):
                 EPSILON
                 + jax.nn.sigmoid(
                     _linear_transform(x, a, b)
-                    - jnp.log(v)
+                    - jnp.log(-1 + jnp.power(2, v))
                 ),
                 jnp.true_divide(1, v)
             )

@@ -1,5 +1,5 @@
 class Site:
-    """ Priors """
+    # Priors
     a = "a"
     b = "b"
     v = "v"
@@ -10,20 +10,20 @@ class Site:
     c_1 = "c₁"
     c_2 = "c₂"
 
-    """ Deterministic """
+    # Deterministic
     mu = "µ"
     alpha = "α"
     beta = "β"
 
-    """ Plates """
+    # Plates
     n_features = [f"n_feature{i}" for i in range(10)]
     n_response = "n_response"
     n_data = "n_data"
 
-    """ Observation """
+    # Observation
     obs = "obs"
 
-    """ Mixture """
+    # Mixture
     outlier_prob = "p_outlier"
     outlier_scale = "σ_outlier"
     q = "q"
