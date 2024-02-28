@@ -1,7 +1,6 @@
 import logging
 from pathlib import Path
 from collections import defaultdict
-from typing import Callable
 
 import pandas as pd
 import numpy as np
@@ -84,6 +83,56 @@ class Dataset:
             df[columns]
             .apply(lambda x: encoder_dict[x.name].fit_transform(x))
         )
+        return df, encoder_dict
+
+    def preprocess(
+        self,
+        df: pd.DataFrame,
+        encoder_dict: dict[str, LabelEncoder] = None
+    ) -> tuple[pd.DataFrame, dict[str, LabelEncoder]]:
+        # Concatenate (necessary) features
+        for i, feature in enumerate(self._features):
+            if isinstance(feature, list):
+                df[self.features[i]] = (
+                    df[feature]
+                    .apply(lambda x: const.SEP.join(x), axis=1)
+                )
+
+        # Positive response constraint
+        num_non_positive_observation = (
+            (df[self.response] <= 0)
+            .any(axis=1)
+            .sum()
+        )
+        if num_non_positive_observation:
+            logger.info(
+                "Total non-positive observations: ",
+                f"{num_non_positive_observation}"
+            )
+        assert not num_non_positive_observation
+
+        # Missing response constraint
+        num_missing_observation = (
+            df[self.response]
+            .isna()
+            .any(axis=1)
+            .sum()
+        )
+        if num_missing_observation:
+            logger.info(
+                "Total missing observations: ",
+                f"{num_missing_observation}"
+            )
+        assert not num_missing_observation
+
+        # Encode
+        if encoder_dict is None:
+            df, encoder_dict = self._preprocess(df=df, columns=self.features)
+        else:
+            df[self.features] = (
+                df[self.features]
+                .apply(lambda x: encoder_dict[x.name].transform(x))
+            )
         return df, encoder_dict
 
     @timing
