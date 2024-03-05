@@ -603,3 +603,124 @@ class Plotter(Dataset):
             encoder_dict=encoder_dict,
             **kwargs
         )
+
+    @timing
+    def render_diagnostics(
+        self,
+        df: pd.DataFrame,
+        destination_path: str,
+        posterior_samples: dict,
+        var_names: list[str],
+        encoder_dict: dict[str, LabelEncoder] | None = None,
+        **kwargs
+    ):
+        """
+        **kwargs:
+            combination_columns: list[str]
+            orderby: lambda function
+            intensity: str
+            response: list[str]
+            response_colors: list[str] | np.ndarray
+            base: int
+            subplot_cell_width: int
+            subplot_cell_height: int
+            recruitment_curve_props: dict
+            threshold_posterior_props: dict
+        """
+        combination_columns = kwargs.get("combination_columns", self.features)
+        orderby = kwargs.get("orderby")
+        response = kwargs.get("response", self.response)
+        num_chains = kwargs.get("num_chains", self.mcmc_params["num_chains"])
+        chain_colors = kwargs.get("chain_colors", Plotter._get_colors(n=num_chains))
+        subplot_cell_width = kwargs.get("subplot_cell_width", self.subplot_cell_width)
+        subplot_cell_height = kwargs.get("subplot_cell_height", self.subplot_cell_height)
+
+        # Group by chain
+        posterior_samples = {
+            u: v.reshape(num_chains, -1, *v.shape[1:])
+            for u, v in posterior_samples.items()
+        }
+
+        msg = "Rendering diagnostics ..."
+        logger.info(msg)
+        # Setup pdf layout
+        combinations = self._get_combinations(df=df, columns=combination_columns, orderby=orderby)
+        n_combinations = len(combinations)
+        n_response = len(response)
+
+        n_columns_per_response = 2 * len(var_names)
+
+        n_fig_rows = 10
+        n_fig_columns = n_columns_per_response * n_response
+        n_pdf_pages = n_combinations // n_fig_rows
+        if n_combinations % n_fig_rows: n_pdf_pages += 1
+
+        # Iterate over pdf pages
+        pdf = PdfPages(destination_path)
+        combination_counter = 0
+
+        for page in range(n_pdf_pages):
+            n_rows_current_page = min(
+                n_fig_rows,
+                n_combinations - page * n_fig_rows
+            )
+            fig, axes = plt.subplots(
+                nrows=n_rows_current_page,
+                ncols=n_fig_columns,
+                figsize=(
+                    n_fig_columns * subplot_cell_width,
+                    n_rows_current_page * subplot_cell_height
+                ),
+                constrained_layout=True,
+                squeeze=False
+            )
+
+            # Iterate over combinations
+            for i in range(n_rows_current_page):
+                curr_combination = combinations[combination_counter]
+                curr_combination_inverse = ""
+
+                if encoder_dict is not None:
+                    curr_combination_inverse = self._get_combination_inverse(
+                        combination=curr_combination,
+                        columns=combination_columns,
+                        encoder_dict=encoder_dict
+                    )
+                    curr_combination_inverse = ", ".join(map(str, curr_combination_inverse))
+                    curr_combination_inverse += "\n"
+
+                # Iterate over responses
+                j = 0
+                for r, response_muscle in enumerate(response):
+                    # Labels
+                    prefix = f"{tuple(list(curr_combination) + [r])}: {response_muscle} - MEP"
+                    if not j: prefix = curr_combination_inverse + prefix
+
+                    for var_name in var_names:
+                        postfix = f"{var_name} KDE"
+                        for chain in range(num_chains):
+                            samples = posterior_samples[var_name][chain, :, *curr_combination, r]
+                            ax = axes[i, j]
+                            sns.kdeplot(samples, color=chain_colors[chain], ax=ax, label=f"CH:{chain}")
+                        ax.set_title(prefix + postfix)
+                        ax.legend(loc="upper left")
+                        j += 1
+
+                        postfix = f"{var_name} Trace Plot"
+                        for chain in range(num_chains):
+                            samples = posterior_samples[var_name][chain, :, *curr_combination, r]
+                            ax = axes[i, j]
+                            ax.plot(samples, color=chain_colors[chain])
+                        ax.set_title(postfix)
+                        j += 1
+
+                combination_counter += 1
+
+            pdf.savefig(fig)
+            plt.close()
+
+        pdf.close()
+        plt.show()
+
+        logger.info(f"Saved to {destination_path}")
+        return
