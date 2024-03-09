@@ -89,6 +89,29 @@ def _rectified_logistic5(x, a, b, v, L, ell, H):
     )
 
 
+@jit
+def rectified_logistic_S50(x, a, b, L, ell, H):
+    return (
+        L
+        + jax.nn.relu(
+            - ell
+            + jnp.multiply(
+                H + ell,
+                jax.nn.sigmoid(
+                    _linear_transform(x, a, b)
+                    - jnp.log(
+                        - 1
+                        + jnp.true_divide(
+                            jnp.multiply(2, H + ell),
+                            H + jnp.multiply(2, ell)
+                        )
+                    )
+                )
+            )
+        )
+    )
+
+
 def prime(fn, x, *args):
     grad = jax.grad(fn, argnums=0)
     for _ in range(len(x.shape)):
