@@ -28,3 +28,6 @@ class Site:
     outlier_scale = "σ_outlier"
     q = "q"
     bg_scale = "σ_bg"
+
+    # S50
+    s50 = "S50"

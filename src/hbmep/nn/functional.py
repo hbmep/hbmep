@@ -64,7 +64,7 @@ def rectified_linear(x, a, b, L):
 
 
 @jit
-def _rectified_logistic5(x, a, b, v, L, ell, H):
+def _rectified_logistic(x, a, b, v, L, ell, H):
     return (
         L
         + jax.nn.relu(
@@ -90,7 +90,7 @@ def _rectified_logistic5(x, a, b, v, L, ell, H):
 
 
 @jit
-def rectified_logistic_S50(x, a, b, L, ell, H):
+def rectified_logistic_s50(x, a, b, L, ell, H):
     return (
         L
         + jax.nn.relu(
@@ -117,3 +117,37 @@ def prime(fn, x, *args):
     for _ in range(len(x.shape)):
         grad = jax.vmap(grad)
     return grad(x, *args)
+
+
+def get_s50_from_rectified_logistic(a, b, ell, H):
+    return(
+        a
+        - jnp.true_divide(
+            jnp.log(jnp.multiply(
+                jnp.true_divide(ell, H),
+                - 1
+                + jnp.true_divide(
+                    H + ell,
+                    jnp.true_divide(H, 2) + ell
+                )
+            )),
+            b
+        )
+    )
+
+
+def get_threshold_from_rectified_logistic_s50(a, b, ell, H):
+    return (
+        a
+        + jnp.true_divide(
+            jnp.log(jnp.multiply(
+                jnp.true_divide(ell, H),
+                - 1
+                + jnp.true_divide(
+                    jnp.multiply(2, H + ell),
+                    H + jnp.multiply(2, ell)
+                )
+            )),
+            b
+        )
+    )
