@@ -52,6 +52,9 @@ docs = [
     "Sphinx<=7.0.1",
     "sphinx_rtd_theme==1.2.2"
 ]
+win = [
+    "jax[cpu]==0.4.26"
+]
 
 [tool.pytest.ini_options]
 minversion = 6.0
