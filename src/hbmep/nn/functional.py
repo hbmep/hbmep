@@ -136,6 +136,25 @@ def get_s50_from_rectified_logistic(a, b, ell, H):
     )
 
 
+def solve_rectified_logistic(y, a, b, L, ell, H):
+    return jnp.where(
+        y > L and y < L + H,
+        a
+        - jnp.true_divide(
+            jnp.log(jnp.multiply(
+                jnp.true_divide(ell, H),
+                - 1
+                + jnp.true_divide(
+                    H + ell,
+                    y + ell - L
+                )
+            )),
+            b
+        ),
+        jnp.nan
+    )
+
+
 def get_threshold_from_rectified_logistic_s50(a, b, ell, H):
     return (
         a
