@@ -1,37 +1,25 @@
 [paths]
-csv = "/home/vishu/data/mock/mock.csv"
-build_dir = "/home/vishu/hbmep/reports/mock_test"
-
-[vars]
-subject = "participant"
-features = ["compound_position"]
-intensity = "pulse_amplitude"
-response = ["auc_1", "auc_3"]
-
+csv_path = ""
+build_directory = ""
+ 
+[variables]
+intensity = "TMSInt"
+features = ["participant", "participant_condition"]
+response = ['PKPK_APB', 'PKPK_ECR', 'PKPK_FCR']
+ 
 [mcmc]
-chains = 4
-warmup = 4000
-samples = 6000
-
-[model]
-link = "rectified_logistic"
-
+num_chains = 4
+num_warmup = 5000
+num_samples = 1000
+ 
 [optional-mep-data]
-mep_matrix_path = "/home/vishu/data/mock/mep_matrix.npy"    # In .npy format with shape: (No. of rows in csv) x (time) x (No. of responses)
-mep_time_range = [-0.01, 0.025]
-
-[optional-mep-size-window]
-mep_size_time_range = [0.0015, 0.01]
-
-[rectified_logistic]
-"µ_a" = [150, 50]
-"σ_a" = 50
-"σ_b" = 0.1
-"σ_L" = 0.05
-"σ_H" = 5
-"σ_v" = 10
-"g_1" = 0.01
-"g_2" = 0.01
-
-[aesthetics]
-base = 20
+# This is a .npy file with shape: (No. of rows in csv) x (time) x (No. of responses)
+mep_matrix_path = "/data/hbmep-processed/human/tms/proc_2023-11-28.npy"
+# Order of response in MEP matrix
+mep_response = ['PKPK_ADM', 'PKPK_APB', 'PKPK_Biceps', 'PKPK_ECR', 'PKPK_FCR', 'PKPK_Triceps']
+mep_window = [-0.15, 0.15]
+mep_size_window = [0.015, 0.075]
+ 
+[misc]
+base = 10
+ 
