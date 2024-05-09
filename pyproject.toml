@@ -28,14 +28,14 @@ classifiers = [
     "Operating System :: MacOS"
 ]
 dependencies = [
-    "numpy==1.24.2",
-    "pandas==2.0.2",
-    "scikit-learn==1.2.1",
-    "jax[cpu]==0.4.24",
-    "numpyro[cpu]==0.13.2",
-    "arviz==0.16.1",
-    "matplotlib==3.7.0",
-    "seaborn==0.12.2"
+    "numpy>=1.24.2",
+    "pandas>=2.0.2",
+    "scikit-learn>=1.2.1",
+    "jax[cpu]>=0.4.24",
+    "numpyro[cpu]>=0.13.2",
+    "arviz>=0.16.1",
+    "matplotlib>=3.7.0",
+    "seaborn>=0.12.2"
 ]
 
 [project.optional-dependencies]
@@ -51,9 +51,6 @@ docs = [
     "jupyter==1.0.0",
     "Sphinx<=7.0.1",
     "sphinx_rtd_theme==1.2.2"
-]
-win = [
-    "jax[cpu]==0.4.26"
 ]
 
 [tool.pytest.ini_options]
