@@ -26,20 +26,13 @@ class BaseModel(Plotter):
         self.mcmc_params = config.MCMC_PARAMS
         logger.info(f"Initialized {self.NAME}")
 
-    @staticmethod
-    def _get_from_dataframe(
-        df: pd.DataFrame,
-        columns: list[str]
-    ):
-        return df[columns].to_numpy()
-
     def _get_regressors(self, df: pd.DataFrame):
-        intensity = self._get_from_dataframe(df=df, columns=[self.intensity])
-        features = self._get_from_dataframe(df=df, columns=self.features)
+        intensity = df[[self.intensity]].to_numpy()
+        features = df[self.features].to_numpy()
         return intensity, features
 
     def _get_response(self, df: pd.DataFrame):
-        response = self._get_from_dataframe(df=df, columns=self.response)
+        response = df[self.response].to_numpy()
         return response,
 
     def _model(self, model, features, response_obs=None):

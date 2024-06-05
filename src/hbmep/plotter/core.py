@@ -387,10 +387,10 @@ class Plotter(Dataset):
         subplot_cell_width = kwargs.get("subplot_cell_width", self.subplot_cell_width)
         subplot_cell_height = kwargs.get("subplot_cell_height", self.subplot_cell_height)
 
-        """ Predictive samples """
+        # Predictive samples
         obs, mu = predictive[site.obs], predictive[site.mu]
 
-        """ Setup pdf layout """
+        # Setup pdf layout
         combinations = self._get_combinations(df=df, columns=combination_columns, orderby=orderby)
         n_combinations = len(combinations)
 
@@ -401,7 +401,7 @@ class Plotter(Dataset):
         n_pdf_pages = n_combinations // n_fig_rows
         if n_combinations % n_fig_rows: n_pdf_pages += 1
 
-        """ Iterate over pdf pages """
+        # Iterate over pdf pages
         pdf = PdfPages(destination_path)
         combination_counter = 0
 
@@ -422,7 +422,7 @@ class Plotter(Dataset):
                 squeeze=False
             )
 
-            """ Iterate over combinations """
+            # Iterate over combinations
             for i in range(n_rows_current_page):
                 curr_combination = combinations[combination_counter]
                 curr_combination_inverse = ""
@@ -436,27 +436,27 @@ class Plotter(Dataset):
                     curr_combination_inverse = ", ".join(map(str, curr_combination_inverse))
                     curr_combination_inverse += "\n"
 
-                """ Filter dataframe based on current combination """
+                # Filter dataframe based on current combination """
                 df_ind = df[combination_columns].apply(tuple, axis=1).isin([curr_combination])
                 curr_df = df[df_ind].reset_index(drop=True).copy()
 
-                """ Filter prediction dataframe based on current combination """
+                # Filter prediction dataframe based on current combination
                 prediction_df_ind = prediction_df[combination_columns].apply(tuple, axis=1).isin([curr_combination])
                 curr_prediction_df = prediction_df[prediction_df_ind].reset_index(drop=True).copy()
 
-                """ Predictive for current combination """
+                # Predictive for current combination
                 curr_obs = obs[:, prediction_df_ind, :]
                 curr_obs_map = curr_obs.mean(axis=0)
                 curr_mu = mu[:, prediction_df_ind, :]
                 curr_mu_map = curr_mu.mean(axis=0)
 
-                """ HPDI intervals """
+                # HPDI intervals
                 curr_obs_hpdi_95 = hpdi(curr_obs, prob=.95)
                 curr_obs_hpdi_85 = hpdi(curr_obs, prob=.85)
                 curr_obs_hpdi_65 = hpdi(curr_obs, prob=.65)
                 curr_mu_hpdi_95 = hpdi(curr_mu, prob=.95)
 
-                """ Tickmarks """
+                # Tickmarks
                 min_intensity, max_intensity_ = curr_df[self.intensity].agg([min, max])
                 min_intensity = floor(min_intensity, base=base)
                 max_intensity = ceil(max_intensity_, base=base)
@@ -467,13 +467,13 @@ class Plotter(Dataset):
                 axes[i, 0].set_xticks(ticks=curr_x_ticks)
                 axes[i, 0].set_xlim(left=min_intensity - (base // 2), right=max_intensity + (base // 2))
 
-                """ Iterate over responses """
+                # Iterate over responses
                 j = 0
                 for r, response in enumerate(self.response):
                     prefix = f"{tuple(list(curr_combination) + [r])}: {response} - MEP"
                     if not j: prefix = curr_combination_inverse + prefix
 
-                    """ MEP Size scatter plot and recruitment curve """
+                    # MEP Size scatter plot and recruitment curve
                     postfix = ""
                     ax = axes[i, j]
                     sns.scatterplot(data=curr_df, x=self.intensity, y=response, color=self.response_colors[r], ax=ax)
@@ -488,7 +488,7 @@ class Plotter(Dataset):
                     ax.tick_params(axis="x", rotation=90)
                     j += 1
 
-                    """ Observational predictive """
+                    # Observational predictive
                     postfix = "Prediction"
                     ax = axes[i, j]
                     sns.lineplot(
@@ -529,7 +529,7 @@ class Plotter(Dataset):
                     ax.tick_params(axis="x", rotation=90)
                     j += 1
 
-                    """ Recruitment curve predictive """
+                    # Recruitment curve predictive
                     postfix = "Fit"
                     ax = axes[i, j]
                     sns.lineplot(
