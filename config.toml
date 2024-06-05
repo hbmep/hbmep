@@ -1,25 +1,25 @@
 [paths]
 csv_path = ""
 build_directory = ""
- 
+
 [variables]
 intensity = "TMSInt"
 features = ["participant", "participant_condition"]
-response = ['PKPK_APB', 'PKPK_ECR', 'PKPK_FCR']
- 
+response = ['PKPK_APB', 'PKPK_ADM', 'PKPK_ECR', 'PKPK_FCR']
+
 [mcmc]
 num_chains = 4
 num_warmup = 5000
 num_samples = 1000
- 
+thinning = 1
+
 [optional-mep-data]
 # This is a .npy file with shape: (No. of rows in csv) x (time) x (No. of responses)
-mep_matrix_path = "/data/hbmep-processed/human/tms/proc_2023-11-28.npy"
+mep_matrix_path = "/home/vishu/data/hbmep-processed/human/tms/proc_2023-11-28.npy"
 # Order of response in MEP matrix
 mep_response = ['PKPK_ADM', 'PKPK_APB', 'PKPK_Biceps', 'PKPK_ECR', 'PKPK_FCR', 'PKPK_Triceps']
-mep_window = [-0.15, 0.15]
-mep_size_window = [0.015, 0.075]
- 
+mep_window = [-0.25, 0.25]
+mep_size_window = [0.0065, 0.09]
+
 [misc]
 base = 10
- 
