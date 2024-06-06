@@ -1,33 +1,33 @@
 class Site:
-    """ Priors """
+    # Priors
     a = "a"
     b = "b"
-
-    L = "L"
-    H = "H"
     v = "v"
+    L = "L"
+    ell = "ℓ"
+    H = "H"
 
-    g_1 = "g_1"
-    g_2 = "g_2"
+    c_1 = "c₁"
+    c_2 = "c₂"
 
-    """ Hyper-priors """
-    mu_a = "µ_a"
-    sigma_a = "σ_a"
+    # Deterministic
+    mu = "µ"
+    alpha = "α"
+    beta = "β"
 
-    sigma_b = "σ_b"
+    # Plates
+    n_features = [f"n_feature{i}" for i in range(10)]
+    n_response = "n_response"
+    n_data = "n_data"
 
-    sigma_L = "σ_L"
-    sigma_H = "σ_H"
-    sigma_v = "σ_v"
-
-    """ Observation """
-    data = "data"
+    # Observation
     obs = "obs"
 
-    """ Plates """
-    n_subject = "n_subject"
-    n_response = "n_response"
+    # Mixture
+    outlier_prob = "p_outlier"
+    outlier_scale = "σ_outlier"
+    q = "q"
+    bg_scale = "σ_bg"
 
-    """ Deterministic """
-    mu = "µ"
-    beta = "β"
+    # S50
+    s50 = "S50"
