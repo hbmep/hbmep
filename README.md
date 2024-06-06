@@ -1,4 +1,4 @@
-# hb-mep
+# hbmep
 
 ## Setup Instructions
 
@@ -21,8 +21,6 @@ source .venv/bin/activate
 pip install hbmep
 
 ```
-
-Tutorial: https://github.com/hbmep/hbmep/blob/dev/notebooks/tutorial.ipynb
 
 ## To do
 
