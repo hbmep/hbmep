@@ -4,11 +4,11 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "hbmep"
-version = "0.4.0"
+version = "0.5.0"
 authors = [
-    { name="Vishweshwar Tyagi, James R. McIntosh", email="vt2353@cumc.columbia.edu" }
+    { name="Vishweshwar Tyagi, James R. McIntosh", email="vt2353@columbia.edu" }
 ]
-description = "Package for hierarchical Bayesian modeling of Motor Evoked Potential (MEP) size"
+description = "Hierarchical Bayesian estimation of motor-evoked potential (MEP) size recruitment curves"
 readme = "README.md"
 requires-python = ">=3.11"
 classifiers = [
