@@ -49,8 +49,9 @@ test = [
 ]
 docs = [
     "jupyter==1.0.0",
-    "Sphinx<=7.0.1",
-    "sphinx_rtd_theme==1.2.2"
+    "Sphinx==7.3.7",
+    "sphinx-autobuild==2024.04.16",
+    "sphinx_rtd_theme==2.0.0"
 ]
 
 [tool.pytest.ini_options]
