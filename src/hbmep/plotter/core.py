@@ -190,7 +190,7 @@ class Plotter(Dataset):
                     curr_threshold_hpdi = hpdi(curr_threshold_posterior, prob=0.95)
 
                 # Tickmarks
-                min_intensity, max_intensity_ = curr_df[intensity].agg([min, max])
+                min_intensity, max_intensity_ = curr_df[intensity].agg(["min", "max"])
                 min_intensity = floor(min_intensity, base=base)
                 max_intensity = ceil(max_intensity_, base=base)
                 if max_intensity == max_intensity_:
@@ -457,7 +457,7 @@ class Plotter(Dataset):
                 curr_mu_hpdi_95 = hpdi(curr_mu, prob=.95)
 
                 # Tickmarks
-                min_intensity, max_intensity_ = curr_df[self.intensity].agg([min, max])
+                min_intensity, max_intensity_ = curr_df[self.intensity].agg(["min", "max"])
                 min_intensity = floor(min_intensity, base=base)
                 max_intensity = ceil(max_intensity_, base=base)
                 if max_intensity == max_intensity_:
