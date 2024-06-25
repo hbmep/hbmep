@@ -101,7 +101,8 @@ class BaseModel(Plotter):
 
         prediction_df[self.intensity] = (
             prediction_df[["min", "max"]]
-            .apply(lambda x: (x[0], x[1], min(2000, ceil((x[1] - x[0]) / 5, base=100)),), axis=1)
+            .apply(tuple, axis=1)
+            .apply(lambda x: (x[0], x[1], min(2000, ceil((x[1] - x[0]) / 5, base=100)),))
             .apply(lambda x: np.linspace(x[0], x[1], num_points))
         )
         prediction_df = prediction_df.explode(column=self.intensity)[self.regressors].copy()
