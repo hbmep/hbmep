@@ -5,7 +5,7 @@ import jax
 import numpyro
 
 PLATFORM = "cpu"
-numpyro.set_platform(PLATFORM)
+jax.config.update("jax_platforms", PLATFORM)
 
 cpu_count = multiprocessing.cpu_count() - 2
 numpyro.set_host_device_count(cpu_count)
