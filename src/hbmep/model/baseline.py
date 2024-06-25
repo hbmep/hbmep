@@ -72,7 +72,7 @@ class BaseModel(Plotter):
         prediction_df = (
             df
             .groupby(by=self.features)
-            .agg({self.intensity: [min, max]})
+            .agg({self.intensity: ["min", "max"]})
             .copy()
         )
         prediction_df.columns = (
