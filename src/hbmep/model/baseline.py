@@ -49,7 +49,13 @@ class BaseModel(Plotter):
         return trace
 
     @timing
-    def run_inference(self, df: pd.DataFrame, sampler: MCMCKernel = None, **kwargs) -> tuple[MCMC, dict]:
+    def run_inference(
+        self,
+        df: pd.DataFrame,
+        sampler: MCMCKernel = None,
+        exclude_raw: bool = True,
+        **kwargs
+    ) -> tuple[MCMC, dict]:
         # Set up sampler
         if sampler is None: sampler = NUTS(self._model, **kwargs)
         mcmc = MCMC(sampler, **self.mcmc_params)
@@ -59,6 +65,7 @@ class BaseModel(Plotter):
         mcmc.run(self.rng_key, *self._get_regressors(df=df), *self._get_response(df=df))
         posterior_samples = mcmc.get_samples()
         posterior_samples = {k: np.array(v) for k, v in posterior_samples.items()}
+        if exclude_raw: posterior_samples = {k: v for k, v in posterior_samples.items() if "_raw" not in k}
         return mcmc, posterior_samples
 
     @timing
