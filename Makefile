@@ -26,18 +26,6 @@ venv-dev: venv-base
 	pip install --upgrade pip && \
 	pip install -e .[dev]
 
-.PHONY: venv-test
-venv-test: venv-base
-	@source .venv/bin/activate && \
-	pip install --upgrade pip && \
-	pip install -e .[test]
-
-.PHONY: venv-docs
-venv-docs: venv-base
-	@source .venv/bin/activate && \
-	pip install --upgrade pip && \
-	pip install -e .[docs]
-
 .PHONY: clean
 clean:
 	rm -rf .venv
@@ -48,7 +36,7 @@ run:
 
 html:
 	@source .venv/bin/activate && \
-	sphinx-build -M html docs/source docs/build
+	sphinx-autobuild docs/source/ docs/build/html/
 
 test:
 	@source .venv/bin/activate && \
