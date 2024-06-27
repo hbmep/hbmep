@@ -23,3 +23,8 @@ docs/build
 .coverage
 out/
 /.idea/
+
+# Tutorials (docs)
+**/mock_data.csv
+**/mock_data.npy
+**/mock_data_output/
