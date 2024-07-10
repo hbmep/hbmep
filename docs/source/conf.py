@@ -29,6 +29,10 @@ exclude_patterns = []
 """ Options for HTML output """
 # HTML theme
 html_theme = "sphinx_book_theme"
+html_context = {
+    # ...
+    "default_mode": "dark"
+}
 # html_copy_source = True
 # html_show_sourcelink = True
 # html_sourcelink_suffix = ""
