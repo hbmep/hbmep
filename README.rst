@@ -9,7 +9,7 @@ hbMEP
 Documentation
 -------------
 
-Read the docs at `hbmep.github.io/hbmep/ <https://hbmep.github.io/hbmep/>`_.
+Read the docs at `hbmep.github.io/hbmep/ <https://hbmep.github.io/hbmep/>`_
 
 Citation
 -----------
