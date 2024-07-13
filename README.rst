@@ -14,13 +14,14 @@ Read the docs at `hbmep.github.io/hbmep/ <https://hbmep.github.io/hbmep/>`_
 Citation
 -----------
 
-Please cite `Tyagi & McIntosh (2024) <https://arxiv.org/abs/2407.08709>`_ if you find this code useful in your research. The BibTeX entry for the paper is::
+Please cite `Tyagi et al., 2024 <https://arxiv.org/abs/2407.08709>`_ if you find this code useful in your research. The BibTeX entry for the paper is::
 
     @article{tyagi_hierarchical_2024,
         title = {Hierarchical {Bayesian} estimation of motor-evoked potential recruitment curves yields accurate and robust estimates},
         author = {Tyagi, Vishweshwar and Murray, Lynda M. and Asan, Ahmet S. and Mandigo, Christopher and Virk, Michael S. and Harel, Noam Y. and Carmel, Jason B. and McIntosh, James R.},
-        journal={arXiv},
-        year = {2024}
+        journal={arXiv preprint arXiv:2407.08709},
+        year = {2024},
+        doi = {http://doi.org/10.48550/arXiv.2407.08709}
     }
 
 License
