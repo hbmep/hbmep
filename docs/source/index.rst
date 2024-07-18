@@ -9,6 +9,9 @@ hbMEP
 
 How to use this guide
 ---------------------
+.. warning::
+
+    This guide is a work in progress. If you have any questions or suggestions, please let us know by opening an issue on the `GitHub issue tracker <https://github.com/hbmep/hbmep/issues>`_.
 
 To begin, you can follow the :ref:`installation` guide to install hbmep on your computer.
 After that, you can learn most of what you need from the tutorials below.
