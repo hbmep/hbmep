@@ -9,8 +9,7 @@ _hbmep_ is a Python library for hierarchical Bayesian estimation of motor-evoked
 
 Read the docs at [hbmep.github.io/hbmep/](https://hbmep.github.io/hbmep/)
 
-Citation
------------
+## Citation
 
 Please cite [Tyagi et al., 2024](https://arxiv.org/abs/2407.08709) if you find this code useful in your research. The BibTeX entry for the paper is:
 
