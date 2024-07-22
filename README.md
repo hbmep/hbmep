@@ -1,10 +1,10 @@
-[![Cite](https://img.shields.io/badge/stats.AP-arXiv:2407.08709-B31B1B.svg)](http://doi.org/10.48550/arXiv.2407.08709)
-[![Docs](https://github.com/hbmep/hbmep/actions/workflows/documentation.yaml/badge.svg)](https://github.com/hbmep/hbmep/actions/workflows/documentation.yaml)
-[![pages-build-deployment](https://github.com/hbmep/hbmep/actions/workflows/pages/pages-build-deployment/badge.svg)](https://github.com/hbmep/hbmep/actions/workflows/pages/pages-build-deployment)
-
 # hbMEP
 
 _hbmep_ is a Python library for hierarchical Bayesian estimation of motor-evoked potential (MEP) size recruitment curves.
+
+[![Cite](https://img.shields.io/badge/stats.AP-arXiv:2407.08709-B31B1B.svg)](http://doi.org/10.48550/arXiv.2407.08709)
+[![Docs](https://github.com/hbmep/hbmep/actions/workflows/documentation.yaml/badge.svg)](https://github.com/hbmep/hbmep/actions/workflows/documentation.yaml)
+[![pages-build-deployment](https://github.com/hbmep/hbmep/actions/workflows/pages/pages-build-deployment/badge.svg)](https://github.com/hbmep/hbmep/actions/workflows/pages/pages-build-deployment)
 
 ## Documentation
 
