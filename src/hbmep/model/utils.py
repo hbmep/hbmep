@@ -31,3 +31,6 @@ class Site:
 
     # S50
     s50 = "S50"
+
+    # Outlier classifier
+    p = "p"

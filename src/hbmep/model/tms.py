@@ -1,4 +1,5 @@
 import numpy as np
+import jax
 import jax.numpy as jnp
 import numpyro
 import numpyro.distributions as dist
@@ -431,8 +432,22 @@ class MixtureModel(GammaModel):
                 )
 
                 # Observation
-                numpyro.sample(
+                y_ = numpyro.sample(
                     site.obs,
                     Mixture,
                     obs=response_obs
+                )
+
+                # Thanks to https://dfm.io/posts/intro-to-numpyro/
+                # Until here, where we can track the membership probability of each sample
+                log_probs = Mixture.component_log_probs(y_)
+                numpyro.deterministic(
+                    site.p,
+                    (
+                        1
+                        - jnp.exp(
+                            log_probs
+                            - jax.nn.logsumexp(log_probs, axis=-1, keepdims=True)
+                        )[..., 0]
+                    )
                 )
