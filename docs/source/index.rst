@@ -2,7 +2,7 @@
 
 hbMEP
 =================================
-`hbmep` is a Python library for hierarchical Bayesian estimation of motor-evoked potential (MEP) size recruitment curves.
+hbMEP is a Python library for hierarchical Bayesian estimation of motor-evoked potential (MEP) size recruitment curves.
 
 .. image:: https://img.shields.io/badge/stats.AP-arXiv:2407.08709-B31B1B.svg
     :target: http://doi.org/10.48550/arXiv.2407.08709
@@ -19,9 +19,9 @@ How to use this guide
 
     This guide is a work in progress. If you have any questions or suggestions, please let us know by opening an issue on the `GitHub issue tracker <https://github.com/hbmep/hbmep/issues>`_.
 
-To begin, you can follow the :ref:`installation` guide to install hbmep on your computer.
+To begin, you can follow the :ref:`installation` guide to install hbMEP on your computer.
 After that, you can learn most of what you need from the tutorials below.
-You might want to begin with :ref:`getting_started` and go from there.
+We recommend starting with :ref:`getting_started` and going from there.
 
 We welcome bug reports, patches, feature requests, and other comments via `the GitHub
 issue tracker <https://github.com/hbmep/hbmep/issues>`_.
