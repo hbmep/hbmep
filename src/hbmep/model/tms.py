@@ -380,7 +380,6 @@ class MixtureModel(GammaModel):
 
         # Outlier Distribution
         outlier_prob = numpyro.sample(site.outlier_prob, dist.Uniform(0., .01))
-        outlier_scale = numpyro.sample(site.outlier_scale, dist.HalfNormal(10))
 
         with numpyro.plate(site.n_response, self.n_response):
             with numpyro.plate(site.n_data, n_data):
@@ -411,11 +410,11 @@ class MixtureModel(GammaModel):
 
                 # Mixture
                 q = numpyro.deterministic(
-                    site.q, outlier_prob * jnp.ones((n_data, self.n_response))
+                    site.q,
+                    jnp.multiply(outlier_prob, jnp.ones((n_data, self.n_response)))
                 )
                 bg_scale = numpyro.deterministic(
-                    site.bg_scale,
-                    outlier_scale * jnp.ones((n_data, self.n_response))
+                    site.bg_scale, L[feature0] + H[feature0]
                 )
 
                 mixing_distribution = dist.Categorical(
