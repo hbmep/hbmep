@@ -1,3 +1,4 @@
+import os
 import logging
 from pathlib import Path
 from collections import defaultdict
@@ -39,12 +40,6 @@ class Dataset:
                 feature = const.SEP.join(feature)
             features.append(feature)
         return features
-
-    @staticmethod
-    def _make_dir(dir: str):
-        # TODO: try and except
-        Path(dir).mkdir(parents=True, exist_ok=True)
-        return
 
     @staticmethod
     def _get_combinations(
@@ -140,7 +135,7 @@ class Dataset:
         self,
         df: pd.DataFrame | None = None
     ) -> tuple[pd.DataFrame, dict[str, LabelEncoder]]:
-        self._make_dir(dir=self.build_dir)
+        os.makedirs(self.build_dir, exist_ok=True)
         logger.info(f"Artefacts will be stored here - {self.build_dir}")
 
         # Read data if not provided

@@ -37,7 +37,7 @@ class BaseModel(Plotter):
         response = df[self.response].to_numpy()
         return response,
 
-    def _model(self, model, features, response_obs=None):
+    def _model(self, intensity, features, response_obs=None):
         raise NotImplementedError
 
     @timing
@@ -49,19 +49,25 @@ class BaseModel(Plotter):
         return trace
 
     @timing
-    def run_inference(
+    def run(
         self,
         df: pd.DataFrame,
-        sampler: MCMCKernel = None,
+        kernel: MCMCKernel = None,
+        extra_fields: list | tuple = [],
         **kwargs
     ) -> tuple[MCMC, dict]:
         # Set up sampler
-        if sampler is None: sampler = NUTS(self._model, **kwargs)
-        mcmc = MCMC(sampler, **self.mcmc_params)
+        if kernel is None: kernel = NUTS(self._model, **kwargs)
+        mcmc = MCMC(kernel, **self.mcmc_params)
 
-        # Run MCMC inference
-        logger.info(f"Running inference with {self.NAME} ...")
-        mcmc.run(self.rng_key, *self._get_regressors(df=df), *self._get_response(df=df))
+        # Run MCMC
+        logger.info(f"Running {self.NAME} ...")
+        mcmc.run(
+            self.rng_key,
+            *self._get_regressors(df=df),
+            *self._get_response(df=df),
+            extra_fields=extra_fields
+        )
         posterior_samples = mcmc.get_samples()
         posterior_samples = {k: np.array(v) for k, v in posterior_samples.items()}
         return mcmc, posterior_samples
