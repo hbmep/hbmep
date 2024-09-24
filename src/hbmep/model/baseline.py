@@ -1,9 +1,11 @@
 import logging
+from operator import attrgetter
 
 import pandas as pd
 import numpy as np
 from jax import random
 import jax.numpy as jnp
+import arviz as az
 import numpyro
 from numpyro.infer.mcmc import MCMCKernel
 from numpyro.infer import NUTS, MCMC, Predictive
@@ -23,8 +25,8 @@ class BaseModel(Plotter):
 
     def __init__(self, config: Config):
         super(BaseModel, self).__init__(config=config)
-        self.random_state = 0
-        self.rng_key = random.PRNGKey(self.random_state)
+        self.random_state = 0; self.rng_key = random.PRNGKey(self.random_state);
+        self.sample_sites = []; self.deterministic_sites = []
         self.mcmc_params = config.MCMC_PARAMS
         logger.info(f"Initialized {self.NAME}")
 
@@ -52,24 +54,42 @@ class BaseModel(Plotter):
     def run(
         self,
         df: pd.DataFrame,
-        kernel: MCMCKernel = None,
+        mcmc: MCMC = None,
         extra_fields: list | tuple = [],
         **kwargs
     ) -> tuple[MCMC, dict]:
-        # Set up sampler
-        if kernel is None: kernel = NUTS(self._model, **kwargs)
-        mcmc = MCMC(kernel, **self.mcmc_params)
+        if mcmc is None:
+            msg = f"Running {self.NAME} ..."
+            rng_key = self.rng_key
+            kernel = NUTS(self._model, **kwargs)
+            mcmc = MCMC(kernel, **self.mcmc_params)
+        else:
+            assert isinstance(mcmc, MCMC)
+            if mcmc.last_state is not None:
+                msg = f"Resuming {self.NAME} from last state ..."
+                mcmc.post_warmup_state = mcmc.last_state
+                rng_key = mcmc.post_warmup_state.rng_key
+            else:
+                msg = f"Running {self.NAME} with provided MCMC ..."
+                rng_key = self.rng_key
 
         # Run MCMC
-        logger.info(f"Running {self.NAME} ...")
+        logger.info(msg)
         mcmc.run(
-            self.rng_key,
+            rng_key,
             *self._get_regressors(df=df),
             *self._get_response(df=df),
             extra_fields=extra_fields
         )
         posterior_samples = mcmc.get_samples()
         posterior_samples = {k: np.array(v) for k, v in posterior_samples.items()}
+        sample_sites = list(attrgetter(mcmc._sample_field)(mcmc._last_state).keys())
+        sample_sites_shapes = [posterior_samples[u].shape for u in sample_sites]
+        deterministic_sites = [
+            u for u in posterior_samples.keys()
+            if (u not in sample_sites) and (posterior_samples[u].shape in sample_sites_shapes)
+        ]
+        self.sample_sites = sample_sites; self.deterministic_sites = deterministic_sites
         return mcmc, posterior_samples
 
     @timing
@@ -149,37 +169,42 @@ class BaseModel(Plotter):
         predictions = {u: np.array(v) for u, v in predictions.items()}
         return predictions
 
-    @staticmethod
-    def print_summary(
+    def summary(
+        self,
         samples: dict,
+        var_names: list[str] | None = None,
         prob=0.95,
-        group_by_chain=False,
-        exclude_raw=True,
-        exclude_deterministic=True
+        exclude_deterministic=True,
+        **kwargs
     ):
-        starting_shape_position = 1
-        if group_by_chain: starting_shape_position = 2
-        a_shape = samples[site.a].shape[starting_shape_position:]
-
-        keys = samples.keys()
-        keep_keys = []
-        for key in keys:
-            if exclude_raw and "_raw" in key: continue
-            if exclude_deterministic:
-                key_shape = samples[key].shape[starting_shape_position:]
-                if not "-".join(map(str, key_shape)) in "-".join(map(str, a_shape)):
-                    continue
-
-            keep_keys.append(key)
-
-        samples = {u: v for u, v in samples.items() if u in keep_keys}
-        print_summary(
-            samples=samples,
-            prob=prob,
-            group_by_chain=group_by_chain
+        if var_names is None: var_names = (
+            self.sample_sites if exclude_deterministic
+            else self.sample_sites + self.deterministic_sites
         )
-        return
+        var_names = [u for u in var_names if u in samples.keys()]
+        samples = {
+            u: v.reshape(self.mcmc_params["num_chains"], -1, *v.shape[1:])
+            for u, v in samples.items()
+        }
+        return az.summary(samples, var_names=var_names, hdi_prob=prob, **kwargs)
 
+    def print_summary(
+        self,
+        samples: dict,
+        var_names: list[str] | None = None,
+        prob=0.95,
+        exclude_deterministic=True,
+        **kwargs
+    ):
+        summary_df = self.summary(
+            samples=samples,
+            var_names=var_names,
+            prob=prob,
+            exclude_deterministic=exclude_deterministic,
+            **kwargs
+        )
+        logger.info(f"Summary\n{summary_df.to_string()}")
+        return
 
 class GammaModel(BaseModel):
     NAME = GAMMA_MODEL
