@@ -25,6 +25,8 @@ DATASET_PLOT = "dataset.pdf"
 RECRUITMENT_CURVES = "recruitment_curves.pdf"
 PRIOR_PREDICTIVE = "prior_predictive_check.pdf"
 POSTERIOR_PREDICTIVE = "posterior_predictive_check.pdf"
+TRACE_PLOT = "trace_plot.pdf"
+
 MCMC_NC = "mcmc.nc"
 DIAGNOSTICS_CSV = "diagnostics.csv"
 LOO_CSV = "loo.csv"

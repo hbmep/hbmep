@@ -6,6 +6,7 @@ import pandas as pd
 from numpyro.diagnostics import hpdi
 from sklearn.preprocessing import LabelEncoder
 
+import arviz as az
 import seaborn as sns
 import matplotlib.pyplot as plt
 from matplotlib.backends.backend_pdf import PdfPages
@@ -19,6 +20,7 @@ from hbmep.utils.constants import (
     RECRUITMENT_CURVES,
     PRIOR_PREDICTIVE,
     POSTERIOR_PREDICTIVE,
+    TRACE_PLOT,
 )
 
 logger = logging.getLogger(__name__)
@@ -90,6 +92,7 @@ class Plotter(Dataset):
         """
         **kwargs:
             combination_columns: list[str]
+            hue: str
             orderby: lambda function
             intensity: str
             response: list[str]
@@ -101,6 +104,7 @@ class Plotter(Dataset):
             threshold_posterior_props: dict
         """
         combination_columns = kwargs.get("combination_columns", self.features)
+        hue = kwargs.get("hue", None)
         orderby = kwargs.get("orderby")
         intensity = kwargs.get("intensity", self.intensity)
         response = kwargs.get("response", self.response)
@@ -247,7 +251,7 @@ class Plotter(Dataset):
                     # MEP Size scatter plot
                     postfix = " - MEP Size"
                     ax = axes[i, j]
-                    sns.scatterplot(data=curr_df, x=intensity, y=response_muscle, color=response_colors[r], ax=ax)
+                    sns.scatterplot(data=curr_df, x=intensity, y=response_muscle, color=response_colors[r], ax=ax, hue=hue)
                     ax.set_ylabel(response_muscle)
                     ax.set_title(prefix + postfix)
                     ax.sharex(axes[i, 0])
@@ -258,7 +262,7 @@ class Plotter(Dataset):
                         # MEP Size scatter plot and recruitment curve
                         postfix = "Recruitment Curve Fit"
                         ax = axes[i, j]
-                        sns.scatterplot(data=curr_df, x=intensity, y=response_muscle, color=response_colors[r], ax=ax)
+                        sns.scatterplot(data=curr_df, x=intensity, y=response_muscle, color=response_colors[r], ax=ax, hue=hue)
                         sns.lineplot(
                             x=curr_prediction_df[intensity],
                             y=curr_mu_posterior_predictive_map[:, r],
@@ -310,6 +314,7 @@ class Plotter(Dataset):
 
                 combination_counter += 1
 
+            logger.info(f"Page {page + 1} of {n_pdf_pages} done.")
             pdf.savefig(fig)
             plt.close()
 
@@ -363,7 +368,6 @@ class Plotter(Dataset):
             **kwargs
         )
 
-    @timing
     def predictive_checks_renderer(
         self,
         df: pd.DataFrame,
@@ -560,6 +564,7 @@ class Plotter(Dataset):
 
                 combination_counter += 1
 
+            logger.info(f"Page {page + 1} of {n_pdf_pages} done.")
             pdf.savefig(fig)
             plt.close()
 
@@ -604,36 +609,24 @@ class Plotter(Dataset):
             **kwargs
         )
 
-    @timing
-    def render_diagnostics(
+    def trace_renderer(
         self,
-        df: pd.DataFrame,
-        destination_path: str,
         posterior_samples: dict,
         var_names: list[str],
-        encoder_dict: dict[str, LabelEncoder] | None = None,
+        rhat_threshold: float,
+        destination_path: str,
         **kwargs
     ):
         """
         **kwargs:
-            combination_columns: list[str]
-            orderby: lambda function
-            intensity: str
-            response: list[str]
             response_colors: list[str] | np.ndarray
-            base: int
             subplot_cell_width: int
             subplot_cell_height: int
-            recruitment_curve_props: dict
-            threshold_posterior_props: dict
         """
-        combination_columns = kwargs.get("combination_columns", self.features)
-        orderby = kwargs.get("orderby")
-        response = kwargs.get("response", self.response)
-        num_chains = kwargs.get("num_chains", self.mcmc_params["num_chains"])
+        num_chains = self.mcmc_params["num_chains"]
         chain_colors = kwargs.get("chain_colors", Plotter._get_colors(n=num_chains))
-        subplot_cell_width = kwargs.get("subplot_cell_width", self.subplot_cell_width)
-        subplot_cell_height = kwargs.get("subplot_cell_height", self.subplot_cell_height)
+        subplot_cell_width = kwargs.get("subplot_cell_width", self.subplot_cell_width / 1.5)
+        subplot_cell_height = kwargs.get("subplot_cell_height", self.subplot_cell_height / 1.5)
 
         # Group by chain
         posterior_samples = {
@@ -641,28 +634,26 @@ class Plotter(Dataset):
             for u, v in posterior_samples.items()
         }
 
-        msg = "Rendering diagnostics ..."
-        logger.info(msg)
         # Setup pdf layout
-        combinations = self._get_combinations(df=df, columns=combination_columns, orderby=orderby)
-        n_combinations = len(combinations)
-        n_response = len(response)
+        summary_df = az.summary(posterior_samples, var_names=var_names)
+        summary_df["site"] = summary_df.index; summary_df = summary_df.reset_index(drop=True).copy()
+        ind = summary_df.r_hat > rhat_threshold; summary_df = summary_df[ind].reset_index(drop=True).copy()
+        if not summary_df.shape[0]: logger.info(f"No site with rhat > {rhat_threshold}."); return
 
-        n_columns_per_response = 2 * len(var_names)
-
+        nrows = summary_df.shape[0]
         n_fig_rows = 10
-        n_fig_columns = n_columns_per_response * n_response
-        n_pdf_pages = n_combinations // n_fig_rows
-        if n_combinations % n_fig_rows: n_pdf_pages += 1
+        n_fig_columns = 2
+        n_pdf_pages = nrows // n_fig_rows
+        if nrows % n_fig_rows: n_pdf_pages += 1
 
         # Iterate over pdf pages
         pdf = PdfPages(destination_path)
-        combination_counter = 0
+        row_counter = 0
 
         for page in range(n_pdf_pages):
             n_rows_current_page = min(
                 n_fig_rows,
-                n_combinations - page * n_fig_rows
+                nrows - page * n_fig_rows
             )
             fig, axes = plt.subplots(
                 nrows=n_rows_current_page,
@@ -675,47 +666,35 @@ class Plotter(Dataset):
                 squeeze=False
             )
 
-            # Iterate over combinations
             for i in range(n_rows_current_page):
-                curr_combination = combinations[combination_counter]
-                curr_combination_inverse = ""
+                curr_row = summary_df.iloc[row_counter]
+                curr_site = curr_row.site; c = ()
+                if "[" and "]" in curr_site:
+                    start, stop = curr_site.index("["), curr_site.index("]")
+                    c = curr_site[(start + 1):stop]
+                    c = tuple(map(int, c.split(",")))
+                    curr_site = curr_site[:start]
 
-                if encoder_dict is not None:
-                    curr_combination_inverse = self._get_combination_inverse(
-                        combination=curr_combination,
-                        columns=combination_columns,
-                        encoder_dict=encoder_dict
-                    )
-                    curr_combination_inverse = ", ".join(map(str, curr_combination_inverse))
-                    curr_combination_inverse += "\n"
+                for chain in range(num_chains):
+                    samples = posterior_samples[curr_site][..., *c][chain, :]
+                    ax = axes[i, 0]
+                    sns.kdeplot(samples, color=chain_colors[chain], ax=ax, label=f"CH:{chain}")
+                    ax = axes[i, 1]
+                    sns.lineplot(x=np.arange(samples.shape[0]), y=samples, color=chain_colors[chain], ax=ax)
 
-                # Iterate over responses
-                j = 0
-                for r, response_muscle in enumerate(response):
-                    # Labels
-                    prefix = f"{tuple(list(curr_combination) + [r])}: {response_muscle} - MEP"
-                    if not j: prefix = curr_combination_inverse + prefix
+                ax = axes[i, 0]
+                ax.set_title(f"{curr_site}" + (f" {c}" if c else ""))
+                ax.set_xlabel(""); ax.set_ylabel("")
+                ax.legend(loc="upper right")
+                if i and ax.get_legend(): ax.get_legend().remove()
+                ax = axes[i, 1]
+                ax.set_title(f"rhat: {curr_row.r_hat:.2f}")
+                ax.set_xlabel(""); ax.set_ylabel("")
+                if i and ax.get_legend(): ax.get_legend().remove()
 
-                    for var_name in var_names:
-                        postfix = f"{var_name} KDE"
-                        for chain in range(num_chains):
-                            samples = posterior_samples[var_name][chain, :, *curr_combination, r]
-                            ax = axes[i, j]
-                            sns.kdeplot(samples, color=chain_colors[chain], ax=ax, label=f"CH:{chain}")
-                        ax.set_title(prefix + postfix)
-                        ax.legend(loc="upper left")
-                        j += 1
+                row_counter += 1
 
-                        postfix = f"{var_name} Trace Plot"
-                        for chain in range(num_chains):
-                            samples = posterior_samples[var_name][chain, :, *curr_combination, r]
-                            ax = axes[i, j]
-                            ax.plot(samples, color=chain_colors[chain])
-                        ax.set_title(postfix)
-                        j += 1
-
-                combination_counter += 1
-
+            logger.info(f"Page {page + 1} of {n_pdf_pages} done.")
             pdf.savefig(fig)
             plt.close()
 
@@ -724,3 +703,36 @@ class Plotter(Dataset):
 
         logger.info(f"Saved to {destination_path}")
         return
+
+    @timing
+    def trace_plot(
+        self,
+        posterior_samples: dict,
+        var_names: list[str] | None = None,
+        rhat_threshold: float | None = None,
+        exclude_deterministic: bool = True,
+        destination_path: str | None = None,
+        **kwargs
+    ):
+        if destination_path is None:
+            destination_path = os.path.join(self.build_dir, TRACE_PLOT)
+
+        if rhat_threshold is None:
+            rhat_threshold = 0; msg = "Rhat threshold not provided. All rhat values will be displayed."
+        else: msg = f"Rhat threshold: {rhat_threshold}"
+        logger.info(msg)
+
+        if var_names is None: var_names = (
+            self.sample_sites if exclude_deterministic
+            else self.sample_sites + self.deterministic_sites
+        )
+        msg = f"Rendering trace plots for {', '.join(var_names)} ..."
+        logger.info(msg)
+
+        return self.trace_renderer(
+            posterior_samples=posterior_samples,
+            var_names=var_names,
+            rhat_threshold=rhat_threshold,
+            destination_path=destination_path,
+            **kwargs
+        )
