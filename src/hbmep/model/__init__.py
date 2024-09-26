@@ -1,2 +1,3 @@
 from .baseline import BaseModel, GammaModel
-from .bounded_optimization import BoundedOptimization
+from .non_hierarchical import NonHierarchicalBaseModel
+from .optimization import BoundConstrainedOptimization
