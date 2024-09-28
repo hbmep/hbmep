@@ -92,7 +92,7 @@ class Plotter(Dataset):
         """
         **kwargs:
             combination_columns: list[str]
-            hue: str
+            hue: str | list[str]
             orderby: lambda function
             intensity: str
             response: list[str]
@@ -104,7 +104,6 @@ class Plotter(Dataset):
             threshold_posterior_props: dict
         """
         combination_columns = kwargs.get("combination_columns", self.features)
-        hue = kwargs.get("hue", None)
         orderby = kwargs.get("orderby")
         intensity = kwargs.get("intensity", self.intensity)
         response = kwargs.get("response", self.response)
@@ -114,6 +113,7 @@ class Plotter(Dataset):
         subplot_cell_height = kwargs.get("subplot_cell_height", self.subplot_cell_height)
         recruitment_curve_props = kwargs.get("recruitment_curve_props", self.recruitment_curve_props)
         threshold_posterior_props = kwargs.get("threshold_posterior_props", self.threshold_posterior_props)
+        hue = kwargs.get("hue", [None] * len(response))
 
         if mep_matrix is not None:
             assert mep_matrix.shape[0] == df.shape[0]
@@ -124,6 +124,8 @@ class Plotter(Dataset):
         if posterior_samples is not None:
             assert (prediction_df is not None) and (posterior_predictive is not None)
             mu_posterior_predictive = posterior_predictive[site.mu]
+
+        if hue is not None and isinstance(hue, str): hue = [hue] * len(response)
 
         # Setup pdf layout
         combinations = self._get_combinations(df=df, columns=combination_columns, orderby=orderby)
@@ -251,18 +253,19 @@ class Plotter(Dataset):
                     # MEP Size scatter plot
                     postfix = " - MEP Size"
                     ax = axes[i, j]
-                    sns.scatterplot(data=curr_df, x=intensity, y=response_muscle, color=response_colors[r], ax=ax, hue=hue)
+                    sns.scatterplot(data=curr_df, x=intensity, y=response_muscle, color=response_colors[r], ax=ax, hue=hue[r])
                     ax.set_ylabel(response_muscle)
                     ax.set_title(prefix + postfix)
                     ax.sharex(axes[i, 0])
                     ax.tick_params(axis="x", rotation=90)
+                    if ax.get_legend() is not None: ax.get_legend().remove()
                     j += 1
 
                     if posterior_samples is not None:
                         # MEP Size scatter plot and recruitment curve
                         postfix = "Recruitment Curve Fit"
                         ax = axes[i, j]
-                        sns.scatterplot(data=curr_df, x=intensity, y=response_muscle, color=response_colors[r], ax=ax, hue=hue)
+                        sns.scatterplot(data=curr_df, x=intensity, y=response_muscle, color=response_colors[r], ax=ax, hue=hue[r])
                         sns.lineplot(
                             x=curr_prediction_df[intensity],
                             y=curr_mu_posterior_predictive_map[:, r],
@@ -278,6 +281,7 @@ class Plotter(Dataset):
                         ax.sharex(axes[i, 0])
                         ax.sharey(axes[i, j - 1])
                         ax.tick_params(axis="x", rotation=90)
+                        if ax.get_legend() is not None: ax.get_legend().remove()
                         j += 1
 
                         # Threshold KDE

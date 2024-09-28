@@ -74,6 +74,7 @@ class BaseModel(Plotter):
                 rng_key = self.rng_key
 
         # Run MCMC
+        logger.info(f"Build directory: {self.build_dir}")
         logger.info(msg)
         mcmc.run(
             rng_key,
@@ -205,6 +206,7 @@ class BaseModel(Plotter):
         )
         logger.info(f"Summary\n{summary_df.to_string()}")
         return
+
 
 class GammaModel(BaseModel):
     NAME = GAMMA_MODEL
