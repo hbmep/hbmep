@@ -35,3 +35,16 @@ def rectified_linear(x, a, b, L, eps=1e-2):
     z = F.linear_transform(x, a, b)
     z = smooth_max(z, eps)
     return L + z
+
+
+def rectified_logistic_S50(x, a, b, L, ell, H, eps=1e-2):
+    """
+    This is the rectified logistic function
+    in the S50 parameterization
+    """
+    z = F.linear_transform(x, a, b) - jnp.log(H) + jnp.log(H + 2 * ell)
+    z = jax.nn.sigmoid(z)
+    z = (H + ell) * z
+    z = -ell + z
+    z = smooth_max(z, eps)
+    return L + z
