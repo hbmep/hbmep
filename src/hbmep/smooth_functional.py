@@ -16,7 +16,7 @@ def smooth_max(x, eps):
     return z
 
 
-def rectified_logistic(x, a, b, L, ell, H, eps=1e-2):
+def rectified_logistic(x, a, b, L, ell, H, eps=1e-3):
     """
     Smooth approximation of rectified logistic function
     """
@@ -28,7 +28,7 @@ def rectified_logistic(x, a, b, L, ell, H, eps=1e-2):
     return L + z
 
 
-def rectified_linear(x, a, b, L, eps=1e-2):
+def rectified_linear(x, a, b, L, eps=1e-3):
     """
     Smooth approximation of rectified linear function
     """
