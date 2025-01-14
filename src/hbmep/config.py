@@ -19,7 +19,7 @@ class Config():
 
     def _init(self, config):
         paths = config[const.PATHS]
-        vars = config[const.VARIABLES]
+        variables = config[const.VARIABLES]
         mcmc = config[const.MCMC]
         misc = config[const.MISC]
         mep_data = config.get(const.MEP_DATA, {})
@@ -29,9 +29,9 @@ class Config():
         self.BUILD_DIR: str = paths[const.BUILD_DIR]
 
         # Variables
-        self.INTENSITY: str = vars[const.INTENSITY]
-        self.FEATURES: list[str] = vars[const.FEATURES]
-        self.RESPONSE: list[str] = vars[const.RESPONSE]
+        self.INTENSITY: str = variables[const.INTENSITY]
+        self.FEATURES: list[str] = variables[const.FEATURES]
+        self.RESPONSE: list[str] = variables[const.RESPONSE]
 
         # MCMC parameters
         self.MCMC_PARAMS: dict[str, int] = mcmc
