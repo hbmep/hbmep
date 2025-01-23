@@ -22,7 +22,7 @@ class Config():
         variables = config[const.VARIABLES]
         mcmc = config[const.MCMC]
         misc = config[const.MISC]
-        mep_data = config.get(const.MEP_DATA, {})
+        optional = config.get(const.OPTIONAL, {})
 
         # Paths
         self.CSV_PATH: str = paths[const.CSV_PATH]
@@ -37,7 +37,10 @@ class Config():
         self.MCMC_PARAMS: dict[str, int] = mcmc
 
         # MEP data
-        self.MEP_DATA: dict = mep_data
+        self.MEP_MATRIX_PATH: str | None = optional.get(const.MEP_MATRIX_PATH, None)
+        self.MEP_RESPONSE: list[str] | None = optional.get(const.MEP_RESPONSE, None)
+        self.MEP_WINDOW: list[float] | None = optional.get(const.MEP_WINDOW, None)
+        self.MEP_SIZE_WINDOW: list[float] | None = optional.get(const.MEP_SIZE_WINDOW, None)
 
         # Misc
         self.BASE: float = misc[const.BASE]

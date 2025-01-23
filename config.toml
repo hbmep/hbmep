@@ -1,5 +1,7 @@
 [paths]
+# Path to data in .csv format
 csv_path = ""
+# Path to directory where model's output will be saved
 build_directory = ""
 
 [variables]
@@ -13,10 +15,13 @@ num_warmup = 5000
 num_samples = 1000
 thinning = 1
 
-[optional-mep-data]
-# This is a .npy file with shape: (No. of rows in csv) x (time) x (No. of responses)
-mep_matrix_path = "/home/vishu/data/hbmep-processed/human/tms/proc_2023-11-28.npy"
+[optional]
+# This is path to MEP matrix in .npy format, having shape:
+# (No. of rows in csv) x (No. of time points) x (No. of responses in MEP matrix)
+mep_matrix_path = ""
 # Order of response in MEP matrix
+# Note that, the responses in [optional].mep_response can be a superset of the responses in [variables].response,
+# but only the responses in [variables].response will be analyzed
 mep_response = ['PKPK_ADM', 'PKPK_APB', 'PKPK_Biceps', 'PKPK_ECR', 'PKPK_FCR', 'PKPK_Triceps']
 mep_window = [-0.25, 0.25]
 mep_size_window = [0.0065, 0.09]

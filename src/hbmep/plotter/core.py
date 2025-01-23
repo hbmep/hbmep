@@ -120,6 +120,7 @@ class Plotter(Dataset):
             a, b = self.mep_window
             time = np.linspace(a, b, mep_matrix.shape[1])
             is_within_mep_size_window = (time > self.mep_size_window[0]) & (time < self.mep_size_window[1])
+            mep_const = kwargs.get("mep_const", 1.0)
 
         if posterior_samples is not None:
             assert (prediction_df is not None) and (posterior_predictive is not None)
@@ -226,7 +227,7 @@ class Plotter(Dataset):
                         mep_response_ind = mep_response_ind[0]
                         curr_mep_matrix = mep_matrix[df_ind, :, mep_response_ind]
                         max_amplitude = curr_mep_matrix[..., is_within_mep_size_window].max()
-                        curr_mep_matrix = (curr_mep_matrix / max_amplitude) * (base // 2)
+                        curr_mep_matrix = mep_const * (curr_mep_matrix / max_amplitude) * (base // 2)
 
                         ax = Plotter.mep_plot(
                             ax,

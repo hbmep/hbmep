@@ -30,7 +30,10 @@ class Dataset:
         self.n_regressors = len(self.regressors)
         self.n_response = len(self.response)
 
-        self.mep_data = config.MEP_DATA
+        self.mep_matrix_path = config.MEP_MATRIX_PATH
+        self.mep_response = config.MEP_RESPONSE
+        self.mep_window = config.MEP_WINDOW
+        self.mep_size_window = config.MEP_SIZE_WINDOW
 
     @staticmethod
     def _init_features(_features: list[str]) -> list[str]:
