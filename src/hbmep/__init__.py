@@ -1,11 +1,11 @@
 import multiprocessing
 import logging
 
-# import jax
 import numpyro
 
-# PLATFORM = "cpu"
-# jax.config.update("jax_platforms", PLATFORM)
+from hbmep.plotter import (
+    plot
+)
 
 cpu_count = multiprocessing.cpu_count() - 2
 numpyro.set_host_device_count(cpu_count)
