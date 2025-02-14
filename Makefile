@@ -14,14 +14,14 @@ endif
 venv-base: check-env
 	@python$(PY_VERSION) -m venv .venv
 
-.PHONY: venv
-venv: venv-base
+.PHONY: build
+build: venv-base
 	@source .venv/bin/activate && \
 	pip install --upgrade pip && \
 	pip install .
 
-.PHONY: venv-dev
-venv-dev: venv-base
+.PHONY: dev
+dev: venv-base
 	@source .venv/bin/activate && \
 	pip install --upgrade pip && \
 	pip install -e .[dev]
