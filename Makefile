@@ -2,6 +2,7 @@ SHELL := /bin/bash
 CWD := $(dir $(abspath $(lastword $(MAKEFILE_LIST))))
 
 PY_VERSION ?= 3.11
+PORT ?= 8000
 
 .PHONY: check-env
 check-env:
@@ -36,7 +37,7 @@ run:
 
 html:
 	@source .venv/bin/activate && \
-	sphinx-autobuild docs/source/ docs/build/html/
+	sphinx-autobuild docs/source/ docs/build/html/ --port $(PORT)
 
 test:
 	@source .venv/bin/activate && \
