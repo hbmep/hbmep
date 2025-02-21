@@ -13,6 +13,7 @@ endif
 
 .PHONY: venv-base
 venv-base: check-env
+	@rm -rf .venv
 	@python$(PY_VERSION) -m venv .venv
 
 .PHONY: build
@@ -26,6 +27,12 @@ dev: venv-base
 	@source .venv/bin/activate && \
 	pip install --upgrade pip && \
 	pip install -e .[dev]
+
+.PHONY: arxiv
+arxiv: venv-base
+	@source .venv/bin/activate && \
+	pip install --upgrade pip && \
+	pip install -e .[arxiv]
 
 .PHONY: clean
 clean:
