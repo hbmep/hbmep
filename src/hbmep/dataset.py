@@ -27,9 +27,13 @@ def make_prediction_dataset(
     min_intensity: float | None = None,
     max_intensity: float | None = None,
 ) -> pd.DataFrame:
+    df_features = (
+        df[features].apply(tuple, axis=1) if len(features)
+        else df[intensity].apply(lambda x: 0).astype(int).apply(lambda x: tuple([x]))
+    )
     prediction_df = (
         df
-        .groupby(by=features)
+        .groupby(df_features)
         .agg({intensity: ["min", "max"]})
         .copy()
     )

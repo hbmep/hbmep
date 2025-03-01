@@ -36,6 +36,20 @@ def plot_mep(
     return ax
 
 
+# def _plot(
+#     axes,
+#     *,
+#     intensity,
+#     response,
+#     mep_matrix: np.ndarray,
+#     time: np.ndarray | None = None,
+#     prediction_intensity,
+#     response_pred,
+#     threshold,
+# ):
+#     pass
+
+
 def plot(
     *,
     df: pd.DataFrame,
@@ -68,6 +82,11 @@ def plot(
     curve_kwargs = kwargs.get("curve_kwargs", CURVE_KW)
     threshold_kwargs = kwargs.get("threshold_kwargs", THRESHOLD_KW)
 
+    df_features = (
+        df[features].apply(tuple, axis=1) if len(features)
+        else df[intensity].apply(lambda x: 0).astype(int).apply(lambda x: tuple([x]))
+    )
+
     num_cols = 1
     if mep_matrix is not None:
         assert mep_matrix.shape[0] == df.shape[0]
@@ -85,18 +104,26 @@ def plot(
     if hue is None or isinstance(hue, str): hue = [hue] * num_response
 
     if prediction_df is not None:
+        pred_df_features = (
+            prediction_df[features].apply(tuple, axis=1) if len(features)
+            else prediction_df[intensity].apply(lambda x: 0).astype(int).apply(lambda x: tuple([x]))
+        )
         assert response_pred is not None
         assert response_pred.ndim in {2, 3}
         if response_pred.ndim == 3: response_pred = response_pred.mean(axis=0)
         num_cols +=1
 
     if threshold is not None:
+        if not len(features): threshold = threshold[:, None, ...]
         threshold_mean = threshold.mean(axis=0)
         threshold_hdi = hpdi(threshold, prob=0.95, axis=0)
         num_cols += 1
 
     # Setup pdf layout
-    combinations = df[features].apply(tuple, axis=1).unique().tolist()
+    combinations = (
+        df[features].apply(tuple, axis=1).unique().tolist() if len(features)
+        else [(0,)]
+    )
     combinations = sorted(combinations, key=sort_key)
     num_combinations = len(combinations)
     num_cols *= num_response
@@ -128,12 +155,12 @@ def plot(
                 cc_inverse += "\n"
 
             # Filter dataframe based on current combination
-            df_idx = df[features].apply(tuple, axis=1).isin([cc])
+            df_idx = df_features.isin([cc])
             ccdf = df[df_idx].reset_index(drop=True).copy()
 
             if prediction_df is not None:
                 # Filter prediction dataframe based on current combination
-                prediction_df_idx = prediction_df[features].apply(tuple, axis=1).isin([cc])
+                prediction_df_idx = pred_df_features.isin([cc])
                 ccprediction_df = prediction_df[prediction_df_idx].reset_index(drop=True).copy()
                 # Predicted response for current combination
                 ccresponse_pred = response_pred[prediction_df_idx, :]
