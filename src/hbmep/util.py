@@ -1,3 +1,4 @@
+import os
 import logging
 from time import time
 from functools import wraps
@@ -37,18 +38,27 @@ def timing(f):
     return wrap
 
 
-def setup_logging(output_path, format=FORMAT, level=logging.INFO):
+def setup_logging(output, *, level=logging.INFO, format=FORMAT):
+    root, ext = os.path.splitext(output)
+    if not ext: output_file = os.path.join(output, "logs.log")
+    else: output_file = output
+
+    # Create the directory if it doesn't exist
+    output_dir = os.path.dirname(output_file)
+    if output_dir and not os.path.exists(output_dir):
+        os.makedirs(output_dir, exist_ok=True)
+
+    # Configure logging
     logging.basicConfig(
         format=format,
         level=level,
         handlers=[
-            logging.FileHandler(output_path, mode="w"),
+            logging.FileHandler(output_file, mode="w"),
             logging.StreamHandler()
         ],
         force=True
     )
-    logger.info(f"Logging to {output_path}")
-    return
+    logger.info(f"Logging to {output_file}")
 
 
 def abstractvariables(*args):
@@ -103,8 +113,8 @@ class Site:
     ell = "ℓ"
     H = "H"
 
-    c_1 = "c₁"
-    c_2 = "c₂"
+    c1 = "c₁"
+    c2 = "c₂"
 
     # Deterministic
     mu = "µ"
@@ -112,9 +122,9 @@ class Site:
     beta = "β"
 
     # Plates
-    n_features = [f"n_feature{i}" for i in range(10)]
-    n_response = "n_response"
-    n_data = "n_data"
+    num_features = [f"num_feature{i}" for i in range(10)]
+    num_response = "num_response"
+    num_data = "num_data"
 
     # Observation
     obs = "obs"
