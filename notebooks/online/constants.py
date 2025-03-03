@@ -4,8 +4,8 @@ import os
 BUILD_DIR = "/home/vishu/reports/hbmep/notebooks/online/"
 TOML_PATH = "/home/vishu/reports/hbmep/notebooks/online/config.toml"
 
-SIM_DF_PATH = "/home/vishu/reports/hbmep/notebooks/online/simulation_df.csv"
-SIM_PPD_PATH = "/home/vishu/reports/hbmep/notebooks/online/simulation_ppd.pkl"
+SIMULATION_DF_PATH = "/home/vishu/reports/hbmep/notebooks/online/simulation_df.csv"
+SIMULATION_PPD_PATH = "/home/vishu/reports/hbmep/notebooks/online/simulation_ppd.pkl"
 
 POSTERIOR_PATH = "/home/vishu/reports/hbmep/notebooks/online/posterior.pkl"
 
