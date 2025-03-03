@@ -36,20 +36,6 @@ def plot_mep(
     return ax
 
 
-# def _plot(
-#     axes,
-#     *,
-#     intensity,
-#     response,
-#     mep_matrix: np.ndarray,
-#     time: np.ndarray | None = None,
-#     prediction_intensity,
-#     response_pred,
-#     threshold,
-# ):
-#     pass
-
-
 def plot(
     *,
     df: pd.DataFrame,
