@@ -22,7 +22,7 @@ from hbmep.util import (
 from models import Simulator, HB
 from constants import (
     BUILD_DIR,
-    TOML_PATH,
+    CONFIG,
     SIMULATION_DF_PATH,
     SIMULATION_PPD_PATH,
     N_PULSES_SPACE,
@@ -54,7 +54,7 @@ def main(draws_space, num_pulses_space, methods, n_jobs=-1):
     def body_run(num_pulses, draw, method):
         global simulation_ppd
         # Build model
-        model = HB(toml_path=TOML_PATH)
+        model = HB(config=CONFIG)
         model.features = []
         model.build_dir = os.path.join(
             BUILD_DIR,
@@ -67,7 +67,7 @@ def main(draws_space, num_pulses_space, methods, n_jobs=-1):
         setup_logging(os.path.join(model.build_dir, "logs.log"))
 
         # Simulator
-        simulator = Simulator(toml_path=TOML_PATH)
+        simulator = Simulator(config=CONFIG)
         simulation_params = [simulation_ppd[named_param][draw: draw + 1, :1, ...] for named_param in named_params]
         key, subkey = random.split(simulator.key)
 

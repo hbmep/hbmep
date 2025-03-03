@@ -2,7 +2,14 @@ import os
 USER = os.getenv("USER")
 
 BUILD_DIR = f"/home/{USER}/reports/hbmep/notebooks/online/"
-TOML_PATH = f"/home/{USER}/reports/hbmep/notebooks/online/config.toml"
+VARIABLES = {
+    "intensity": "TMSInt",
+    "features": ["participant"],
+    "response": ['PKPK_APB']
+}
+CONFIG = {
+    "variables": VARIABLES
+}
 
 SIMULATION_DF_PATH = f"/home/{USER}/reports/hbmep/notebooks/online/simulation_df.csv"
 SIMULATION_PPD_PATH = f"/home/{USER}/reports/hbmep/notebooks/online/simulation_ppd.pkl"
