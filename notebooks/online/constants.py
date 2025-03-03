@@ -1,13 +1,13 @@
 import os
+USER = os.getenv("USER")
 
+BUILD_DIR = f"/home/{USER}/reports/hbmep/notebooks/online/"
+TOML_PATH = f"/home/{USER}/reports/hbmep/notebooks/online/config.toml"
 
-BUILD_DIR = "/home/vishu/reports/hbmep/notebooks/online/"
-TOML_PATH = "/home/vishu/reports/hbmep/notebooks/online/config.toml"
+SIMULATION_DF_PATH = f"/home/{USER}/reports/hbmep/notebooks/online/simulation_df.csv"
+SIMULATION_PPD_PATH = f"/home/{USER}/reports/hbmep/notebooks/online/simulation_ppd.pkl"
 
-SIMULATION_DF_PATH = "/home/vishu/reports/hbmep/notebooks/online/simulation_df.csv"
-SIMULATION_PPD_PATH = "/home/vishu/reports/hbmep/notebooks/online/simulation_ppd.pkl"
-
-POSTERIOR_PATH = "/home/vishu/reports/hbmep/notebooks/online/posterior.pkl"
+POSTERIOR_PATH = f"/home/{USER}/reports/hbmep/notebooks/online/posterior.pkl"
 
 TOTAL_SUBJECTS = 32
 N_SUBJECTS_SPACE = [1, 2, 4, 8, 16]
