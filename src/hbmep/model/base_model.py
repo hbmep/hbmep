@@ -115,10 +115,9 @@ class BaseModel():
         return {attr: getattr(self, attr) for attr in attributes}
 
     def _get_regressors(self, df: pd.DataFrame):
-        regressors = df[self.regressors].to_numpy()
-        # intensity = df[[self.intensity]].to_numpy()
-        # features = df[self.features].to_numpy()
-        return regressors,
+        intensity = df[[self.intensity]].to_numpy()
+        features = df[self.features].to_numpy()
+        return intensity, features
 
     def _get_response(self, df: pd.DataFrame):
         response = df[self.response].to_numpy()
@@ -148,7 +147,7 @@ class BaseModel():
         df, encoder = mep.fit_transform(df=df, features=self.features)
         return df, encoder
 
-    def _model(self, regressors, response_obs=None, **kwargs):
+    def _model(self, intensity, features, response_obs=None, **kwargs):
         raise NotImplementedError
 
     def gamma_rate(self, mu, c1, c2):
