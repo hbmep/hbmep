@@ -20,19 +20,11 @@ venv-base: check-env
 build: venv-base
 	@source .venv/bin/activate && \
 	pip install --upgrade pip && \
-	pip install .
-
-.PHONY: dev
-dev: venv-base
-	@source .venv/bin/activate && \
-	pip install --upgrade pip && \
-	pip install -e .[dev]
-
-.PHONY: arxiv
-arxiv: venv-base
-	@source .venv/bin/activate && \
-	pip install --upgrade pip && \
-	pip install -e .[arxiv]
+	if [ -z "$(ENV)" ]; then \
+		pip install .; \
+	else \
+		pip install -e ".[$(ENV)]"; \
+	fi
 
 .PHONY: clean
 clean:
