@@ -19,7 +19,7 @@ from hbmep.util import (
     Site as site
 )
 
-from model import Simulator, HB
+from models import Simulator, HB
 from constants import (
     BUILD_DIR,
     TOML_PATH,
