@@ -13,6 +13,9 @@ build/
 # Environments
 .venv
 
+# Editor
+.vscode/
+
 # Jupyter Notebook
 .ipynb_checkpoints
 
