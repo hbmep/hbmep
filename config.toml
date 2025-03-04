@@ -1,8 +1,6 @@
 [paths]
-# Path to data in .csv format
-csv_path = ""
-# Path to directory where model's output will be saved
-build_directory = ""
+csv_path = "./mock_data.csv"
+build_directory = "./mock_data_output/"
 
 [variables]
 intensity = "TMSInt"
@@ -11,20 +9,23 @@ response = ['PKPK_APB', 'PKPK_ADM', 'PKPK_ECR', 'PKPK_FCR']
 
 [mcmc]
 num_chains = 4
-num_warmup = 5000
+num_warmup = 1000
 num_samples = 1000
 thinning = 1
 
-[optional]
+[nuts]
+target_accept_prob = 0.8
+max_tree_depth = 10
+
+# Optional
+[mep_metadata]
 # This is path to MEP matrix in .npy format, having shape:
-# (No. of rows in csv) x (No. of time points) x (No. of responses in MEP matrix)
+# (no. of rows in csv) x (no. of time points) x (no. of responses in MEP matrix)
 mep_matrix_path = ""
-# Order of response in MEP matrix
-# Note that, the responses in [optional].mep_response can be a superset of the responses in [variables].response,
-# but only the responses in [variables].response will be analyzed
+# Order of muscles in MEP matrix (in its last dimension)
 mep_response = ['PKPK_ADM', 'PKPK_APB', 'PKPK_Biceps', 'PKPK_ECR', 'PKPK_FCR', 'PKPK_Triceps']
+# Note that, the responses in [mep_metadata].mep_response can be a superset of the responses in [variables].response,
+# but only the muscles in [variables].response will be displayed by plotting functions
 mep_window = [-0.25, 0.25]
 mep_size_window = [0.0065, 0.09]
 
-[misc]
-base = 10
