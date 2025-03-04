@@ -72,7 +72,12 @@ if __name__ == "__main__":
     n_pulses_space = [NUM_PULSES]
     draws_space = range(1000)
     methods = [
-        "on-hdi90"
+        # "off-svi",
+        # "off-mcmc",
+        # "on-hdi50",
+        # "on-hdi90",
+        # "on-hdi90-2",
+        "on-hdi95",
     ]
     main(
         draws_space=draws_space,

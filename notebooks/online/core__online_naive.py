@@ -36,8 +36,8 @@ global simulation_ppd
 
 @timing
 def main(draws_space, num_pulses_space, methods, n_jobs=-1):
-    for method in methods:
-        assert method in {"off-mcmc", "off-svi", "on-hdi90", "on-hdi99"}
+    # for method in methods:
+        # assert method in {"off-mcmc", "off-svi", "on-hdi90", "on-hdi99", "on-hdi50", "on-hdi90-2"}
 
     global simulation_ppd
     with open(SIMULATION_PPD_PATH, "rb") as f:
@@ -97,6 +97,8 @@ def main(draws_space, num_pulses_space, methods, n_jobs=-1):
         else:
             df = None
             proposal = [20, 50, 80]
+            if method in {"on-hdi90-2", "on-hdi95"}:
+                proposal = [5, 50, 90]
 
             for iter in range(num_pulses // len(proposal)):
                 curr_df = pd.DataFrame(
@@ -132,14 +134,26 @@ def main(draws_space, num_pulses_space, methods, n_jobs=-1):
 
                 # Update proposal
                 match method:
-                    case "on-hdi90":
+                    case "on-hdi90" | "on-hdi90-2":
                         l, r = hpdi(posterior[site.a].reshape(-1,), prob=.9)
+                        proposal = [l, r, (l + r) / 2]
+                        proposal = [max(0, p) for p in proposal]
+                        proposal = [min(p, 100) for p in proposal]
+
+                    case "on-hdi95":
+                        l, r = hpdi(posterior[site.a].reshape(-1,), prob=.95)
                         proposal = [l, r, (l + r) / 2]
                         proposal = [max(0, p) for p in proposal]
                         proposal = [min(p, 100) for p in proposal]
 
                     case "on-hdi99":
                         l, r = hpdi(posterior[site.a].reshape(-1,), prob=.99)
+                        proposal = [l, r, (l + r) / 2]
+                        proposal = [max(0, p) for p in proposal]
+                        proposal = [min(p, 100) for p in proposal]
+
+                    case "on-hdi50":
+                        l, r = hpdi(posterior[site.a].reshape(-1,), prob=.5)
                         proposal = [l, r, (l + r) / 2]
                         proposal = [max(0, p) for p in proposal]
                         proposal = [min(p, 100) for p in proposal]
@@ -201,6 +215,11 @@ if __name__ == "__main__":
     num_pulses_space = [NUM_PULSES]
     methods = [method]
     n_jobs = -10
+
+    # draws_space = range(1)
+    # num_pulses_space = [18]
+    # methods = ["on-hdi95"]
+    # n_jobs = 1
 
     main(
         draws_space=draws_space,

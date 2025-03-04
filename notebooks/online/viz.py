@@ -37,7 +37,7 @@ plt.rcParams["svg.fonttype"] = "none"
 VLINE_KW = {"alpha": .4, "ymax": .78, "linestyle": "--"}
 
 
-def main(num_pulses, draw):
+def main(num_pulses, draw, explore=False):
     with open(SIMULATION_PPD_PATH, "rb") as f:
         simulation_ppd, = pickle.load(f)
 
@@ -115,6 +115,17 @@ def main(num_pulses, draw):
         proposal = [max(0, p) for p in proposal]
         proposal = [min(p, 100) for p in proposal]
 
+        if explore:
+            proposal = [l, (l + r) / 8, (l + r) / 2]
+            proposal = [max(0, p) for p in proposal]
+            proposal = [min(p, 100) for p in proposal]
+            # key, subkey = random.split(key)
+            # flags = np.array(random.bernoulli(subkey, p=.8, shape=(len(proposal),))).tolist()
+            # key, subkey = random.split(key)
+            # unif = np.array(random.uniform(subkey, shape=(len(proposal),))).tolist()
+            # for i in range(len(proposal)):
+            #     if flags[i]: proposal[i] = proposal[i] * unif[i]
+            # proposal = [min(p, 100) for p in proposal]
 
     ax = axes[-1, -1]
     ax.set_xticks(np.arange(0, 110, 20))
@@ -167,7 +178,8 @@ if __name__ == "__main__":
     #         for draw in draws_space
     #     )
 
-    # Success
-    main(18, 8)
+    # # Success
+    # main(18, 8)
     # Failure
-    main(18, 9)
+    main(18, 9, explore=True)
+    main(24, 9, explore=False)
