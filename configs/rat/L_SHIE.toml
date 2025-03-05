@@ -1,0 +1,21 @@
+[variables]
+intensity = "pulse_amplitude"
+features = ["participant", "compound_position", "compound_charge_params"]
+response = ["LADM", "LBiceps", "LDeltoid", "LECR", "LFCR", "LTriceps"]
+
+[mcmc]
+num_chains = 4
+num_warmup = 5000
+num_samples = 1000
+thinning = 1
+
+[nuts]
+target_accept_prob = 0.9
+max_tree_depth = 15
+
+[mep_metadata]
+mep_response = ['LADM', 'LBiceps', 'LBicepsFemoris', 'LDeltoid', 'LECR', 'LFCR', 'LTriceps', 'RBiceps']
+mep_window = [-0.01, 0.025]
+mep_size_window = [0.0015, 0.01]
+mep_adjust = 1
+
