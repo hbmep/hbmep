@@ -67,6 +67,7 @@ def plot(
     subplot_width, subplot_height = subplot_size or (5, 3)
     curve_kwargs = kwargs.get("curve_kwargs", CURVE_KW)
     threshold_kwargs = kwargs.get("threshold_kwargs", THRESHOLD_KW)
+    xaxis_offset = .5
 
     df_features = (
         df[features].apply(tuple, axis=1) if len(features)
@@ -158,6 +159,7 @@ def plot(
                 ccthreshold_hdi = threshold_hdi[:, *cc, :]
 
             axes[row, 0].set_xlabel(intensity)
+
             # Iterate over responses
             j = 0
             for r, response_muscle in enumerate(response):
@@ -185,7 +187,6 @@ def plot(
                         top=mep_size_window[1] + mep_time_offset
                     )
                     ax.set_title(prefix + postfix)
-                    ax.sharex(axes[row, 0])
                     if j > 0 and ax.get_legend() is not None: ax.get_legend().remove()
                     j += 1
 
@@ -202,13 +203,17 @@ def plot(
                 )
                 ax.set_ylabel(response_muscle)
                 ax.set_title(prefix + postfix)
-                ax.sharex(axes[row, 0])
+                # ax.sharex(axes[row, 0])
+                ax.set_xlim(
+                    left=ccdf[intensity].min() - xaxis_offset,
+                    right=ccdf[intensity].max() + xaxis_offset
+                )
                 if ax.get_legend() is not None: ax.get_legend().remove()
                 j += 1
 
                 if prediction_df is not None:
                     if not np.all(np.isnan(ccdf[response_muscle].values)):
-                        # MEP Size scatter plot and recruitment curve
+                        # MEP size scatter plot and recruitment curve
                         postfix = "Recruitment curve fit"
                         ax = axes[row, j]
                         sns.scatterplot(data=ccdf, x=intensity, y=response_muscle, color=response_colors[r], ax=ax, hue=hue[r])
@@ -218,7 +223,7 @@ def plot(
                             sns.kdeplot(x=ccthreshold[:, r], ax=ax, **threshold_kwargs)
 
                         ax.set_title(postfix)
-                        ax.sharex(axes[row, 0])
+                        ax.sharex(axes[row, j - 1])
                         ax.sharey(axes[row, j - 1])
                         ax.tick_params(axis="x", rotation=90)
                         if ax.get_legend() is not None: ax.get_legend().remove()

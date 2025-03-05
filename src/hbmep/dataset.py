@@ -55,7 +55,9 @@ def make_prediction_dataset(
         .apply(tuple, axis=1)
         .apply(lambda x: np.linspace(x[0], x[1], num_points))
     )
-    prediction_df = prediction_df.explode(column=intensity)[[intensity] + features].copy()
+    prediction_df = prediction_df.explode(column=intensity)
+    if len(features): prediction_df[features] = prediction_df["index"].apply(pd.Series)
+    prediction_df = prediction_df[[intensity] + features].copy()
     prediction_df[intensity] = prediction_df[intensity].astype(float)
     prediction_df = prediction_df.reset_index(drop=True).copy()
     return prediction_df

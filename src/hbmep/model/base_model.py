@@ -96,17 +96,22 @@ class BaseModel():
 
     @response.setter
     def response(self, response):
-        if not (isinstance(response, list) and all(isinstance(r, str) for r in response)):
-            raise ValueError("Response must be a list of strings")
-        if not len(response):
-            raise ValueError("Response must have a length greater than 0")
+        isStr = isinstance(response, str)
+        isListOfStrings = isinstance(response, list) and all(isinstance(r, str) for r in response)
+
+        if not (isStr or isListOfStrings):
+            raise ValueError("Response must be a string, or a list of strings")
+
+        if isListOfStrings and not len(response):
+            raise ValueError("Response as a list must have length greater than 0")
 
         self._response = response
         self._num_response = None
 
     @property
     def num_response(self):
-        if self._num_response is None: self._num_response = len(self.response)
+        if self._num_response is None:
+            self._num_response = len(self.response) if isinstance(self.response, list) else 1
         return self._num_response
 
     @property
@@ -115,7 +120,7 @@ class BaseModel():
         return {attr: getattr(self, attr) for attr in attributes}
 
     def _get_regressors(self, df: pd.DataFrame):
-        intensity = df[[self.intensity]].to_numpy()
+        intensity = df[self.intensity].to_numpy()
         features = df[self.features].to_numpy()
         return intensity, features
 
@@ -224,13 +229,13 @@ class BaseModel():
         key=None
     ):
         if posterior is None:   # Prior predictive
-            predictive = Predictive(
+            predictive_fn = Predictive(
                 model=self._model,
                 num_samples=num_samples,
                 return_sites=return_sites
             )
         else:   # Posterior predictive
-            predictive = Predictive(
+            predictive_fn = Predictive(
                 model=self._model,
                 posterior_samples=posterior,
                 return_sites=return_sites
@@ -238,9 +243,9 @@ class BaseModel():
 
         # Generate predictions
         if key is None: key = self.key
-        predictions = predictive(key, *self._get_regressors(df=df))
-        predictions = {u: np.array(v) for u, v in predictions.items()}
-        return predictions
+        predictive = predictive_fn(key, *self._get_regressors(df=df))
+        predictive = {u: np.array(v) for u, v in predictive.items()}
+        return predictive
 
     def summary(
         self,
