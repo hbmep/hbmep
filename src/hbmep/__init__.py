@@ -6,11 +6,17 @@ import numpyro
 
 from hbmep.dataset import (
     fit_transform,
+    load,
     inverse_transform,
-    make_prediction_dataset
+    make_prediction_dataset,
 )
-from hbmep.plotter import (
-    plot
+from hbmep.plotter import plotter
+from hbmep.infer import (
+    get_regressors,
+    get_response,
+    get_dependencies,
+    run,
+    predict,
 )
 
 __version__ = importlib.metadata.version("hbmep")

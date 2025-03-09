@@ -1,6 +1,8 @@
 import os
+import gc
 import shutil
 import pickle
+import logging
 from operator import attrgetter
 
 import pandas as pd
@@ -8,8 +10,11 @@ import numpy as np
 from numpyro.infer import MCMC
 from joblib import Parallel, delayed
 
+import hbmep as mep
 from hbmep.model import BaseModel
 from hbmep.util import timing
+
+logger = logging.getLogger(__name__)
 
 
 class NonHierarchicalBaseModel(BaseModel):
@@ -18,139 +23,171 @@ class NonHierarchicalBaseModel(BaseModel):
         self.name = "non_hierarchical_base_model"
         self.n_jobs = n_jobs
 
-
     @staticmethod
-    def _get_subdir(temp_dir, combination, response):
+    def _get_output_path(folder, combination, response):
         return os.path.join(
-            temp_dir,
+            folder,
             f"{response}__{'_'.join(map(str, combination))}.pkl"
         )
 
-    def _combine_samples(self, df_features, temp_dir):
-        combinations = df_features.unique().tolist()
-        features_max = df_features.apply(pd.Series).max().values + 1
+    def _combine_samples(self, df_features, combinations, temp_folder):
+        mcmc = None
+        max_features = df_features.apply(pd.Series).max().values + 1
         combined_samples = None
 
-        for combination in combinations:
-            for r, response in enumerate(self.response):
-                src = self._get_subdir(temp_dir, combination, response)
-                try:
-                    with open(src, "rb") as f:
-                        mcmc, samples, = pickle.load(f)
-                except ValueError:
-                    try:
+        for combination_idx, combination in enumerate(combinations):
+            for response_idx, response in enumerate(self.response):
+                src = os.path.join(temp_folder, f"{response_idx}__{combination_idx}.pkl")
+                with open(src, "rb") as f: samples, = pickle.load(f)
+
+                if not self.sites:
+                    if not (combination_idx or response_idx):
+                        src = os.path.join(temp_folder, "mcmc.pkl")
                         with open(src, "rb") as f:
-                            samples, = pickle.load(f)
-                    except Exception as e:
-                        raise Exception
-                except Exception as e:
-                    raise Exception
+                            mcmc, = pickle.load(f)
+                        self._update_sites(mcmc, samples)
 
                 if combined_samples is None:
-                    if self.sample_sites is None:
-                        sample_sites = list(attrgetter(mcmc._sample_field)(mcmc._last_state).keys())
-                        sample_sites_shapes = [samples[u].shape for u in sample_sites]
-                        deterministic_sites = [
-                            u for u in samples.keys()
-                            if (u not in sample_sites) and (samples[u].shape in sample_sites_shapes)
-                        ]
-                        self.sample_sites = sample_sites
-                        self.deterministic_sites = deterministic_sites
                     combined_samples = {
-                        u: np.full((v.shape[0], *features_max, self.num_response), np.nan)
-                        if v.ndim == 1
+                        u: np.full((v.shape[0], *max_features, self.num_response), np.nan)
+                        if u in self.sample_sites + self.reparam_sites
                         else np.full((v.shape[0], df_features.shape[0], self.num_response), np.nan)
                         for u, v in samples.items()
                     }
 
-                for u, v in combined_samples.items():
-                    if v.ndim == self.num_features + 2:
-                        combined_samples[u][..., *combination, r] = samples[u]
+                for u in combined_samples.keys():
+                    if u in self.sample_sites + self.reparam_sites:
+                        combined_samples[u][..., *combination, response_idx] = samples[u]
                     else:
                         idx = df_features.isin([combination])
-                        combined_samples[u][:, idx, r] = samples[u]
+                        combined_samples[u][:, idx, response_idx] = samples[u]
 
-        return combined_samples
+        return mcmc, combined_samples
 
     @timing
-    def run(self, df: pd.DataFrame, **kw):
-        var_response = [r for r in self.response]
-        var_features = [f for f in self.features]
-        df_features = df[var_features].apply(tuple, axis=1)
+    def run(
+        self,
+        df: pd.DataFrame,
+        mcmc: MCMC = None,
+        extra_fields: list | tuple = (),
+        init_params = None,
+        **kw
+):
+        df_features = df[self.features].apply(tuple, axis=1)
         combinations = df_features.unique().tolist()
-        temp_dir = os.path.join(self.build_dir, "temp_run_dir")
+        num_combinations = len(combinations)
+        temp_folder = os.path.join(
+            self.build_dir, f"hbmep_temp_folder_run"
+        )
 
 
-        def body_run(combination, response, output_path):
-            idx = df_features.isin([combination])
-            ccdf = df[idx].reset_index(drop=True).copy()
-            self.features = []
-            self.response = response
-            mcmc, posterior = BaseModel.run(self, ccdf, **kw)
-            with open(output_path, "wb") as f:
-                pickle.dump((mcmc, posterior,), f)
-            return
-
-
-        if os.path.exists(temp_dir): shutil.rmtree(temp_dir)
-        os.makedirs(temp_dir, exist_ok=False)
-        with Parallel(n_jobs=self.n_jobs) as parallel:
-            parallel(
-                delayed(body_run)(
-                    combination,
-                    response,
-                    self._get_subdir(temp_dir, combination, response)
-                )
-                for combination in combinations
-                for response in var_response
+        def body_run(combination_idx, response_idx):
+            ccdf = (
+                df[df_features.isin([combinations[combination_idx]])]
+                .reset_index(drop=True)
+                .copy()
             )
+            mcmc, posterior = mep.run(
+                self.key,
+                self._model,
+                *mep.get_regressors(ccdf, self.intensity, []),
+                *mep.get_response(ccdf, self.response[response_idx]),
+                nuts_params=self.nuts_params,
+                mcmc_params=self.mcmc_params,
+                **kw
+            )
+            output_path = os.path.join(
+                temp_folder, f"{response_idx}__{combination_idx}.pkl"
+            )
+            with open(output_path, "wb") as f: 
+                pickle.dump((posterior,), f)
+            if not (combination_idx or response_idx):
+                output_path = os.path.join(temp_folder, "mcmc.pkl")
+                with open(output_path, "wb") as f:
+                    pickle.dump((mcmc,), f)
+            ccdf, mcmc, posterior, output_path = None, None, None, None
+            del ccdf, mcmc, posterior, output_path
+            gc.collect()
 
-        self.features = var_features
-        self.response = var_response
-        posterior = self._combine_samples(df_features, temp_dir)
-        if os.path.exists(temp_dir): shutil.rmtree(temp_dir)
-        return None, posterior
+
+        try:
+            if os.path.exists(temp_folder): shutil.rmtree(temp_folder)
+            os.makedirs(temp_folder, exist_ok=False)
+            logger.info(f"Created temporary folder {temp_folder}")
+            with Parallel(n_jobs=self.n_jobs) as parallel:
+                parallel(
+                    delayed(body_run)(combination_idx, response_idx)
+                    for combination_idx in range(num_combinations)
+                    for response_idx in range(self.num_response)
+                )
+
+        except Exception as e:
+            logger.info(f"Exception {e} occured")
+            raise e
+
+        else:
+            mcmc, posterior = self._combine_samples(df_features, combinations, temp_folder)
+            return mcmc, posterior
+
+        finally:
+            if os.path.exists(temp_folder): shutil.rmtree(temp_folder)
+            logger.info(f"Removed temporary folder {temp_folder}")
 
     @timing
     def predict(self, df: pd.DataFrame, posterior: dict | None = None, **kw):
-        var_response = [r for r in self.response]
-        var_features = [f for f in self.features]
-        df_features = df[var_features].apply(tuple, axis=1)
+        df_features = df[self.features].apply(tuple, axis=1)
         combinations = df_features.unique().tolist()
-        temp_dir = os.path.join(self.build_dir, "temp_predict_dir")
+        num_combinations = len(combinations)
+        temp_folder = os.path.join(
+            self.build_dir, f"hbmep_temp_folder_predict"
+        )
 
 
-        def body_predict(combination, response_idx, output_path):
-            idx = df_features.isin([combination])
-            ccdf = df[idx].reset_index(drop=True).copy()
-            self.features = []
-            self.response = var_response[response_idx]
-            ccposterior = {
-                u: v[..., *combination, response_idx]
-                for u, v in posterior.items() if u in self.sample_sites
-            }
-            predictive = BaseModel.predict(self, ccdf, posterior=ccposterior, **kw)
+        def body_predict(combination_idx, response_idx):
+            ccdf = (
+                df[df_features.isin([combinations[combination_idx]])]
+                .reset_index(drop=True)
+                .copy()
+            )
+            predictive = mep.predict(
+                self.key,
+                self._model,
+                *mep.get_regressors(ccdf, self.intensity, []),
+                posterior={
+                    u: v[..., *combinations[combination_idx], response_idx]
+                    for u, v in posterior.items() if u in self.sample_sites
+                },
+                **kw
+            )
+            output_path = os.path.join(
+                temp_folder, f"{response_idx}__{combination_idx}.pkl"
+            )
             with open(output_path, "wb") as f:
                 pickle.dump((predictive,), f)
-            return
+            ccdf, predictive, output_path = None, None, None
+            del ccdf, predictive, output_path
+            gc.collect()
 
 
-        if os.path.exists(temp_dir): shutil.rmtree(temp_dir)
-        os.makedirs(temp_dir, exist_ok=False)
-        with Parallel(n_jobs=self.n_jobs) as parallel:
-            parallel(
-                delayed(body_predict)(
-                    combination,
-                    response_idx,
-                    self._get_subdir(temp_dir, combination, var_response[response_idx])
+        try:
+            if os.path.exists(temp_folder): shutil.rmtree(temp_folder)
+            os.makedirs(temp_folder, exist_ok=False)
+            logger.info(f"Created temporary folder {temp_folder}")
+            with Parallel(n_jobs=self.n_jobs) as parallel:
+                parallel(
+                    delayed(body_predict)(combination_idx, response_idx)
+                    for combination_idx in range(num_combinations)
+                    for response_idx in range(self.num_response)
                 )
-                for combination in combinations
-                for response_idx in range(len(var_response))
-            )
 
+        except Exception as e:
+            logger.info(f"Exception {e} occured")
+            raise e
 
-        self.features = var_features
-        self.response = var_response
-        predictive = self._combine_samples(df_features, temp_dir)
-        if os.path.exists(temp_dir): shutil.rmtree(temp_dir)
-        return predictive
+        else:
+            _, predictive = self._combine_samples(df_features, combinations, temp_folder)
+            return predictive
+
+        finally:
+            if os.path.exists(temp_folder): shutil.rmtree(temp_folder)
+            logger.info(f"Removed temporary folder {temp_folder}")

@@ -17,28 +17,27 @@ def _smooth_max(x, eps):
     return z
 
 
-def rectified_logistic(x, a, b, L, ell, H, eps=EPS):
+def rectified_logistic(x, a, b, g, h, v, eps=EPS):
     """
     Smooth approximation of the rectified-logistic function
     """
-    z = F._logistic_transform(x, a, b, ell, H)
+    z = F._logistic_transform(x, a, b, h, v)
     z = _smooth_max(z, eps)
-    return L + z
+    return g + z
 
 
-def rectified_linear(x, a, b, L, eps=EPS):
+def rectified_linear(x, a, b, g, eps=EPS):
     """
     Smooth approximation of the rectified-linear function
     """
     z = F._linear_transform(x, a, b)
     z = _smooth_max(z, eps)
-    return L + z
+    return g + z
 
 
-def rectified_logistic_s50(x, a, b, L, ell, H, eps=EPS):
+def rectified_logistic_s50(x, a, b, g, h, v, eps=EPS):
     """
     Smooth approximation of rectified-logistic function in S50 parameterization
     """
-    a = F.threshold(a, b, L, ell, H)
-    return rectified_logistic(x, a, b, L, ell, H, eps)
-
+    a = F.threshold(a, b, g, h, v)
+    return rectified_logistic(x, a, b, g, h, v, eps)
