@@ -5,14 +5,15 @@ import pandas as pd
 from numpyro.diagnostics import hpdi
 from sklearn.preprocessing import LabelEncoder
 
-import matplotlib as mpl
 import matplotlib.pyplot as plt
 from matplotlib.backends.backend_pdf import PdfPages
 import seaborn as sns
-import arviz as az
 
 from hbmep.util import (
-    timing, floor, ceil, invert_combination, generate_colors
+    timing,
+    invert_combination,
+    get_response_colors,
+    site
 )
 
 logger = logging.getLogger(__name__)
@@ -23,92 +24,107 @@ THRESHOLD_KW = {"color": "green", "alpha": 0.4}
 def plot_mep(
     ax: plt.Axes,
     *,
-    mep_matrix: np.ndarray,
+    mep_array: np.ndarray,
     intensity: np.ndarray,
     time: np.ndarray | None = None,
     **kwargs
 ):
-    if time is None: time = np.linspace(0, 1, mep_matrix.shape[1])
-    for i in range(mep_matrix.shape[0]):
-        x = mep_matrix[i, :]
+    if time is None: time = np.linspace(0, 1, mep_array.shape[1])
+    for i in range(mep_array.shape[0]):
+        x = mep_array[i, :]
         x = x + intensity[i]
         if not np.isnan(x).all(): ax.plot(x, time, **kwargs)
     return ax
 
 
-def plot(
-    *,
+def plotter(
     df: pd.DataFrame,
+    *,
     intensity: str,
     features: list[str],
     response: list[str],
     output_path: str,
     encoder: dict[str, LabelEncoder] | None = None,
-    sort_key = None,
-    hue: str | list[str] | None = None,
-    response_colors: list[str] | None = None,
-    subplot_size: list[float] | None = None,
-    mep_matrix: np.ndarray | None = None,
+    mep_array: np.ndarray | None = None,
+    mep_response: list[str] | None = None,
     mep_window: list[float] = [0, 1],
     mep_size_window: list[float] | None = None,
     mep_adjust: float = 1.,
     prediction_df: pd.DataFrame | None = None,
-    response_pred: dict | None = None,
+    prediction: np.ndarray | None = None,
+    prediction_prob: float = 0,
     threshold: np.ndarray | None = None,
-    **kwargs
+    threshold_prob: float = 0.95,
+    **kw
 ):
     """
     **kwargs:
+        sort_key: Callable
+        hue: str | list[str] | None
+        response_colors: list[str]
+        subplot_size: list[float]
+        xaxis_offset: float
         curve_kwargs: dict
         threshold_kwargs: dict
     """
+    sort_key = kw.get("sort_key", None)
+    hue = kw.get("hue", None)
     num_response = len(response)
-    response_colors = response_colors or generate_colors(num_response)
-    subplot_width, subplot_height = subplot_size or (5, 3)
-    curve_kwargs = kwargs.get("curve_kwargs", CURVE_KW)
-    threshold_kwargs = kwargs.get("threshold_kwargs", THRESHOLD_KW)
-    xaxis_offset = .5
+    response_colors = kw.get("response_colors", get_response_colors(num_response))
+    subplot_width, subplot_height = kw.get("subplot_size", (5, 3))
+    xaxis_offset = kw.get("xaxis_offset", 0.5)
+    curve_kwargs = kw.get("curve_kwargs", CURVE_KW)
+    threshold_kwargs = kw.get("threshold_kwargs", THRESHOLD_KW)
 
+    if hue is None or isinstance(hue, str): hue = [hue] * num_response
     df_features = (
         df[features].apply(tuple, axis=1) if len(features)
         else df[intensity].apply(lambda x: 0).astype(int).apply(lambda x: tuple([x]))
     )
 
     num_cols = 1
-    if mep_matrix is not None:
-        assert mep_matrix.shape[0] == df.shape[0]
+    if mep_array is not None:
+        assert mep_array.shape[0] == df.shape[0]
+        mep_array = mep_array.copy()
+        if mep_array is not None and mep_response != response:
+            idx = [r for r, response in enumerate(mep_response) if response in response]
+        else: idx = [r for r in range(num_response)]
+        mep_array = mep_array[..., idx]
         if mep_size_window is None: mep_size_window = mep_window
         else: assert (mep_size_window[0] >= mep_window[0]) and (mep_size_window[1] <= mep_window[1])
-        mep_time = np.linspace(*mep_window, mep_matrix.shape[1])
-        mep_time_offset = 10 / mep_matrix.shape[1]
-        # within_size_window = (mep_time >= mep_size_window[0]) & (mep_time <= mep_size_window[1])
-        mep_matrix = mep_matrix / np.nanmax(mep_matrix, axis=1, keepdims=True)
-        # mep_matrix = mep_matrix / np.nanmax(mep_matrix[:, within_size_window, :], axis=1, keepdims=True)
-        # mep_matrix = mep_matrix / np.nanstd(mep_matrix[:, within_size_window, :], axis=1, keepdims=True)
-        mep_matrix = mep_adjust * mep_matrix
+        mep_time = np.linspace(*mep_window, mep_array.shape[1])
+        mep_time_offset = 10 / mep_array.shape[1]
+        mep_array = mep_array / np.nanmax(mep_array, axis=1, keepdims=True)
+        mep_array = mep_adjust * mep_array
         num_cols += 1
-
-    if hue is None or isinstance(hue, str): hue = [hue] * num_response
 
     if prediction_df is not None:
         pred_df_features = (
             prediction_df[features].apply(tuple, axis=1) if len(features)
             else prediction_df[intensity].apply(lambda x: 0).astype(int).apply(lambda x: tuple([x]))
         )
-        assert response_pred is not None
-        assert response_pred.ndim in {2, 3}
-        if response_pred.ndim == 3: response_pred = response_pred.mean(axis=0)
+        assert prediction is not None
+        if prediction_prob:
+            prediction_hdi = hpdi(prediction, prob=prediction_prob)
+        prediction = prediction.copy()
+        prediction = prediction.mean(axis=0)
         num_cols +=1
 
     if threshold is not None:
         if not len(features): threshold = threshold[:, None, ...]
         threshold_mean = threshold.mean(axis=0)
-        threshold_hdi = hpdi(threshold, prob=0.95, axis=0)
+        threshold_hdi = hpdi(threshold, prob=threshold_prob, axis=0)
         num_cols += 1
 
     # Setup pdf layout
     combinations = (
-        df[features].apply(tuple, axis=1).unique().tolist() if len(features)
+        (
+            df[features]
+            .apply(tuple, axis=1)
+            .unique()
+            .tolist()
+        )
+        if len(features)
         else [(0,)]
     )
     combinations = sorted(combinations, key=sort_key)
@@ -150,7 +166,9 @@ def plot(
                 prediction_df_idx = pred_df_features.isin([cc])
                 ccprediction_df = prediction_df[prediction_df_idx].reset_index(drop=True).copy()
                 # Predicted response for current combination
-                ccresponse_pred = response_pred[prediction_df_idx, :]
+                ccprediction = prediction[prediction_df_idx, :]
+                if prediction_prob:
+                    ccprediction_hdi = prediction_hdi[:, prediction_df_idx, :]
 
             if threshold is not None:
                 # Threshold estimate for current combination
@@ -168,13 +186,13 @@ def plot(
                 if not j: prefix = cc_inverse + prefix
 
                 # MEP data
-                if mep_matrix is not None:
+                if mep_array is not None:
                     postfix = " - MEP"
                     ax = axes[row, j]
-                    ccmatrix = mep_matrix[df_idx, :, r]
+                    ccmatrix = mep_array[df_idx, :, r]
                     ax = plot_mep(
                         ax,
-                        mep_matrix=ccmatrix,
+                        mep_array=ccmatrix,
                         intensity=ccdf[intensity],
                         time=mep_time,
                         color=response_colors[r],
@@ -216,8 +234,18 @@ def plot(
                         # MEP size scatter plot and recruitment curve
                         postfix = "Recruitment curve fit"
                         ax = axes[row, j]
-                        sns.scatterplot(data=ccdf, x=intensity, y=response_muscle, color=response_colors[r], ax=ax, hue=hue[r])
-                        sns.lineplot(x=ccprediction_df[intensity], y=ccresponse_pred[:, r], ax=ax, **curve_kwargs)
+                        if prediction_prob:
+                            ax.fill_between(
+                                ccprediction_df[intensity],
+                                ccprediction_hdi[0, :, r],
+                                ccprediction_hdi[1, :, r],
+                                color="cyan",
+                                alpha=.4
+                            )
+                        sns.scatterplot(
+                            data=ccdf, x=intensity, y=response_muscle, color=response_colors[r], ax=ax, hue=hue[r]
+                        )
+                        sns.lineplot(x=ccprediction_df[intensity], y=ccprediction[:, r], ax=ax, **curve_kwargs)
 
                         if threshold is not None:
                             sns.kdeplot(x=ccthreshold[:, r], ax=ax, **threshold_kwargs)

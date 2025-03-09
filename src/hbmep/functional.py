@@ -6,66 +6,66 @@ def _linear_transform(x, a, b):
     return jnp.multiply(b, x - a)
 
 
-def _logistic_transform(x, a, b, ell, H):
-    z = _linear_transform(x, a, b) - jnp.log(H) + jnp.log(ell)
+def _logistic_transform(x, a, b, h, v):
+    z = _linear_transform(x, a, b) - jnp.log(h) + jnp.log(v)
     z = jax.nn.sigmoid(z)
-    z = (H + ell) * z
-    z = -ell + z
+    z = (h + v) * z
+    z = -v + z
     return z
 
 
-def _threshold_s50_delta(a, b, ell, H):
-    z = jnp.log(ell) - jnp.log(H + 2 * ell)
+def _threshold_s50_delta(a, b, h, v):
+    z = jnp.log(v) - jnp.log(h + 2 * v)
     return z / b
 
 
-def rectified_logistic(x, a, b, L, ell, H):
+def rectified_logistic(x, a, b, g, h, v):
     """ Rectified-logistic function in threshold parameterization """
-    z = _logistic_transform(x, a, b, ell, H)
+    z = _logistic_transform(x, a, b, h, v)
     z = jax.nn.relu(z)
-    return L + z
+    return g + z
 
 
-def logistic5(x, a, b, v, L, H):
+def logistic5(x, a, b, g, h, v):
     """ Logistic-5 function """
     z = _linear_transform(x, a, b) - jnp.log(-1 + jnp.power(2, v))
     z = jax.nn.sigmoid(z)
     z = jnp.power(z, 1 / v)
-    z = H * z
-    return L + z
+    z = h * z
+    return g + z
 
 
-def logistic4(x, a, b, L, H):
+def logistic4(x, a, b, g, h):
     """ Logistic-4 function """
     z = _linear_transform(x, a, b)
     z = jax.nn.sigmoid(z)
-    z = H * z
-    return L + z
+    z = h * z
+    return g + z
 
 
-def rectified_linear(x, a, b, L):
+def rectified_linear(x, a, b, g):
     """ Rectified-linear function """
     z = _linear_transform(x, a, b)
     z = jax.nn.relu(z)
-    return L + z
+    return g + z
 
 
-def threshold(a, b, L, ell, H):
+def threshold(a, b, g, h, v):
     """ Compute threshold of the rectified-logistic in S50 parameterization """
-    return a + _threshold_s50_delta(a, b, ell, H)
+    return a + _threshold_s50_delta(a, b, h, v)
 
 
-def s50(a, b, L, ell, H):
+def s50(a, b, g, h, v):
     """ Compute S50 of the rectified-logistic in threshold parameterization """
-    return a - _threshold_s50_delta(a, b, ell, H)
+    return a - _threshold_s50_delta(a, b, h, v)
 
 
-def rectified_logistic_s50(x, a, b, L, ell, H):
+def rectified_logistic_s50(x, a, b, g, h, v):
     """
     Rectified-logistic function in S50 parameterization
     """
-    a = threshold(a, b, L, ell, H)
-    return rectified_logistic(x, a, b, L, ell, H)
+    a = threshold(a, b, g, h, v)
+    return rectified_logistic(x, a, b, g, h, v)
 
 
 def grad(fn, x, *args):
@@ -75,4 +75,3 @@ def grad(fn, x, *args):
     for _ in range(len(x.shape)):
         grad = jax.vmap(grad)
     return grad(x, *args)
-

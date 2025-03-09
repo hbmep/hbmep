@@ -2,27 +2,25 @@ import os
 import tomllib
 import logging
 from operator import attrgetter
-from collections import defaultdict
 
 import arviz as az
 import pandas as pd
 import numpy as np
-from jax import random
-import jax.numpy as jnp
+from jax import random, numpy as jnp
+import numpyro
+from numpyro.infer import MCMC
 from sklearn.preprocessing import LabelEncoder
 
-import numpyro
-from numpyro.infer.mcmc import MCMCKernel
-from numpyro.infer import NUTS, MCMC, Predictive
-from numpyro.diagnostics import print_summary
-
 import hbmep as mep
-from hbmep.util import Site as site, timing, floor, ceil
+from hbmep.util import timing, site
 
 logger = logging.getLogger(__name__)
 SEPARATOR = "__"
 DATASET_PLOT = "dataset.pdf"
 RC_PLOT = "recruitment_curves.pdf"
+SAMPLE_SITES = "sample_sites"
+REPARAM_SITES = "reparam_sites"
+OBS_SITES = "obs_sites"
 
 
 class BaseModel():
@@ -44,13 +42,16 @@ class BaseModel():
     mep_size_window: list[float] = [0, 1]
     mep_adjust: float = 1.
 
-    def __init__(self, toml_path: str | None = None, config: dict | None = None):
-        self.random_state: int = 0
-        self.name: str = "base_model"
+    def __init__(
+        self,
+        *,
+		toml_path: str | None = None,
+		config: dict | None = None
+    ):
+        self.nam: str = "base_model"
         self.build_dir: str = ""
-        # Stochastic and deterministic sites (dynamically set when the model is first run)
-        self.sample_sites: list[str] | None = None
-        self.deterministic_sites: list[str] | None = None
+        self.random_state: int = 0
+        self.sites: dict[str, list[str]] = {}
 
         if toml_path is not None:
             try:
@@ -70,11 +71,23 @@ class BaseModel():
             self.nuts_params[key] = value
         for key, value in config.get("mep_metadata", {}).items():
             setattr(self, key, value)
+            
+    def _update_sites(self, mcmc: MCMC, posterior):
+        if not self.sites:
+            sample_sites = list(attrgetter(mcmc._sample_field)(mcmc._last_state).keys())
+            reparam_sites = [u for u in posterior.keys() if site.raw(u) in sample_sites]
+            obs_sites = [u for u in posterior.keys() if u not in sample_sites + reparam_sites]
+            self.sites = {
+                SAMPLE_SITES: sample_sites,
+                REPARAM_SITES: reparam_sites,
+                OBS_SITES: obs_sites
+            }
 
     @property
-    def key(self): return random.PRNGKey(self.random_state)
+    def key(self):
+        return random.key(self.random_state)
 
-    @key.setter
+    @key.setter # TODO: Check this
     def key(self, random_state):
         if not isinstance(random_state, int):
             raise ValueError("New random state must be an integer")
@@ -86,24 +99,29 @@ class BaseModel():
         return {attr: getattr(self, attr) for attr in attributes}
 
     @property
-    def regressors(self): return [self.intensity] + self.features
+    def regressors(self):
+        return [self.intensity] + self.features
 
     @property
-    def num_features(self): return len(self.features)
+    def num_features(self):
+        return len(self.features)
 
     @property
-    def response(self): return self._response
+    def response(self):
+        return self._response
 
     @response.setter
     def response(self, response):
-        isStr = isinstance(response, str)
-        isListOfStrings = isinstance(response, list) and all(isinstance(r, str) for r in response)
+        isListOfStrings = (
+            isinstance(response, list)
+            and all(isinstance(r, str) for r in response)
+        )
 
-        if not (isStr or isListOfStrings):
-            raise ValueError("Response must be a string, or a list of strings")
+        if not isListOfStrings:
+            raise ValueError("Response must be a list of strings")
 
-        if isListOfStrings and not len(response):
-            raise ValueError("Response as a list must have length greater than 0")
+        if not len(response):
+            raise ValueError("Response must have length greater than 0")
 
         self._response = response
         self._num_response = None
@@ -111,61 +129,86 @@ class BaseModel():
     @property
     def num_response(self):
         if self._num_response is None:
-            self._num_response = len(self.response) if isinstance(self.response, list) else 1
+            self._num_response = len(self.response)
+
         return self._num_response
 
     @property
     def mep_metadata(self):
-        attributes = ["mep_response", "mep_window", "mep_size_window", "mep_adjust"]
+        attributes = [
+            "mep_response",
+            "mep_window",
+            "mep_size_window",
+            "mep_adjust"
+        ]
         return {attr: getattr(self, attr) for attr in attributes}
 
-    def _get_regressors(self, df: pd.DataFrame):
-        intensity = df[self.intensity].to_numpy()
-        features = df[self.features].to_numpy()
-        return intensity, features
+    @property
+    def sample_sites(self):
+        return self.sites.get(SAMPLE_SITES, [])
 
-    def _get_response(self, df: pd.DataFrame):
-        response = df[self.response].to_numpy()
-        return response,
+    @property
+    def reparam_sites(self):
+        return self.sites.get(REPARAM_SITES, [])
+
+    @property
+    def obs_sites(self):
+        return self.sites.get(OBS_SITES, [])
+
+    def get_regressors(self, df: pd.DataFrame):
+        return mep.get_regressors(df, **self.variables)
+
+    def get_response(self, df: pd.DataFrame):
+        return mep.get_response(df, **self.variables)
 
     @timing
-    def load(self, df: pd.DataFrame, mask_non_positive: bool = True) -> tuple[pd.DataFrame, dict[str, LabelEncoder]]:
-        if self.build_dir:
-            os.makedirs(self.build_dir, exist_ok=True)
-            logger.info(f"Build directory {self.build_dir}")
-
+    def load(
+        self,
+		df: pd.DataFrame,
+		mask_non_positive: bool = True
+    ) -> tuple[pd.DataFrame, dict[str, LabelEncoder]]:
         # Concatenate (necessary) features
         for i, feature in enumerate(self.features):
             if isinstance(feature, list):
                 self.features[i] = SEPARATOR.join(feature)
-                df[self.features[i]] = df[feature].apply(lambda x: SEPARATOR.join(x), axis=1)
+                df[self.features[i]] = (
+                    df[feature].apply(lambda x: SEPARATOR.join(x), axis=1)
+                )
                 logger.info(f"Concatenated {feature} to {self.features[i]}")
 
-        # Positive response constraint
-        if mask_non_positive:
-            non_positive_obs = df[self.response].values <= 0
-            num_non_positive_obs = non_positive_obs.sum()
-            if num_non_positive_obs:
-                df[self.response] = np.where(non_positive_obs, np.nan, df[self.response].values)
-                logger.info(f"Masked {num_non_positive_obs} non-positive observations")
-
-        df, encoder = mep.fit_transform(df=df, features=self.features)
+        df, encoder = mep.load(
+            df,
+            **self.variables,
+            mask_non_positive=mask_non_positive
+        )
         return df, encoder
 
-    def _model(self, intensity, features, response_obs=None, **kwargs):
+    def _model(self, intensity, features, response=None, **kw):
         raise NotImplementedError
 
-    def gamma_rate(self, mu, c1, c2):
-        return jnp.true_divide(1, c1) + jnp.true_divide(1, jnp.multiply(c2, mu))
+    @staticmethod
+    def gamma_rate(mu, c1, c2):
+        z = 1 / (c2 * mu)
+        z = (1 / c1) + z
+        return z
 
-    def gamma_concentration(self, mu, beta):
-        return jnp.multiply(mu, beta)
+    @staticmethod
+    def gamma_concentration(mu, beta):
+        return beta * mu
+
+    def gamma_likelihood(self, fn, x, args, c1, c2):
+        mu = fn(x, *args)
+        beta = self.gamma_rate(mu, c1, c2)
+        alpha = self.gamma_concentration(mu, beta)
+        return mu, alpha, beta
 
     @timing
-    def trace(self, df: pd.DataFrame, **kwargs):
+    def trace(self, df: pd.DataFrame, **kw):
         with numpyro.handlers.seed(rng_seed=self.random_state):
             trace = numpyro.handlers.trace(self._model).get_trace(
-                *self._get_regressors(df=df), *self._get_response(df=df), **kwargs
+                *self.get_regressors(df),
+                *self.get_response(df),
+                **kw
             )
         return trace
 
@@ -175,78 +218,60 @@ class BaseModel():
         df: pd.DataFrame,
         mcmc: MCMC = None,
         extra_fields: list | tuple = (),
-        **kwargs
+        init_params = None,
+        **kw
     ) -> tuple[MCMC, dict]:
-        key = self.key
-        if mcmc is None:
-            msg = f"Running {self.name}..."
-            kernel = NUTS(self._model, **self.nuts_params)
-            mcmc = MCMC(kernel, **self.mcmc_params)
-        else:
-            assert isinstance(mcmc, MCMC)
-            if mcmc.last_state is not None:
-                msg = f"Resuming {self.name} from last state..."
-                mcmc.post_warmup_state = mcmc.last_state
-                key = mcmc.post_warmup_state.key
-            else:
-                msg = f"Running {self.name} with provided MCMC..."
-
-        # Run MCMC
-        logger.info(msg)
-        mcmc.run(
-            key,
-            *self._get_regressors(df=df),
-            *self._get_response(df=df),
+        mcmc, posterior = mep.run(
+            self.key,
+            self._model,
+            *self.get_regressors(df),
+            *self.get_response(df),
+            nuts_params=self.nuts_params,
+            mcmc_params=self.mcmc_params,
             extra_fields=extra_fields,
-            **kwargs
+            init_params=init_params,
+            **kw
         )
-        posterior_samples = mcmc.get_samples()
-        posterior_samples = {k: np.array(v) for k, v in posterior_samples.items()}
-        sample_sites = list(attrgetter(mcmc._sample_field)(mcmc._last_state).keys())
-        sample_sites_shapes = [posterior_samples[u].shape for u in sample_sites]
-        deterministic_sites = [
-            u for u in posterior_samples.keys()
-            if (u not in sample_sites) and (posterior_samples[u].shape in sample_sites_shapes)
-        ]
-        if self.sample_sites is None: self.sample_sites = sample_sites
-        if self.deterministic_sites is None: self.deterministic_sites = deterministic_sites
-        return mcmc, posterior_samples
+        self._update_sites(mcmc, posterior)
+        return mcmc, posterior
 
     @timing
-    def make_prediction_dataset(self, df: pd.DataFrame, *args, **kw):
+    def make_prediction_dataset(
+        self,
+        df: pd.DataFrame,
+        num_points: int = 100,
+        min_intensity: float | None = None,
+        max_intensity: float | None = None,
+    ):
         return mep.make_prediction_dataset(
-            df, intensity=self.intensity, features=self.features, *args, *kw
+            df,
+            **self.variables,
+            num_points=num_points,
+            min_intensity=min_intensity,
+            max_intensity=max_intensity
         )
 
     @timing
     def predict(
         self,
         df: pd.DataFrame,
-        *,
-        num_samples: int = 100,
         posterior: dict | None = None,
-        return_sites: list[str] | None = None,
-        key=None
+        num_samples: int = 100,
+        return_sites: list[str] | None = None
     ):
-        if posterior is None:   # Prior predictive
-            predictive_fn = Predictive(
-                model=self._model,
-                num_samples=num_samples,
-                return_sites=return_sites
-            )
-        else:   # Posterior predictive
-            predictive_fn = Predictive(
-                model=self._model,
-                posterior_samples=posterior,
-                return_sites=return_sites
-            )
-
         # Generate predictions
-        if key is None: key = self.key
-        predictive = predictive_fn(key, *self._get_regressors(df=df))
+        predictive = mep.predict(
+            self.key,
+            self._model,
+            *self.get_regressors(df),
+            posterior=posterior,
+            num_samples=num_samples,
+            return_sites=return_sites
+        )
         predictive = {u: np.array(v) for u, v in predictive.items()}
         return predictive
 
+    @timing
     def summary(
         self,
         posterior: dict,
@@ -288,61 +313,55 @@ class BaseModel():
     @timing
     def plot(
         self,
-        *,
         df: pd.DataFrame,
+        *,
         encoder: dict[str, LabelEncoder] | None = None,
-        mep_matrix: np.ndarray | None = None,
+        mep_array: np.ndarray | None = None,
         output_path: str | None = None,
-        **kwargs
+        **kw
     ):
         if output_path is None: output_path = os.path.join(self.build_dir, DATASET_PLOT)
-        if mep_matrix is not None and self.mep_response != self.response:
-            idx = [r for r, response in enumerate(self.mep_response) if response in self.response]
-            mep_matrix = mep_matrix[..., idx]
-
         logger.info("Plotting dataset...")
-        mep.plot(
+        mep.plotter(
             df=df,
             **self.variables,
             output_path=output_path,
             encoder=encoder,
-            mep_matrix=mep_matrix,
+            mep_array=mep_array,
             **self.mep_metadata,
-            **kwargs
+            **kw
         )
         return
 
     @timing
     def plot_curves(
         self,
-        *,
         df: pd.DataFrame,
-        posterior: dict,
+        *,
         prediction_df: pd.DataFrame,
         predictive: dict,
+        posterior: dict | None = None,
+        prediction_var: str = site.mu,
+        prediction_prob: float = 0,
+        posterior_var: str = site.a,
         encoder: dict[str, LabelEncoder] | None = None,
-        mep_matrix: np.ndarray | None = None,
+        mep_array: np.ndarray | None = None,
         output_path: str | None = None,
-        **kwargs        
+        **kw        
     ):
         if output_path is None: output_path = os.path.join(self.build_dir, RC_PLOT)
-        if mep_matrix is not None and self.mep_response != self.response:
-            idx = [r for r, response in enumerate(self.mep_response) if response in self.response]
-            mep_matrix = mep_matrix[..., idx]
-
-        threshold = posterior[site.a]
-        response_pred = predictive[site.mu]
-        logger.info("Plotting recruitment curves...")
-        mep.plot(
+        logger.info("Plotting curves...")
+        mep.plotter(
             df=df,
             **self.variables,
             output_path=output_path,
             encoder=encoder,
-            mep_matrix=mep_matrix,
+            mep_array=mep_array,
             **self.mep_metadata,
             prediction_df=prediction_df,
-            response_pred=response_pred,
-            threshold=threshold,
-            **kwargs
+            prediction=predictive[prediction_var],
+            prediction_prob=prediction_prob,
+            threshold=posterior[posterior_var] if posterior is not None else None,
+            **kw
         )
         return
