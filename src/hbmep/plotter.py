@@ -9,12 +9,7 @@ import matplotlib.pyplot as plt
 from matplotlib.backends.backend_pdf import PdfPages
 import seaborn as sns
 
-from hbmep.util import (
-    timing,
-    invert_combination,
-    get_response_colors,
-    site
-)
+from hbmep.util import invert_combination, get_response_colors
 
 logger = logging.getLogger(__name__)
 CURVE_KW = {"label": "Curve", "color": "k", "alpha": 0.4}

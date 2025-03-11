@@ -122,7 +122,7 @@ class NonHierarchicalBaseModel(BaseModel):
                 )
 
         except Exception as e:
-            logger.info(f"Exception {e} occured")
+            logger.info(f"Exception {e} occured in run")
             raise e
 
         else:
@@ -181,7 +181,7 @@ class NonHierarchicalBaseModel(BaseModel):
                 )
 
         except Exception as e:
-            logger.info(f"Exception {e} occured")
+            logger.info(f"Exception {e} occured in predict")
             raise e
 
         else:

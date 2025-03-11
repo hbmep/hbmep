@@ -17,7 +17,7 @@ from hbmep.util import timing, site
 logger = logging.getLogger(__name__)
 SEPARATOR = "__"
 DATASET_PLOT = "dataset.pdf"
-RC_PLOT = "recruitment_curves.pdf"
+CURVES_PLOT = "curves.pdf"
 SAMPLE_SITES = "sample_sites"
 REPARAM_SITES = "reparam_sites"
 OBS_SITES = "obs_sites"
@@ -172,7 +172,7 @@ class BaseModel():
             if isinstance(feature, list):
                 self.features[i] = SEPARATOR.join(feature)
                 df[self.features[i]] = (
-                    df[feature].apply(lambda x: SEPARATOR.join(x), axis=1)
+                    df[feature].apply(lambda x: SEPARATOR.join(map(str, x)), axis=1)
                 )
                 logger.info(f"Concatenated {feature} to {self.features[i]}")
 
@@ -349,7 +349,7 @@ class BaseModel():
         output_path: str | None = None,
         **kw        
     ):
-        if output_path is None: output_path = os.path.join(self.build_dir, RC_PLOT)
+        if output_path is None: output_path = os.path.join(self.build_dir, CURVES_PLOT)
         logger.info("Plotting curves...")
         mep.plotter(
             df=df,
