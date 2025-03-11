@@ -1,0 +1,10 @@
+[variables]
+intensity = "pulse_amplitude"
+features = ["participant", "compound_position"] 
+response = ["LADM", "LBiceps", "LDeltoid", "LECR", "LFCR", "LTriceps"]
+
+[mep_metadata]
+mep_response = ['LADM', 'LBiceps', 'LBicepsFemoris', 'LDeltoid', 'LECR', 'LFCR', 'LTriceps', 'RBiceps']
+mep_window = [-0.01, 0.025]
+mep_size_window = [0.0015, 0.01]
+mep_adjust = 1
