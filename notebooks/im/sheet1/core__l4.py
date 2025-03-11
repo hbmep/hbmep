@@ -1,4 +1,5 @@
 import os
+import pickle
 
 import pandas as pd
 import numpy as np
@@ -7,29 +8,41 @@ import seaborn as sns
 import arviz as az
 
 from jax import random, numpy as jnp
-from hbmep.util import site, timing, setup_logging
+from hbmep.util import timing, setup_logging
 
 from models import ImmunoModel
+import functional as RF
+from utils import Site as site
 from constants import (
     DATA_PATH,
     BUILD_DIR,
 )
 
 
+@timing
 def main(model):
     df = pd.read_csv(DATA_PATH)
-    df[model.features[0]] = df[model.features[0]].astype(str).copy()
     idx = df[model.intensity] > 0
     df = df[idx].reset_index(drop=True).copy()
     df[model.intensity] = np.log2(df[model.intensity])
     df, encoder = model.load(df)
-    # model.plot(df, encoder=encoder)
+    model.plot(df, encoder=encoder)
+
     mcmc, posterior = model.run(df)
     prediction_df = model.make_prediction_dataset(df)
     predictive = model.predict(prediction_df, posterior=posterior)
     model.plot_curves(
         df, prediction_df=prediction_df, predictive=predictive, encoder=encoder, prediction_prob=.95
     )
+
+    output_path = os.path.join(model.build_dir, "inf.pkl")
+    with open(output_path, "wb") as f:
+        pickle.dump((df, encoder, posterior), f) 
+
+    output_path = os.path.join(model.build_dir, "model.pkl")
+    with open(output_path, "wb") as f:
+        pickle.dump((model,), f) 
+
     return
 
 

@@ -1,17 +1,20 @@
 import numpy as np
+from jax import numpy as jnp
 import numpyro as pyro
 from numpyro import distributions as dist
 
 from hbmep.model import BaseModel
-from hbmep import functional as F
-from hbmep.util import site
+
+import functional as F
+from utils import Site as site
 
 
 class ImmunoModel(BaseModel):
     def __init__(self, *args, **kw):
         super(ImmunoModel, self).__init__(*args, **kw)
         self.intensity = "conc"
-        self.features = [["plate", "dilution"]]
+        # self.features = [["plate", "dilution"]]
+        self.features = ["dilution"]
         self.response = ["od"]
         self.mcmc_params = {
             "num_warmup": 4000,
@@ -30,11 +33,11 @@ class ImmunoModel(BaseModel):
 
         with pyro.plate(site.num_response, self.num_response):
             with pyro.plate(site.num_features[0], num_features[0]):
-                a = pyro.sample(site.a, dist.Normal(5, 5))
-                b = pyro.sample(site.b, dist.HalfNormal(5.))
+                b3 = pyro.sample(site.b3, dist.Normal(5, 5))
+                b4 = pyro.sample(site.b4, dist.HalfNormal(5.))
 
-                g = pyro.sample(site.g, dist.HalfNormal(.1))
-                h = pyro.sample(site.h, dist.HalfNormal(5.))
+                b1 = pyro.sample(site.b1, dist.HalfNormal(.1))
+                b2 = pyro.sample(site.b2, dist.HalfNormal(5.))
 
                 c1 = pyro.sample(site.c1, dist.HalfNormal(5.))
                 c2 = pyro.sample(site.c2, dist.HalfNormal(.5))
@@ -44,10 +47,10 @@ class ImmunoModel(BaseModel):
             F.logistic4,
             intensity,
             (
-                a[feature0],
-                b[feature0],
-                g[feature0],
-                h[feature0],
+                b3[feature0],
+                b4[feature0],
+                b1[feature0],
+                b2[feature0],
             ),
             c1[feature0],
             c2[feature0]
@@ -55,7 +58,89 @@ class ImmunoModel(BaseModel):
         pyro.deterministic(site.mu, mu)
         # Observation
         pyro.sample(
-            "obs",
+            site.obs,
             dist.Gamma(concentration=alpha, rate=beta),
             obs=response
         )
+
+    # def nhb_r01(self, intensity, features, response=None, **kw):
+    #     num_features = np.max(features, axis=0) + 1
+    #     feature0 = features[..., 0]
+
+    #     with pyro.plate(site.num_response, self.num_response):
+    #         with pyro.plate(site.num_features[0], num_features[0]):
+    #             # Baseline
+    #             b1 = pyro.sample(site.b1, dist.HalfNormal(.1))
+
+    #             # Distance from baseline to saturation
+    #             b2 = pyro.sample(site.b2, dist.HalfNormal(5.))
+
+    #             # Shift along x
+    #             b3 = pyro.sample(site.b3, dist.Normal(5, 5))
+
+    #             # b4 = pyro.sample(site.b4, dist.HalfNormal(5.))
+
+    #             c1 = pyro.sample(site.c1, dist.HalfNormal(5.))
+    #             c2 = pyro.sample(site.c2, dist.HalfNormal(.5))
+
+    #     # Model
+    #     mu = pyro.deterministic(
+    #         site.mu,
+    #         RF.function(
+    #             intensity,
+    #             b1[feature0],
+    #             b2[feature0],
+    #             b3[feature0],
+    #             # b4[feature0],
+    #         )
+    #     )
+    #     beta = self.gamma_rate(mu, c1[feature0], c2[feature0])
+    #     alpha = self.gamma_concentration(mu, beta)
+
+    #     # Observation
+    #     pyro.sample(
+    #         "obs",
+    #         dist.Gamma(concentration=alpha, rate=beta),
+    #         obs=response
+    #     )
+
+    # def nhb_lognormal(self, intensity, features, response=None, **kw):
+    #     num_data = intensity.shape[0]
+    #     num_features = np.max(features, axis=0) + 1
+    #     feature0 = features[..., 0]
+
+    #     with pyro.plate(site.num_response, self.num_response):
+    #         with pyro.plate(site.num_features[0], num_features[0]):
+    #             # Baseline
+    #             b1 = pyro.sample(site.b1, dist.HalfNormal(.1))
+
+    #             # Distance from baseline to saturation
+    #             b2 = pyro.sample(site.b2, dist.HalfNormal(5.))
+
+    #             # Shift along x
+    #             b3 = pyro.sample(site.b3, dist.HalfNormal(5.))
+
+    #             b4 = pyro.sample(site.b4, dist.HalfNormal(5.))
+
+    #     # Model
+    #     with pyro.plate(site.num_response, self.num_response):
+    #         with pyro.plate(site.num_data, num_data):
+    #             mu = pyro.deterministic(
+    #                 site.mu,
+    #                 RF.function(
+    #                     intensity,
+    #                     b1[feature0],
+    #                     b2[feature0],
+    #                     b3[feature0],
+    #                     b4[feature0],
+    #                 )
+    #             )
+    #             loc = jnp.log(mu)
+    #             scale = pyro.sample("scale", dist.HalfNormal(10))
+
+    #             # Observation
+    #             pyro.sample(
+    #                 "obs",
+    #                 dist.Normal(loc=loc, scale=scale),
+    #                 obs=np.log(response) if response is not None else None
+    #             )
