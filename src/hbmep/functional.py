@@ -70,8 +70,8 @@ def rectified_logistic_s50(x, a, b, g, h, v):
 
 def grad(fn, x, *args):
     """ Compute the gradient of a function """
-    x = jnp.broadcast_to(x, args[0].shape)
-    grad = jax.grad(fn, argnums=0)
-    for _ in range(len(x.shape)):
-        grad = jax.vmap(grad)
-    return grad(x, *args)
+    args = jnp.broadcast_arrays(x, *args)
+    grad_fn = jax.grad(fn)
+    for _ in range(x.ndim):
+        grad_fn = jax.vmap(grad_fn)
+    return grad_fn(*args)
