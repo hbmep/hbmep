@@ -219,7 +219,8 @@ class Plotter(Dataset):
                         ]
                         mep_response_ind = mep_response_ind[0]
                         curr_mep_matrix = mep_matrix[df_ind, :, mep_response_ind]
-                        max_amplitude = curr_mep_matrix[..., is_within_mep_size_window].max()
+                        # max_amplitude = curr_mep_matrix[..., is_within_mep_size_window].max()
+                        max_amplitude = np.nanmax(curr_mep_matrix[..., is_within_mep_size_window])
                         curr_mep_matrix = (curr_mep_matrix / max_amplitude) * (base // 2)
 
                         ax = Plotter.mep_plot(

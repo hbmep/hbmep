@@ -181,7 +181,7 @@ class Dataset:
                 "Total missing observations: ",
                 f"{num_missing_observation}"
             )
-        assert not num_missing_observation
+        # assert not num_missing_observation
 
         logger.info("Processing data ...")
         df, encoder_dict = self._preprocess(df=df, columns=self.features)
