@@ -6,8 +6,8 @@ import pandas as pd
 import numpy as np
 from hbmep.util import timing, setup_logging
 
-from models import HB
-from hbmep.notebooks.rat.util import run
+from hbmep.notebooks.rat.model import HB
+from hbmep.notebooks.rat.util import run, log_transform_intensity
 from constants import (
     BUILD_DIR,
     TOML_PATH,
@@ -26,24 +26,21 @@ def main(model):
     # Load data
     src = DATA_PATH
     data = pd.read_csv(src)
-    data[model.intensity] = 1 + data[model.intensity]
-    # idx = data[model.intensity] > 0
-    # data = data[idx].reset_index(drop=True).copy()
-    data[model.intensity] = np.log2(data[model.intensity])
+    df = log_transform_intensity(data, model.intensity)
 
-    cats = data[model.features[1]].unique().tolist()
+    cats = df[model.features[1]].unique().tolist()
     mapping = {}
     for cat in cats:
         assert cat not in mapping
         l, r = cat.split("-")
         mapping[cat] = l[3:] + "-" + r[3:]
     assert mapping == MAP
-    data[model.features[1]] = data[model.features[1]].replace(mapping)
-    cats = set(data[model.features[1]].tolist())
+    df[model.features[1]] = df[model.features[1]].replace(mapping)
+    cats = set(df[model.features[1]].tolist())
     assert set(DIAM) <= cats
     assert set(VERTICES) <= cats
     assert set(RADII) <= cats
-    df = data.copy()
+    df = df.copy()
 
     run_id = model.run_id
     assert run_id in {"diam", "radii", "vertices", "all"}
@@ -57,12 +54,12 @@ def main(model):
     ind = df[model.features[1]].isin(subset)
     df = df[ind].reset_index(drop=True).copy()
 
-    # subset = ["amap01", "amap02"]
-    # idx = df[model.features[0]].isin(subset)
-    # df = df[idx].reset_index(drop=True).copy()
-    # model.response = model.response[:3]
+    if model.test_run:
+        subset = ["amap01", "amap02"]
+        idx = df[model.features[0]].isin(subset)
+        df = df[idx].reset_index(drop=True).copy()
+        model.response = model.response[:3]
 
-    # model.features = [model.features]
     logger.info(f"*** run id: {run_id} ***")
     logger.info(f"*** model: {model._model.__name__} ***")
     run(df, model, extra_fields=["num_steps"])
@@ -71,6 +68,38 @@ def main(model):
 
 if __name__ == "__main__":
     model = HB(toml_path=TOML_PATH)
+    model.use_mixture = False
+    # model.test_run = True
+
+    model._model = model.hb_mvn_rl_nov_masked
+    model.run_id = "diam"
+    # model.run_id = "radii"
+    # model.run_id = "vertices"
+
+    # model._model = model.hb_mvn_l4_masked
+    # model.run_id = "all"
+
+    model.mcmc_params = {
+        "num_chains": 4,
+
+        "thinning": 4,
+        "num_warmup": 4000,
+        "num_samples": 4000,
+
+        # "thinning": 1,
+        # "num_warmup": 1000,
+        # "num_samples": 1000,
+
+        # "thinning": 1,
+        # "num_warmup": 400,
+        # "num_samples": 400,
+
+    }
+    model.nuts_params = {
+        "max_tree_depth": (15, 15),
+        "target_accept_prob": .95,
+    }
+
     model.build_dir = os.path.join(BUILD_DIR, model.run_id, model.name, model._model.__name__)
     setup_logging(model.build_dir)
     main(model)

@@ -1,15 +1,7 @@
-import os
+from hbmep.notebooks.rat.util import get_paths
 
-from hbmep.notebooks.constants import INFERENCE_FILE, MODEL_FILE
-
-HOME = os.getenv("HOME")
 EXPERIMENT = "L_SHIE"
-
-BUILD_DIR = f"{HOME}/reports/hbmep/notebooks/rat/loghb/{EXPERIMENT.lower().replace('_', '')}"
-
-TOML_PATH = f"{HOME}/repos/refactor/hbmep/configs/rat/{EXPERIMENT}.toml"
-DATA_PATH = f"{HOME}/data/hbmep-processed/rat/{EXPERIMENT}/data.csv"
-MEP_MATRIX_PATH = f"{HOME}/data/hbmep-processed/rat/{EXPERIMENT}/mat.npy"
+BUILD_DIR, TOML_PATH, DATA_PATH, MEP_MATRIX_PATH = get_paths(EXPERIMENT)
 
 POSITIONS_MAP = {
     "-C6LC": "-C",
