@@ -3,11 +3,58 @@ import pickle
 import logging 
 
 import numpy as np
-
+import pandas as pd
 from hbmep.util import site
-from hbmep.notebooks.constants import INFERENCE_FILE, MODEL_FILE
 
+from hbmep.notebooks.constants import DATA, REPOS, REPORTS
 logger = logging.getLogger(__name__)
+
+
+def get_paths(experiment):
+    build_dir = os.path.join(
+        REPORTS,
+        "notebooks",
+        "rat",
+        "loghb",
+        experiment.lower().split('_')[1]
+    )
+    toml_path = os.path.join(
+        REPOS,
+        "configs",
+        "rat",
+        f"{experiment}.toml"
+    )
+    data_path = os.path.join(
+        DATA,
+        "rat",
+        experiment,
+        "data.csv"
+    )
+    mep_matrix_path = os.path.join(
+        DATA,
+        "rat",
+        experiment,
+        "mat.npy"
+    )
+    return build_dir, toml_path, data_path, mep_matrix_path
+
+
+def log_transform_intensity(df: pd.DataFrame, intensity: str):
+    data = df.copy()
+    intensities = sorted(data[intensity].unique().tolist())
+    min_intensity = intensities[0]
+    assert min_intensity >= 0
+    if min_intensity > 0: pass
+    else:
+        logger.info(f"Minimum intensity is {min_intensity}. Handling this before taking log2...")
+        replace_zero_with = 2 ** -1
+        assert replace_zero_with < intensities[1]
+        logger.info(f"Replacing {min_intensity} with {replace_zero_with}")
+        data[intensity] = data[intensity].replace({min_intensity: replace_zero_with})
+        intensities = sorted(data[intensity].unique().tolist())[:5]
+        logger.info(f"New minimum intensities: {intensities}")
+    data[intensity] = np.log2(data[intensity])
+    return data
 
 
 def run(data, model, encoder=None, **kw):
