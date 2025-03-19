@@ -177,10 +177,7 @@ class Dataset:
             .sum()
         )
         if num_missing_observation:
-            logger.info(
-                "Total missing observations: ",
-                f"{num_missing_observation}"
-            )
+            logger.info(f"Total missing observations: {num_missing_observation}")
         # assert not num_missing_observation
 
         logger.info("Processing data ...")
