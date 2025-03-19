@@ -30,28 +30,16 @@ def main(model, data_path):
 
 
 if __name__ == "__main__":
-    experiment, model_name, use_mixture = sys.argv[1:]
-    # experiment, model_name, use_mixture = "lcirc", "l4", "T"
-
+    experiment = "lcirc"
     match experiment:
         case "lcirc": exp = "L_CIRC"
         case "lshie": exp = "L_SHIE"
         case "csmalar": exp = "C_SMA_LAR"
         case _: raise ValueError("Invalid experiment")
 
-    match use_mixture:
-        case "T": use_mixture = True
-        case "F": use_mixture = False
-        case _: raise ValueError("Invalid mixture specification")
-
+    use_mixture = True
     toml_path = f"{HOME}/repos/refactor/hbmep/configs/rat/{exp}.toml"
-    model = nHB(use_mixture=use_mixture, toml_path=toml_path)
-    model.n_jobs = 1
-
-    match model_name:
-        case "l4": model._model = model.logistic4
-        case "rl": model._model = model.rectified_logistic
-        case _: raise ValueError("Invalid model name")
+    model = nHB(toml_path=toml_path)
 
     build_dir = f"{HOME}/reports/hbmep/notebooks/rat/lognhb/{model.name}/{experiment}/"
     model.build_dir = os.path.join(build_dir, model._model.__name__)
