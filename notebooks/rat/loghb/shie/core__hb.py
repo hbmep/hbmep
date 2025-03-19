@@ -46,6 +46,12 @@ def main(model):
         idx = df[model.features[0]].isin(subset)
         df = df[idx].reset_index(drop=True).copy()
         model.response = model.response[:3]
+        model.mcmc_params = {
+            "num_chains": 4,
+            "thinning": 1,
+            "num_warmup": 400,
+            "num_samples": 400,
+        }
 
     logger.info(f"*** run id: {run_id} ***")
     logger.info(f"*** model: {model._model.__name__} ***")

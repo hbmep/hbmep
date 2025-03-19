@@ -59,6 +59,12 @@ def main(model):
         idx = df[model.features[0]].isin(subset)
         df = df[idx].reset_index(drop=True).copy()
         model.response = model.response[:3]
+        model.mcmc_params = {
+            "num_chains": 4,
+            "thinning": 1,
+            "num_warmup": 400,
+            "num_samples": 400,
+        }
 
     logger.info(f"*** run id: {run_id} ***")
     logger.info(f"*** model: {model._model.__name__} ***")
@@ -69,9 +75,10 @@ def main(model):
 if __name__ == "__main__":
     model = HB(toml_path=TOML_PATH)
     model.use_mixture = False
-    # model.test_run = True
+    model.test_run = True
 
-    model._model = model.hb_mvn_rl_nov_masked
+    # model._model = model.hb_mvn_rl_nov_masked
+    model._model = model.ln_hb_mvn_rl_nov_masked
     model.run_id = "diam"
     # model.run_id = "radii"
     # model.run_id = "vertices"
