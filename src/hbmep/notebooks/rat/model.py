@@ -19,6 +19,8 @@ class HB(BaseModel):
     def __init__(self, *args, **kw):
         super(HB, self).__init__(*args, **kw)
         self.use_mixture = False
+        self.run_id = None
+        self.test_run = False
 
     @property
     def name(self): return get_subname(self)
