@@ -1,0 +1,875 @@
+
+<!DOCTYPE html>
+
+
+<html lang="en" data-content_root="../" data-theme="dark">
+
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <title>Getting Started &#8212; hbmep v0.6.2</title>
+  
+  
+  
+  <script data-cfasync="false">
+    document.documentElement.dataset.mode = localStorage.getItem("mode") || "dark";
+    document.documentElement.dataset.theme = localStorage.getItem("theme") || "dark";
+  </script>
+  <!--
+    this give us a css class that will be invisible only if js is disabled
+  -->
+  <noscript>
+    <style>
+      .pst-js-only { display: none !important; }
+
+    </style>
+  </noscript>
+  
+  <!-- Loaded before other Sphinx assets -->
+  <link href="../_static/styles/theme.css?digest=8878045cc6db502f8baf" rel="stylesheet" />
+<link href="../_static/styles/pydata-sphinx-theme.css?digest=8878045cc6db502f8baf" rel="stylesheet" />
+
+    <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=8f2a1f02" />
+    <link rel="stylesheet" type="text/css" href="../_static/styles/sphinx-book-theme.css?v=a3416100" />
+    <link rel="stylesheet" type="text/css" href="../_static/mystnb.4510f1fc1dee50b3e5859aac5469c37c29e427902b24a333a5f9fcb2f0b3ac41.css" />
+    <link rel="stylesheet" type="text/css" href="../_static/copybutton.css?v=76b2166b" />
+  
+  <!-- So that users can add custom icons -->
+  <script src="../_static/scripts/fontawesome.js?digest=8878045cc6db502f8baf"></script>
+  <!-- Pre-loaded scripts that we'll load fully later -->
+  <link rel="preload" as="script" href="../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
+<link rel="preload" as="script" href="../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
+
+    <script src="../_static/documentation_options.js?v=967efe37"></script>
+    <script src="../_static/doctools.js?v=9a2dae69"></script>
+    <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../_static/clipboard.min.js?v=a7894cd8"></script>
+    <script src="../_static/copybutton.js?v=f281be69"></script>
+    <script src="../_static/scripts/sphinx-book-theme.js?v=887ef09a"></script>
+    <script>DOCUMENTATION_OPTIONS.pagename = 'tutorials/getting_started';</script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="prev" title="Installation" href="../user/installation.html" />
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <meta name="docsearch:language" content="en"/>
+  <meta name="docsearch:version" content="0.6.2" />
+  </head>
+  
+  
+  <body data-bs-spy="scroll" data-bs-target=".bd-toc-nav" data-offset="180" data-bs-root-margin="0px 0px -60%" data-default-mode="dark">
+
+  
+  
+  <div id="pst-skip-link" class="skip-link d-print-none"><a href="#main-content">Skip to main content</a></div>
+  
+  <div id="pst-scroll-pixel-helper"></div>
+  
+  <button type="button" class="btn rounded-pill" id="pst-back-to-top">
+    <i class="fa-solid fa-arrow-up"></i>Back to top</button>
+
+  
+  <dialog id="pst-search-dialog">
+    
+<form class="bd-search d-flex align-items-center"
+      action="../search.html"
+      method="get">
+  <i class="fa-solid fa-magnifying-glass"></i>
+  <input type="search"
+         class="form-control"
+         name="q"
+         placeholder="Search..."
+         aria-label="Search..."
+         autocomplete="off"
+         autocorrect="off"
+         autocapitalize="off"
+         spellcheck="false"/>
+  <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd>K</kbd></span>
+</form>
+  </dialog>
+
+  <div class="pst-async-banner-revealer d-none">
+  <aside id="bd-header-version-warning" class="d-none d-print-none" aria-label="Version warning"></aside>
+</div>
+
+  
+    <header class="bd-header navbar navbar-expand-lg bd-navbar d-print-none">
+    </header>
+  
+
+  <div class="bd-container">
+    <div class="bd-container__inner bd-page-width">
+      
+      
+      
+      <dialog id="pst-primary-sidebar-modal"></dialog>
+      <div id="pst-primary-sidebar" class="bd-sidebar-primary bd-sidebar">
+        
+
+  
+  <div class="sidebar-header-items sidebar-primary__section">
+    
+    
+    
+    
+  </div>
+  
+    <div class="sidebar-primary-items__start sidebar-primary__section">
+        <div class="sidebar-primary-item">
+
+  
+    
+  
+
+<a class="navbar-brand logo" href="../index.html">
+  
+  
+  
+  
+  
+  
+    <p class="title logo__title">hbmep v0.6.2</p>
+  
+</a></div>
+        <div class="sidebar-primary-item">
+
+<button class="btn search-button-field search-button__button pst-js-only" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+ <i class="fa-solid fa-magnifying-glass"></i>
+ <span class="search-button__default-text">Search</span>
+ <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+</button></div>
+        <div class="sidebar-primary-item"><nav class="bd-links bd-docs-nav" aria-label="Main">
+    <div class="bd-toc-item navbar-nav active">
+        <p aria-level="2" class="caption" role="heading"><span class="caption-text">User Guide</span></p>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="../user/installation.html">Installation</a></li>
+</ul>
+<p aria-level="2" class="caption" role="heading"><span class="caption-text">Tutorials</span></p>
+<ul class="current nav bd-sidenav">
+<li class="toctree-l1 current active"><a class="current reference internal" href="#">Getting Started</a></li>
+</ul>
+
+    </div>
+</nav></div>
+    </div>
+  
+  
+  <div class="sidebar-primary-items__end sidebar-primary__section">
+      <div class="sidebar-primary-item">
+<div id="ethical-ad-placement"
+      class="flat"
+      data-ea-publisher="readthedocs"
+      data-ea-type="readthedocs-sidebar"
+      data-ea-manual="true">
+</div></div>
+  </div>
+
+
+      </div>
+      
+      <main id="main-content" class="bd-main" role="main">
+        
+        
+
+<div class="sbt-scroll-pixel-helper"></div>
+
+          <div class="bd-content">
+            <div class="bd-article-container">
+              
+              <div class="bd-header-article d-print-none">
+<div class="header-article-items header-article__inner">
+  
+    <div class="header-article-items__start">
+      
+        <div class="header-article-item"><button class="sidebar-toggle primary-toggle btn btn-sm" title="Toggle primary sidebar" data-bs-placement="bottom" data-bs-toggle="tooltip">
+  <span class="fa-solid fa-bars"></span>
+</button></div>
+      
+    </div>
+  
+  
+    <div class="header-article-items__end">
+      
+        <div class="header-article-item">
+
+<div class="article-header-buttons">
+
+
+
+
+
+<div class="dropdown dropdown-source-buttons">
+  <button class="btn dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false" aria-label="Source repositories">
+    <i class="fab fa-github"></i>
+  </button>
+  <ul class="dropdown-menu">
+      
+      
+      
+      <li><a href="https://github.com/hbmep/hbmep" target="_blank"
+   class="btn btn-sm btn-source-repository-button dropdown-item"
+   title="Source repository"
+   data-bs-placement="left" data-bs-toggle="tooltip"
+>
+  
+
+<span class="btn__icon-container">
+  <i class="fab fa-github"></i>
+  </span>
+<span class="btn__text-container">Repository</span>
+</a>
+</li>
+      
+      
+      
+      
+      <li><a href="https://github.com/hbmep/hbmep/edit/main/docs/tutorials/getting_started.ipynb" target="_blank"
+   class="btn btn-sm btn-source-edit-button dropdown-item"
+   title="Suggest edit"
+   data-bs-placement="left" data-bs-toggle="tooltip"
+>
+  
+
+<span class="btn__icon-container">
+  <i class="fas fa-pencil-alt"></i>
+  </span>
+<span class="btn__text-container">Suggest edit</span>
+</a>
+</li>
+      
+      
+      
+      
+      <li><a href="https://github.com/hbmep/hbmep/issues/new?title=Issue%20on%20page%20%2Ftutorials/getting_started.html&body=Your%20issue%20content%20here." target="_blank"
+   class="btn btn-sm btn-source-issues-button dropdown-item"
+   title="Open an issue"
+   data-bs-placement="left" data-bs-toggle="tooltip"
+>
+  
+
+<span class="btn__icon-container">
+  <i class="fas fa-lightbulb"></i>
+  </span>
+<span class="btn__text-container">Open issue</span>
+</a>
+</li>
+      
+  </ul>
+</div>
+
+
+
+
+
+
+<div class="dropdown dropdown-download-buttons">
+  <button class="btn dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false" aria-label="Download this page">
+    <i class="fas fa-download"></i>
+  </button>
+  <ul class="dropdown-menu">
+      
+      
+      
+      <li><a href="../_sources/tutorials/getting_started.ipynb" target="_blank"
+   class="btn btn-sm btn-download-source-button dropdown-item"
+   title="Download source file"
+   data-bs-placement="left" data-bs-toggle="tooltip"
+>
+  
+
+<span class="btn__icon-container">
+  <i class="fas fa-file"></i>
+  </span>
+<span class="btn__text-container">.ipynb</span>
+</a>
+</li>
+      
+      
+      
+      
+      <li>
+<button onclick="window.print()"
+  class="btn btn-sm btn-download-pdf-button dropdown-item"
+  title="Print to PDF"
+  data-bs-placement="left" data-bs-toggle="tooltip"
+>
+  
+
+<span class="btn__icon-container">
+  <i class="fas fa-file-pdf"></i>
+  </span>
+<span class="btn__text-container">.pdf</span>
+</button>
+</li>
+      
+  </ul>
+</div>
+
+
+
+
+<button onclick="toggleFullScreen()"
+  class="btn btn-sm btn-fullscreen-button"
+  title="Fullscreen mode"
+  data-bs-placement="bottom" data-bs-toggle="tooltip"
+>
+  
+
+<span class="btn__icon-container">
+  <i class="fas fa-expand"></i>
+  </span>
+
+</button>
+
+
+
+<button class="btn btn-sm nav-link pst-navbar-icon theme-switch-button pst-js-only" aria-label="Color mode" data-bs-title="Color mode"  data-bs-placement="bottom" data-bs-toggle="tooltip">
+  <i class="theme-switch fa-solid fa-sun                fa-lg" data-mode="light" title="Light"></i>
+  <i class="theme-switch fa-solid fa-moon               fa-lg" data-mode="dark"  title="Dark"></i>
+  <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg" data-mode="auto"  title="System Settings"></i>
+</button>
+
+
+<button class="btn btn-sm pst-navbar-icon search-button search-button__button pst-js-only" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+    <i class="fa-solid fa-magnifying-glass fa-lg"></i>
+</button>
+<button class="sidebar-toggle secondary-toggle btn btn-sm" title="Toggle secondary sidebar" data-bs-placement="bottom" data-bs-toggle="tooltip">
+    <span class="fa-solid fa-list"></span>
+</button>
+</div></div>
+      
+    </div>
+  
+</div>
+</div>
+              
+              
+
+<div id="jb-print-docs-body" class="onlyprint">
+    <h1>Getting Started</h1>
+    <!-- Table of contents -->
+    <div id="print-main-content">
+        <div id="jb-print-toc">
+            
+            <div>
+                <h2> Contents </h2>
+            </div>
+            <nav aria-label="Page">
+                <ul class="visible nav section-nav flex-column">
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#a-simple-example">A Simple Example</a><ul class="nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#configuration-file">Configuration file</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#running-the-model">Running the model</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#plotting-the-curves">Plotting the curves</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#accessing-parameters">Accessing parameters</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#saving-the-model">Saving the model</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#using-other-functions">Using other functions</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#references">References</a></li>
+</ul>
+</li>
+</ul>
+            </nav>
+        </div>
+    </div>
+</div>
+
+              
+                
+<div id="searchbox"></div>
+                <article class="bd-article">
+                  
+  <section id="getting-started">
+<span id="id1"></span><h1>Getting Started<a class="headerlink" href="#getting-started" title="Link to this heading">#</a></h1>
+<p>We’re going to demonstrate how to use hbMEP to estimate recruitment curves from MEP size data using a hierarchical Bayesian model. The model is based on a rectified-logistic function (<span id="id1"><a class="reference internal" href="#id2" title="Vishweshwar Tyagi, Lynda M. Murray, Ahmet S. Asan, Christopher Mandigo, Michael S. Virk, Noam Y. Harel, Jason B. Carmel, and James R. McIntosh. Hierarchical Bayesian estimation of motor-evoked potential recruitment curves yields accurate and robust estimates. arXiv preprint arXiv:2407.08709, 2024. doi:http://doi.org/10.48550/arXiv.2407.08709.">Tyagi <em>et al.</em>, 2024</a></span>, see Methods 4.1.1, Eq. 4.1.4), that was introduced for estimation of threshold.</p>
+<section id="a-simple-example">
+<h2>A Simple Example<a class="headerlink" href="#a-simple-example" title="Link to this heading">#</a></h2>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>This tutorial assumes that you are working on a Linux or MacOS system. If you are using Windows, you can use the Windows Subsystem for Linux (WSL), or update the bash commands and paths accordingly.</p>
+</div>
+<p>Begin by downloading the <a class="reference download external" download="" href="https://raw.githubusercontent.com/hbmep/hbmep/docs-data/data/mock_data.csv"><code class="xref download docutils literal notranslate"><span class="pre">mock_data.csv</span></code></a> file using the following command.</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>wget<span class="w"> </span>https://raw.githubusercontent.com/hbmep/hbmep/docs-data/data/mock_data.csv
+</pre></div>
+</div>
+<p>This file contains transcranial magnetic stimulation (TMS) MEP size data for 3 participants, with responses from two muscles (see columns <cite>PKPK_ECR</cite> and <cite>PKPK_FCR</cite> in the file). The responses are recorded in peak-to-peak values in millivolts (mV), and the intensity is recorded in maximum stimulator output (0-100% MSO).</p>
+<section id="configuration-file">
+<h3>Configuration file<a class="headerlink" href="#configuration-file" title="Link to this heading">#</a></h3>
+<p>hbMEP uses a configuration file that contains all the necessary information to run the model.
+Begin by creating a TOML file, <a class="reference download external" download="" href="https://raw.githubusercontent.com/hbmep/hbmep/docs-data/configs/config.toml"><code class="xref download docutils literal notranslate"><span class="pre">config.toml</span></code></a>, and enter the following content.</p>
+<div class="highlight-toml notranslate"><div class="highlight"><pre><span></span><span class="k">[paths]</span>
+<span class="n">csv_path</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;./mock_data.csv&quot;</span>
+<span class="n">build_directory</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;./mock_data_output/&quot;</span>
+
+<span class="k">[variables]</span>
+<span class="n">intensity</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;TMSIntensity&quot;</span>
+<span class="n">features</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">[</span><span class="s2">&quot;participant&quot;</span><span class="p">]</span>
+<span class="n">response</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">[</span><span class="s1">&#39;PKPK_ECR&#39;</span><span class="p">,</span><span class="w"> </span><span class="s1">&#39;PKPK_FCR&#39;</span><span class="p">]</span>
+
+<span class="k">[mcmc]</span>
+<span class="n">num_chains</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">4</span>
+<span class="n">num_warmup</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">1000</span>
+<span class="n">num_samples</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">1000</span>
+<span class="n">thinning</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">1</span>
+
+<span class="k">[misc]</span>
+<span class="n">base</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">10</span>
+</pre></div>
+</div>
+<p>Here,</p>
+<ul class="simple">
+<li><dl class="simple">
+<dt><code class="docutils literal notranslate"><span class="pre">paths</span></code> table contains the paths to the dataset and the build directory.</dt><dd><ul>
+<li><p><code class="docutils literal notranslate"><span class="pre">csv</span></code> is the path to the dataset in csv format. In the above config file, it points to the <cite>mock_data.csv</cite> file.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">build_dir</span></code> is the directory where hbMEP will store model artefacts, such as recruitment curve plots and parameter estimates. If this directory does not already exists, hbMEP will create it. If it already exists, hbMEP will do nothing to the content present in it.</p></li>
+</ul>
+</dd>
+</dl>
+</li>
+<li><dl class="simple">
+<dt><code class="docutils literal notranslate"><span class="pre">variables</span></code> table contains the names of the columns in the dataset that are used by the model.</dt><dd><ul>
+<li><p><code class="docutils literal notranslate"><span class="pre">intensity</span></code> is the column name that contains the TMS intensity.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">features</span></code> is a list of columns that uniquely identify the set of data points for a single recruitment curve. In this case, the model will yield recruitment curve for each participant.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">response</span></code> is a list of columns that contain the MEP size values. In this case, the columns <cite>PKPK_ECR</cite> and <cite>PKPK_FCR</cite> are included in this list and the model will be run on these two muscles.</p></li>
+</ul>
+</dd>
+</dl>
+</li>
+<li><dl class="simple">
+<dt><code class="docutils literal notranslate"><span class="pre">mcmc</span></code> table configures the No-U-Turn sampler (NUTS) sampler.</dt><dd><ul>
+<li><p><code class="docutils literal notranslate"><span class="pre">num_chains</span></code> is the number of chains to run in parallel.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">num_warmup</span></code> is the number of warmup samples.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">num_samples</span></code> is the number of samples to draw from the posterior.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">thinning</span></code> is the thinning factor for the samples.</p></li>
+</ul>
+</dd>
+</dl>
+</li>
+</ul>
+</section>
+<section id="running-the-model">
+<h3>Running the model<a class="headerlink" href="#running-the-model" title="Link to this heading">#</a></h3>
+<div class="admonition tip">
+<p class="admonition-title">Tip</p>
+<p>If you have trouble running the commands in this tutorial, please copy the command
+and its output, then <a class="reference external" href="https://github.com/hbmep/hbmep/issues/new/choose">open an issue</a> on the hbMEP repository on
+GitHub. We’ll do our best to help you!</p>
+</div>
+<div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">os</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">pickle</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">pandas</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">pd</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">hbmep.config</span><span class="w"> </span><span class="kn">import</span> <span class="n">Config</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">hbmep.model.tms</span><span class="w"> </span><span class="kn">import</span> <span class="n">RectifiedLogistic</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">hbmep.model.utils</span><span class="w"> </span><span class="kn">import</span> <span class="n">Site</span> <span class="k">as</span> <span class="n">site</span>
+</pre></div>
+</div>
+</div>
+</div>
+<p id="build-the-model">Begin by building the model and reading the <code class="docutils literal notranslate"><span class="pre">mock_data.csv</span></code> file.</p>
+<div class="cell tag_remove-output docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="c1"># Build model</span>
+<span class="n">config</span> <span class="o">=</span> <span class="n">Config</span><span class="p">(</span><span class="n">toml_path</span><span class="o">=</span><span class="s2">&quot;./config.toml&quot;</span><span class="p">)</span>
+<span class="n">model</span> <span class="o">=</span> <span class="n">RectifiedLogistic</span><span class="p">(</span><span class="n">config</span><span class="o">=</span><span class="n">config</span><span class="p">)</span>
+
+<span class="c1"># Read data</span>
+<span class="n">df</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">read_csv</span><span class="p">(</span><span class="n">model</span><span class="o">.</span><span class="n">csv_path</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+</div>
+<div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Dataframe shape:</span><span class="se">\t</span><span class="si">{</span><span class="n">df</span><span class="o">.</span><span class="n">shape</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Dataframe columns:</span><span class="se">\t</span><span class="si">{</span><span class="s1">&#39;, &#39;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">df</span><span class="o">.</span><span class="n">columns</span><span class="o">.</span><span class="n">tolist</span><span class="p">())</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;All participants:</span><span class="se">\t</span><span class="si">{</span><span class="s1">&#39;, &#39;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">df</span><span class="p">[</span><span class="s1">&#39;participant&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">unique</span><span class="p">()</span><span class="o">.</span><span class="n">tolist</span><span class="p">())</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+<span class="n">n</span> <span class="o">=</span> <span class="mi">5</span>
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">Dataframe first </span><span class="si">{</span><span class="n">n</span><span class="si">}</span><span class="s2"> rows:</span><span class="se">\n\n</span><span class="si">{</span><span class="n">df</span><span class="o">.</span><span class="n">head</span><span class="p">(</span><span class="n">n</span><span class="o">=</span><span class="n">n</span><span class="p">)</span><span class="o">.</span><span class="n">to_string</span><span class="p">()</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<div class="cell_output docutils container">
+<div class="output stream highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>Dataframe shape:	(245, 4)
+Dataframe columns:	TMSIntensity, participant, PKPK_ECR, PKPK_FCR
+All participants:	P1, P2, P3
+
+Dataframe first 5 rows:
+
+   TMSIntensity participant  PKPK_ECR  PKPK_FCR
+0         43.79          P1     0.197     0.048
+1         55.00          P1     0.224     0.068
+2         41.00          P1     0.112     0.110
+3         43.00          P1     0.149     0.058
+4         14.00          P1     0.014     0.011
+</pre></div>
+</div>
+</div>
+</div>
+<p>Now, we will process this dataset with it so that it’s usable by hbMEP.</p>
+<div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="c1"># Process data</span>
+<span class="n">df</span><span class="p">,</span> <span class="n">encoder_dict</span> <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="n">df</span><span class="o">=</span><span class="n">df</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+</div>
+<p>Before running inference, we can visualize the dataset.</p>
+<div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="c1"># Plot data</span>
+<span class="n">model</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">df</span><span class="o">=</span><span class="n">df</span><span class="p">,</span> <span class="n">encoder_dict</span><span class="o">=</span><span class="n">encoder_dict</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+</div>
+<p>The above command created a pdf <code class="file docutils literal notranslate"><span class="pre">dataset.pdf</span></code> and saved it to the build directory. As it can be seen, there are three participants with their MEPs recorded from two muscles.</p>
+<p>Now, lets run inference on this data.</p>
+<div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="c1"># Run inference</span>
+<span class="n">mcmc</span><span class="p">,</span> <span class="n">posterior_samples</span> <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">run_inference</span><span class="p">(</span><span class="n">df</span><span class="o">=</span><span class="n">df</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<div class="cell_output docutils container">
+<script type="application/vnd.jupyter.widget-view+json">{"model_id": "52182dba31b24949b050537d52660626", "version_major": 2, "version_minor": 0}</script><script type="application/vnd.jupyter.widget-view+json">{"model_id": "41005c266aab4a18ba577f64952e9fcc", "version_major": 2, "version_minor": 0}</script><script type="application/vnd.jupyter.widget-view+json">{"model_id": "c611760a0ff1468faf72294e06559a94", "version_major": 2, "version_minor": 0}</script><script type="application/vnd.jupyter.widget-view+json">{"model_id": "4d936f93adfa49abaeab155eed8b9d43", "version_major": 2, "version_minor": 0}</script></div>
+</div>
+<p>We can print the convergence diagnostics with the following command.</p>
+<div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">model</span><span class="o">.</span><span class="n">print_summary</span><span class="p">(</span><span class="n">samples</span><span class="o">=</span><span class="n">posterior_samples</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<div class="cell_output docutils container">
+<div class="output stream highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>                 mean       std    median      2.5%     97.5%     n_eff     r_hat
+     H[0,0]      0.24      0.01      0.24      0.21      0.27   2302.41      1.00
+     H[0,1]      0.16      0.01      0.16      0.14      0.18   3441.27      1.00
+     H[1,0]      0.19      0.04      0.18      0.14      0.26   1853.05      1.00
+     H[1,1]      0.16      0.07      0.14      0.08      0.29   1617.89      1.00
+     H[2,0]      0.23      0.05      0.22      0.15      0.34   3450.24      1.00
+     H[2,1]      0.26      0.13      0.22      0.10      0.52   2259.82      1.00
+    H_scale      0.28      0.13      0.25      0.12      0.54   1015.16      1.00
+     L[0,0]      0.01      0.00      0.01      0.01      0.02   3529.07      1.00
+     L[0,1]      0.01      0.00      0.01      0.01      0.01   3712.93      1.00
+     L[1,0]      0.01      0.00      0.01      0.01      0.01   4051.42      1.00
+     L[1,1]      0.01      0.00      0.01      0.01      0.01   3993.32      1.00
+     L[2,0]      0.01      0.00      0.01      0.00      0.01   4709.97      1.00
+     L[2,1]      0.01      0.00      0.01      0.01      0.01   4185.50      1.00
+    L_scale      0.01      0.01      0.01      0.01      0.02    690.70      1.00
+     a[0,0]     31.91      0.46     31.97     30.77     32.64    702.71      1.00
+     a[0,1]     31.59      0.53     31.67     30.60     32.59   2652.48      1.00
+     a[1,0]     45.59      0.81     45.79     44.22     46.47    340.41      1.00
+     a[1,1]     44.84      0.80     44.96     43.19     46.19   2482.68      1.00
+     a[2,0]     30.08      0.38     30.15     29.32     30.69   2455.03      1.00
+     a[2,1]     31.17      0.67     31.11     30.01     32.52   3348.39      1.00
+      a_loc     35.30      5.77     35.77     23.62     46.19   1216.14      1.00
+    a_scale     11.09      6.88      9.10      3.93     24.66   1071.15      1.00
+     b[0,0]      0.17      0.05      0.17      0.09      0.28   2313.03      1.00
+     b[0,1]      0.22      0.11      0.19      0.07      0.42   2782.91      1.00
+     b[1,0]      0.09      0.05      0.08      0.02      0.22    405.55      1.00
+     b[1,1]      0.07      0.04      0.07      0.01      0.15   2347.51      1.00
+     b[2,0]      0.09      0.04      0.08      0.03      0.15   2109.42      1.00
+     b[2,1]      0.05      0.03      0.04      0.01      0.10   2771.50      1.00
+    b_scale      0.18      0.09      0.15      0.05      0.34   1295.98      1.00
+  c_1_scale      3.16      2.79      2.35      0.08      8.92   2959.09      1.00
+  c_2_scale      0.29      0.14      0.26      0.12      0.53   1018.04      1.00
+    c₁[0,0]      2.66      3.40      1.47      0.05      9.25   3508.38      1.00
+    c₁[0,1]      2.70      3.38      1.48      0.04      9.41   3436.13      1.00
+    c₁[1,0]      2.37      3.37      1.14      0.01      9.00   3046.44      1.00
+    c₁[1,1]      2.50      3.36      1.27      0.03      9.13   3193.02      1.00
+    c₁[2,0]      1.36      2.82      0.10      0.01      7.32   1883.38      1.00
+    c₁[2,1]      2.38      3.15      1.17      0.03      8.78   3381.21      1.00
+    c₂[0,0]      0.07      0.01      0.07      0.05      0.10   4110.79      1.00
+    c₂[0,1]      0.13      0.02      0.12      0.09      0.17   4951.67      1.00
+    c₂[1,0]      0.08      0.02      0.08      0.06      0.12   3143.90      1.00
+    c₂[1,1]      0.23      0.04      0.22      0.16      0.30   4193.70      1.00
+    c₂[2,0]      0.32      0.12      0.29      0.16      0.57   1906.25      1.00
+    c₂[2,1]      0.34      0.06      0.33      0.23      0.45   3524.25      1.00
+  ell_scale      8.72      6.14      7.47      0.15     20.76   2873.60      1.00
+     ℓ[0,0]      7.74      8.14      4.85      0.08     24.39   3434.41      1.00
+     ℓ[0,1]      7.65      8.33      4.79      0.05     24.38   3215.37      1.00
+     ℓ[1,0]      6.41      8.07      3.49      0.00     23.11   2196.32      1.00
+     ℓ[1,1]      6.74      8.27      3.95      0.01     22.86   3548.49      1.00
+     ℓ[2,0]      6.80      8.06      4.02      0.01     23.35   3589.39      1.00
+     ℓ[2,1]      6.71      7.86      3.96      0.02     22.54   3877.42      1.00
+</pre></div>
+</div>
+</div>
+</div>
+<p>The different site names present in the first column of the above output correspond to model parameters (<span id="id1"><a class="reference internal" href="#id2" title="Vishweshwar Tyagi, Lynda M. Murray, Ahmet S. Asan, Christopher Mandigo, Michael S. Virk, Noam Y. Harel, Jason B. Carmel, and James R. McIntosh. Hierarchical Bayesian estimation of motor-evoked potential recruitment curves yields accurate and robust estimates. arXiv preprint arXiv:2407.08709, 2024. doi:http://doi.org/10.48550/arXiv.2407.08709.">Tyagi <em>et al.</em>, 2024</a></span>, see Methods 4.1.1, Supplementary Fig. S3g,h)</p>
+</section>
+<section id="plotting-the-curves">
+<h3>Plotting the curves<a class="headerlink" href="#plotting-the-curves" title="Link to this heading">#</a></h3>
+<p>Now, we will plot the estimated recruitment curves. Before that, we need to use the estimated parameters and predict on a “template” prediction dataframe.</p>
+<p>This prediction dataframe is similar to the input dataframe on which inference was run, except it has missing MEP size response values. Additionally, it has many more intensity values (controlled by the argument <code class="docutils literal notranslate"><span class="pre">num_points=100</span></code>). These are the intensity values on which the model will predict the response values.</p>
+<div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="c1"># Create prediction dataframe</span>
+<span class="n">prediction_df</span> <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">make_prediction_dataset</span><span class="p">(</span><span class="n">df</span><span class="o">=</span><span class="n">df</span><span class="p">,</span> <span class="n">num_points</span><span class="o">=</span><span class="mi">100</span><span class="p">)</span>
+
+<span class="c1"># Use the model to predict on the prediction dataframe</span>
+<span class="n">posterior_predictive</span> <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">predict</span><span class="p">(</span>
+    <span class="n">df</span><span class="o">=</span><span class="n">prediction_df</span><span class="p">,</span> <span class="n">posterior_samples</span><span class="o">=</span><span class="n">posterior_samples</span>
+<span class="p">)</span>
+</pre></div>
+</div>
+</div>
+</div>
+<p>This returns the posterior predictive of the model. We can use this to plot the recruitment curves.</p>
+<div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="c1"># Plot recruitment curves</span>
+<span class="n">model</span><span class="o">.</span><span class="n">render_recruitment_curves</span><span class="p">(</span>
+    <span class="n">df</span><span class="o">=</span><span class="n">df</span><span class="p">,</span>
+    <span class="n">encoder_dict</span><span class="o">=</span><span class="n">encoder_dict</span><span class="p">,</span>
+    <span class="n">posterior_samples</span><span class="o">=</span><span class="n">posterior_samples</span><span class="p">,</span>
+    <span class="n">prediction_df</span><span class="o">=</span><span class="n">prediction_df</span><span class="p">,</span>
+    <span class="n">posterior_predictive</span><span class="o">=</span><span class="n">posterior_predictive</span>
+<span class="p">)</span>
+</pre></div>
+</div>
+</div>
+</div>
+<p>The above command created a pdf <code class="file docutils literal notranslate"><span class="pre">recruitment_curves.pdf</span></code> and saved it to the build directory.</p>
+<p>As it can be seen in the pdf, the participants are aligned top to bottom, and the muscles are aligned left to right. The plots are colored by muscle name. For a given participant and muscle combination, the first plot shows the MEP size and stimulation intensity data, the second plot shows the estimated recruitment curve overlaid on top of the data, and the third plot shows posterior distribution of the threshold parameter.</p>
+<p>The estimated curves look good, except for participant P1 and muscle FCR, which is indexed by the tuple (0, 1). The curve seems to be biased towards a few outliers. Later on, we will see how to tackle this using a mixture model (<span id="id1"><a class="reference internal" href="#id2" title="Vishweshwar Tyagi, Lynda M. Murray, Ahmet S. Asan, Christopher Mandigo, Michael S. Virk, Noam Y. Harel, Jason B. Carmel, and James R. McIntosh. Hierarchical Bayesian estimation of motor-evoked potential recruitment curves yields accurate and robust estimates. arXiv preprint arXiv:2407.08709, 2024. doi:http://doi.org/10.48550/arXiv.2407.08709.">Tyagi <em>et al.</em>, 2024</a></span>, see Fig. 4, Methods 4.1.1).</p>
+<p>Additionally, we can also plot the posterior predictive of the model using the following command.</p>
+<div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="c1"># Posterior predictive check</span>
+<span class="n">model</span><span class="o">.</span><span class="n">render_predictive_check</span><span class="p">(</span>
+    <span class="n">df</span><span class="o">=</span><span class="n">df</span><span class="p">,</span>
+    <span class="n">encoder_dict</span><span class="o">=</span><span class="n">encoder_dict</span><span class="p">,</span>
+    <span class="n">prediction_df</span><span class="o">=</span><span class="n">prediction_df</span><span class="p">,</span>
+    <span class="n">posterior_predictive</span><span class="o">=</span><span class="n">posterior_predictive</span>
+<span class="p">)</span>
+</pre></div>
+</div>
+</div>
+</div>
+<p>The above command created a pdf <code class="file docutils literal notranslate"><span class="pre">posterior_predictive_check.pdf</span></code> and saved it to the build directory.</p>
+</section>
+<section id="accessing-parameters">
+<h3>Accessing parameters<a class="headerlink" href="#accessing-parameters" title="Link to this heading">#</a></h3>
+<p>The estimated parameters are stored in the <code class="docutils literal notranslate"><span class="pre">posterior_samples</span></code> dictionary. The keys are the parameter names and the values are the samples from the posterior distribution. The samples are stored as a NumPy array. The samples can be accessed as follows:</p>
+<div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="c1"># Threshold parameter</span>
+<span class="n">a</span> <span class="o">=</span> <span class="n">posterior_samples</span><span class="p">[</span><span class="n">site</span><span class="o">.</span><span class="n">a</span><span class="p">]</span>
+
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Shape of a:</span><span class="se">\t</span><span class="si">{</span><span class="n">a</span><span class="o">.</span><span class="n">shape</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">First dimension corresponds to the number of samples:</span><span class="se">\t\t</span><span class="si">{</span><span class="n">a</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Second dimension corresponds to the number of participants:</span><span class="se">\t</span><span class="si">{</span><span class="n">a</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Third dimension corresponds to the number of muscles:</span><span class="se">\t\t</span><span class="si">{</span><span class="n">a</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">2</span><span class="p">]</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<div class="cell_output docutils container">
+<div class="output stream highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>Shape of a:	(4000, 3, 2)
+
+First dimension corresponds to the number of samples:		4000
+Second dimension corresponds to the number of participants:	3
+Third dimension corresponds to the number of muscles:		2
+</pre></div>
+</div>
+</div>
+</div>
+<p>Note that there are 4000 samples because we ran 4 chains with 1000 samples each.</p>
+<p>Additionally, we can reshape the array so that the first dimension corresponds to the chains and the second dimension corresponds to the samples. Although this is not necessary, it can be useful for some analyses.</p>
+<div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="c1"># Reshape samples to group them by chain</span>
+<span class="n">a_grouped_by_chain</span> <span class="o">=</span> <span class="n">a</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span>
+    <span class="n">model</span><span class="o">.</span><span class="n">mcmc_params</span><span class="p">[</span><span class="s2">&quot;num_chains&quot;</span><span class="p">],</span>
+    <span class="o">-</span><span class="mi">1</span><span class="p">,</span>
+    <span class="o">*</span><span class="n">a</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">1</span><span class="p">:]</span>
+<span class="p">)</span>
+
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Shape of a_grouped_by_chain:</span><span class="se">\t</span><span class="si">{</span><span class="n">a_grouped_by_chain</span><span class="o">.</span><span class="n">shape</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<div class="cell_output docutils container">
+<div class="output stream highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>Shape of a_grouped_by_chain:	(4, 1000, 3, 2)
+</pre></div>
+</div>
+</div>
+</div>
+<p>The other curve parameters can be accessed in a similar way.</p>
+<!-- However, there are two parameters which require a different kind of manipulation. Let's look at all the keys available and their shapes. -->
+</section>
+<section id="saving-the-model">
+<h3>Saving the model<a class="headerlink" href="#saving-the-model" title="Link to this heading">#</a></h3>
+<div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="c1"># Save the model</span>
+<span class="n">destination_path</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">model</span><span class="o">.</span><span class="n">build_dir</span><span class="p">,</span> <span class="s2">&quot;inference.pkl&quot;</span><span class="p">)</span>
+
+<span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">destination_path</span><span class="p">,</span> <span class="s2">&quot;wb&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+    <span class="n">pickle</span><span class="o">.</span><span class="n">dump</span><span class="p">((</span><span class="n">model</span><span class="p">,</span> <span class="n">mcmc</span><span class="p">,</span> <span class="n">posterior_samples</span><span class="p">,),</span> <span class="n">f</span><span class="p">)</span>
+
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Model saved to:</span><span class="se">\t</span><span class="si">{</span><span class="n">destination_path</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<div class="cell_output docutils container">
+<div class="output stream highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>Model saved to:	./mock_data_output/inference.pkl
+</pre></div>
+</div>
+</div>
+</div>
+<p>The saved model can be loaded and used for further analysis:</p>
+<div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="c1"># Load the model</span>
+<span class="n">source_path</span> <span class="o">=</span> <span class="n">destination_path</span>
+
+<span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">source_path</span><span class="p">,</span> <span class="s2">&quot;rb&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+    <span class="n">model</span><span class="p">,</span> <span class="n">mcmc</span><span class="p">,</span> <span class="n">posterior_samples</span> <span class="o">=</span> <span class="n">pickle</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="n">f</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+</div>
+</section>
+<section id="using-other-functions">
+<h3>Using other functions<a class="headerlink" href="#using-other-functions" title="Link to this heading">#</a></h3>
+<p>Alternatively, we can use other functions to estimate the recruitment curves. The available choices in hbMEP (<span id="id1"><a class="reference internal" href="#id2" title="Vishweshwar Tyagi, Lynda M. Murray, Ahmet S. Asan, Christopher Mandigo, Michael S. Virk, Noam Y. Harel, Jason B. Carmel, and James R. McIntosh. Hierarchical Bayesian estimation of motor-evoked potential recruitment curves yields accurate and robust estimates. arXiv preprint arXiv:2407.08709, 2024. doi:http://doi.org/10.48550/arXiv.2407.08709.">Tyagi <em>et al.</em>, 2024</a></span>, see Results 2.3 and Fig. 3 for a comparison of their predictive performance to the rectified-logistic function, Methods 4.1, Eq. 4.1.1-4.1.3) are:</p>
+<ul class="simple">
+<li><p>Logistic-4, also known as the Boltzmann sigmoid.</p></li>
+<li><p>Logistic-5, which is a more generalized version of Logistic4.</p></li>
+<li><p>Rectified-linear.</p></li>
+</ul>
+<p>We recommend using Logistic-5 if estimating threshold is not the goal.</p>
+<p>For example, to use Logistic-5 function, we need to import it and modify the <a class="reference internal" href="#build-the-model"><span class="std std-ref">code</span></a> appropriately.</p>
+<div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="c1"># Import Logistic5 model</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">hbmep.model.tms</span><span class="w"> </span><span class="kn">import</span> <span class="n">Logistic5</span>
+
+
+<span class="c1"># Build model</span>
+<span class="n">config</span> <span class="o">=</span> <span class="n">Config</span><span class="p">(</span><span class="n">toml_path</span><span class="o">=</span><span class="s2">&quot;./config.toml&quot;</span><span class="p">)</span>
+<span class="n">model</span> <span class="o">=</span> <span class="n">Logistic5</span><span class="p">(</span><span class="n">config</span><span class="o">=</span><span class="n">config</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+</div>
+</section>
+<section id="references">
+<h3>References<a class="headerlink" href="#references" title="Link to this heading">#</a></h3>
+<div class="docutils container" id="id1">
+<div role="list" class="citation-list">
+<div class="citation" id="id2" role="doc-biblioentry">
+<span class="label"><span class="fn-bracket">[</span>1<span class="fn-bracket">]</span></span>
+<span class="backrefs">(<a role="doc-backlink" href="#id1">1</a>,<a role="doc-backlink" href="#id1">2</a>,<a role="doc-backlink" href="#id1">3</a>,<a role="doc-backlink" href="#id1">4</a>)</span>
+<p>Vishweshwar Tyagi, Lynda M. Murray, Ahmet S. Asan, Christopher Mandigo, Michael S. Virk, Noam Y. Harel, Jason B. Carmel, and James R. McIntosh. Hierarchical Bayesian estimation of motor-evoked potential recruitment curves yields accurate and robust estimates. <em>arXiv preprint arXiv:2407.08709</em>, 2024. <a class="reference external" href="https://doi.org/http://doi.org/10.48550/arXiv.2407.08709">doi:http://doi.org/10.48550/arXiv.2407.08709</a>.</p>
+</div>
+</div>
+</div>
+</section>
+</section>
+</section>
+
+
+                </article>
+              
+
+              
+              
+              
+              
+                <footer class="prev-next-footer d-print-none">
+                  
+<div class="prev-next-area">
+    <a class="left-prev"
+       href="../user/installation.html"
+       title="previous page">
+      <i class="fa-solid fa-angle-left"></i>
+      <div class="prev-next-info">
+        <p class="prev-next-subtitle">previous</p>
+        <p class="prev-next-title">Installation</p>
+      </div>
+    </a>
+</div>
+                </footer>
+              
+            </div>
+            
+            
+              
+                <dialog id="pst-secondary-sidebar-modal"></dialog>
+                <div id="pst-secondary-sidebar" class="bd-sidebar-secondary bd-toc"><div class="sidebar-secondary-items sidebar-secondary__inner">
+
+
+  <div class="sidebar-secondary-item">
+  <div class="page-toc tocsection onthispage">
+    <i class="fa-solid fa-list"></i> Contents
+  </div>
+  <nav class="bd-toc-nav page-toc">
+    <ul class="visible nav section-nav flex-column">
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#a-simple-example">A Simple Example</a><ul class="nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#configuration-file">Configuration file</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#running-the-model">Running the model</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#plotting-the-curves">Plotting the curves</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#accessing-parameters">Accessing parameters</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#saving-the-model">Saving the model</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#using-other-functions">Using other functions</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#references">References</a></li>
+</ul>
+</li>
+</ul>
+  </nav></div>
+
+</div></div>
+              
+            
+          </div>
+          <footer class="bd-footer-content">
+            
+<div class="bd-footer-content__inner container">
+  
+  <div class="footer-item">
+    
+  </div>
+  
+  <div class="footer-item">
+    
+
+  <p class="copyright">
+    
+      © Copyright 2023-2024, hbmep authors.
+      <br/>
+    
+  </p>
+
+  </div>
+  
+  <div class="footer-item">
+    
+  </div>
+  
+  <div class="footer-item">
+    
+  </div>
+  
+</div>
+          </footer>
+        
+
+      </main>
+    </div>
+  </div>
+  
+  <!-- Scripts loaded after <body> so the DOM is not blocked -->
+  <script defer src="../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf"></script>
+<script defer src="../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf"></script>
+
+  <footer class="bd-footer">
+  </footer>
+  </body>
+</html>
