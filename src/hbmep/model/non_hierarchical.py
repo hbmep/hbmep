@@ -3,7 +3,6 @@ import gc
 import shutil
 import pickle
 import logging
-from operator import attrgetter
 
 import pandas as pd
 import numpy as np
@@ -22,6 +21,13 @@ class NonHierarchicalBaseModel(BaseModel):
         super(NonHierarchicalBaseModel, self).__init__(*args, **kw)
         self.name = "non_hierarchical_base_model"
         self.n_jobs = n_jobs
+        self.pre_dispatch="1*n_jobs"
+        self.prefer = "threads"
+
+    @property
+    def joblib_params(self):
+        attributes = ["n_jobs", "pre_dispatch"]
+        return {attr: getattr(self, attr) for attr in attributes}
 
     @staticmethod
     def _get_output_path(folder, combination, response):
@@ -40,7 +46,7 @@ class NonHierarchicalBaseModel(BaseModel):
                 src = os.path.join(temp_folder, f"{response_idx}__{combination_idx}.pkl")
                 with open(src, "rb") as f: samples, = pickle.load(f)
 
-                if not self.sites:
+                if not self.sample_sites:
                     if not (combination_idx or response_idx):
                         src = os.path.join(temp_folder, "mcmc.pkl")
                         with open(src, "rb") as f:
@@ -114,7 +120,7 @@ class NonHierarchicalBaseModel(BaseModel):
             if os.path.exists(temp_folder): shutil.rmtree(temp_folder)
             os.makedirs(temp_folder, exist_ok=False)
             logger.info(f"Created temporary folder {temp_folder}")
-            with Parallel(n_jobs=self.n_jobs) as parallel:
+            with Parallel(**self.joblib_params) as parallel:
                 parallel(
                     delayed(body_run)(combination_idx, response_idx)
                     for combination_idx in range(num_combinations)
@@ -170,10 +176,12 @@ class NonHierarchicalBaseModel(BaseModel):
 
 
         try:
+            n_jobs = self.n_jobs
+            self.n_jobs = 8
             if os.path.exists(temp_folder): shutil.rmtree(temp_folder)
             os.makedirs(temp_folder, exist_ok=False)
             logger.info(f"Created temporary folder {temp_folder}")
-            with Parallel(n_jobs=self.n_jobs) as parallel:
+            with Parallel(**self.joblib_params) as parallel:
                 parallel(
                     delayed(body_predict)(combination_idx, response_idx)
                     for combination_idx in range(num_combinations)
@@ -189,5 +197,6 @@ class NonHierarchicalBaseModel(BaseModel):
             return predictive
 
         finally:
+            self.n_jobs = n_jobs
             if os.path.exists(temp_folder): shutil.rmtree(temp_folder)
             logger.info(f"Removed temporary folder {temp_folder}")

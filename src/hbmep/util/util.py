@@ -3,7 +3,7 @@ import logging
 from time import time
 from functools import wraps
 
-import matplotlib.pyplot as plt
+import seaborn as sns
 import numpy as np
 from sklearn.preprocessing import LabelEncoder
 
@@ -92,13 +92,13 @@ def ceil(x: float, base: float = 10):
 def invert_combination(
     combination: tuple[int],
     columns: list[str],
-    encoder_dict: dict[str, LabelEncoder]
+    encoder: dict[str, LabelEncoder],
 ) -> tuple:
     return tuple(
-        encoder_dict[column].inverse_transform(np.array([value]))[0]
+        encoder[column].inverse_transform(np.array([value]))[0]
         for (column, value) in zip(columns, combination)
     )
 
 
-def get_response_colors(n: int):
-    return plt.cm.rainbow(np.linspace(0, 1, n))
+def generate_response_colors(n: int, palette="rainbow", low=0, high=1):
+    return sns.color_palette(palette="rainbow", as_cmap=True)(np.linspace(low, high, n))
