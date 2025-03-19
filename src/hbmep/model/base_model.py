@@ -2,6 +2,7 @@ import os
 import tomllib
 import logging
 from operator import attrgetter
+from collections import OrderedDict
 
 import arviz as az
 import pandas as pd
@@ -35,7 +36,7 @@ class BaseModel():
     }
     nuts_params: dict[str, int | float] = {
         "target_accept_prob": 0.8,
-        "max_tree_depth": 10,
+        "max_tree_depth": (10, 10),
     }
     mep_response: list[str] = []
     mep_window: list[float] = [0, 1]
@@ -51,7 +52,10 @@ class BaseModel():
         self.nam: str = "base_model"
         self.build_dir: str = ""
         self.random_state: int = 0
-        self.sites: dict[str, list[str]] = {}
+        self.sample_sites: list[str] = []
+        self.deterministic_sites: list[str] = []
+        self.reparam_sites: list[str] = []
+        self.obs_sites: list[str] = []
 
         if toml_path is not None:
             try:
@@ -72,16 +76,19 @@ class BaseModel():
         for key, value in config.get("mep_metadata", {}).items():
             setattr(self, key, value)
             
-    def _update_sites(self, mcmc: MCMC, posterior):
-        if not self.sites:
-            sample_sites = list(attrgetter(mcmc._sample_field)(mcmc._last_state).keys())
-            reparam_sites = [u for u in posterior.keys() if site.raw(u) in sample_sites]
-            obs_sites = [u for u in posterior.keys() if u not in sample_sites + reparam_sites]
-            self.sites = {
-                SAMPLE_SITES: sample_sites,
-                REPARAM_SITES: reparam_sites,
-                OBS_SITES: obs_sites
-            }
+    def _update_sites(self, df: pd.DataFrame, **kw):
+        if not self.sample_sites:
+            model_trace = self.trace(df, **kw)
+            sites = {u: v["type"] for u, v in model_trace.items() if v["type"] != "plate"}
+            sample_sites = [u for u, v in sites.items() if v == "sample" and u != site.obs]
+            deterministic_sites = [u for u, v in sites.items() if v == "deterministic"]
+            reparam_sites = [u for u in deterministic_sites if site(u).raw in sample_sites]
+            obs_sites = [u for u in deterministic_sites if u not in sample_sites + reparam_sites]
+            obs_sites += [site.obs]
+            self.sample_sites = sample_sites
+            self.deterministic_sites = deterministic_sites
+            self.reparam_sites = reparam_sites
+            self.obs_sites = obs_sites
 
     @property
     def key(self):
@@ -144,16 +151,14 @@ class BaseModel():
         return {attr: getattr(self, attr) for attr in attributes}
 
     @property
-    def sample_sites(self):
-        return self.sites.get(SAMPLE_SITES, [])
-
-    @property
-    def reparam_sites(self):
-        return self.sites.get(REPARAM_SITES, [])
-
-    @property
-    def obs_sites(self):
-        return self.sites.get(OBS_SITES, [])
+    def sites(self):
+        attributes = [
+            "sample_sites",
+            "deterministic_sites",
+            "reparam_sites",
+            "obs_sites"
+        ]
+        return {attr: getattr(self, attr) for attr in attributes}
 
     def get_regressors(self, df: pd.DataFrame):
         return mep.get_regressors(df, **self.variables)
@@ -196,8 +201,8 @@ class BaseModel():
     def gamma_concentration(mu, beta):
         return beta * mu
 
-    def gamma_likelihood(self, fn, x, args, c1, c2):
-        mu = fn(x, *args)
+    def gamma_likelihood(self, fn, x, fn_args, c1, c2):
+        mu = fn(x, *fn_args)
         beta = self.gamma_rate(mu, c1, c2)
         alpha = self.gamma_concentration(mu, beta)
         return mu, alpha, beta
@@ -221,6 +226,7 @@ class BaseModel():
         init_params = None,
         **kw
     ) -> tuple[MCMC, dict]:
+        self._update_sites(df, **kw)
         mcmc, posterior = mep.run(
             self.key,
             self._model,
@@ -232,7 +238,6 @@ class BaseModel():
             init_params=init_params,
             **kw
         )
-        self._update_sites(mcmc, posterior)
         return mcmc, posterior
 
     @timing
@@ -274,7 +279,7 @@ class BaseModel():
     @timing
     def summary(
         self,
-        posterior: dict,
+        samples: dict,
         *,
         var_names: list[str] | None = None,
         prob=0.95,
@@ -285,12 +290,12 @@ class BaseModel():
             self.sample_sites if exclude_deterministic
             else self.sample_sites + self.deterministic_sites
         )
-        var_names = [u for u in var_names if u in posterior.keys()]
-        posterior = {
+        var_names = [u for u in var_names if u in samples.keys()]
+        samples = {
             u: v.reshape(self.mcmc_params["num_chains"], -1, *v.shape[1:])
-            for u, v in posterior.items()
+            for u, v in samples.items()
         }
-        return az.summary(posterior, var_names=var_names, hdi_prob=prob, **kwargs)
+        return az.summary(samples, var_names=var_names, hdi_prob=prob, **kwargs)
 
     def print_summary(
         self,
@@ -322,7 +327,7 @@ class BaseModel():
     ):
         if output_path is None: output_path = os.path.join(self.build_dir, DATASET_PLOT)
         logger.info("Plotting dataset...")
-        mep.plotter(
+        mep.plot(
             df=df,
             **self.variables,
             output_path=output_path,
@@ -351,7 +356,7 @@ class BaseModel():
     ):
         if output_path is None: output_path = os.path.join(self.build_dir, CURVES_PLOT)
         logger.info("Plotting curves...")
-        mep.plotter(
+        mep.plot(
             df=df,
             **self.variables,
             output_path=output_path,
