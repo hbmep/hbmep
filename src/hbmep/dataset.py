@@ -58,6 +58,12 @@ def inverse_transform(
     return df
 
 
+def make_features(df: pd.DataFrame, features: list[str], *kw):
+    zeros = pd.Series([(0,)] * df.shape[0])
+    df_features = df[features].apply(tuple, axis=1) if len(features) else zeros
+    return df_features
+
+
 def make_prediction_dataset(
     df: pd.DataFrame,
     *,
@@ -68,32 +74,20 @@ def make_prediction_dataset(
     max_intensity: float | None = None,
     **kw
 ) -> pd.DataFrame:
-    df_features = (
-        df[features].apply(tuple, axis=1) if len(features)
-        else df[intensity].apply(lambda x: 0).astype(int).apply(lambda x: tuple([x]))
-    )
+    df_features = make_features(df, features)
     prediction_df = (
-        df
-        .groupby(df_features)
+        df.groupby(df_features)
         .agg({intensity: ["min", "max"]})
         .copy()
     )
-    prediction_df.columns = (
-        prediction_df
-        .columns
-        .map(lambda x: x[1])
-    )
+    prediction_df.columns = prediction_df.columns.map(lambda x: x[1])
     prediction_df = prediction_df.reset_index().copy()
 
-    if min_intensity is not None:
-        prediction_df["min"] = min_intensity
-
-    if max_intensity is not None:
-        prediction_df["max"] = max_intensity
+    if min_intensity is not None: prediction_df["min"] = min_intensity
+    if max_intensity is not None: prediction_df["max"] = max_intensity
 
     prediction_df[intensity] = (
-        prediction_df[["min", "max"]]
-        .apply(tuple, axis=1)
+        prediction_df[["min", "max"]].apply(tuple, axis=1)
         .apply(lambda x: np.linspace(x[0], x[1], num_points))
     )
     prediction_df = prediction_df.explode(column=intensity)
