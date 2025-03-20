@@ -13,6 +13,7 @@ logger = logging.getLogger(__name__)
 def get_paths(experiment):
     build_dir = os.path.join(
         REPORTS,
+        "hbmep",
         "notebooks",
         "rat",
         "loghb",
@@ -20,6 +21,7 @@ def get_paths(experiment):
     )
     toml_path = os.path.join(
         REPOS,
+        "hbmep",
         "configs",
         "rat",
         f"{experiment}.toml"
