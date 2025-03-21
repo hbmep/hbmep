@@ -401,21 +401,7 @@ class nHB(NonHierarchicalBaseModel):
         super(nHB, self).__init__(*args, **kw)
         self._name = "nhb"
         self.n_jobs = -1
-        # self._model = self.rl_no_v
-        self._model = self.rl_no_v_ln
         self.use_mixture = True
-        self.mcmc_params = {
-            "num_warmup": 4000,
-            "num_samples": 1000,
-            # "num_warmup": 400,
-            # "num_samples": 100,
-            "num_chains": 4,
-            "thinning": 1,
-        }
-        self.nuts_params = {
-            "max_tree_depth": (20, 20),
-            "target_accept_prob": .95,
-        }
 
     @property
     def name(self): return f"{self._name}__{get_subname(self)}"
