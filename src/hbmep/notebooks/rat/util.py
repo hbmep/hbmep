@@ -17,7 +17,7 @@ def get_paths(experiment):
         "notebooks",
         "rat",
         "loghb",
-        experiment.lower().split('_')[1]
+        experiment.lower()[2:].replace('_', "")
     )
     toml_path = os.path.join(
         REPOS,
@@ -136,7 +136,7 @@ def mask_upper(arr):
 
 def annotate_heatmap(ax, cmap_arr, arr, l, r, star=False, star_arr=None, **kw):
     n = arr.shape[0]
-    colors = np.where(cmap_arr > .8, "k", "white")
+    colors = np.where(cmap_arr > .6, "k", "white")
 
     for y in range(n):
         for x in range(n):
@@ -149,3 +149,68 @@ def annotate_heatmap(ax, cmap_arr, arr, l, r, star=False, star_arr=None, **kw):
                 elif pvalue < 0.05: text += "*"
             # ax.text(x + l, y + r, (y, x), **kw, color=colors[y, x])
             ax.text(x + l, y + r, text, **kw, color=colors[y, x])
+
+
+def load_csmalar_data(data: pd.DataFrame):
+    data = data.copy()
+    # make sure columns channel1_segment and channel2_segment are correct
+    ch1 = data.compound_position.apply(lambda x: np.nan if not x.split("-")[0] else x.split("-")[0][:2])
+    pd.testing.assert_series_equal(ch1, data.channel1_segment, check_names=False)
+    ch2 = data.compound_position.apply(lambda x: np.nan if not x.split("-")[1] else x.split("-")[1][:2])
+    pd.testing.assert_series_equal(ch2, data.channel2_segment, check_names=False)
+    # make sure channel2_segment is never nan
+    assert not data.channel2_segment.isna().any()
+    # make sure columns channel1_designation and channel2_designation are correct
+    ch1_lat = data.compound_position.apply(lambda x: np.nan if not x.split("-")[0] else x.split("-")[0][2:])
+    pd.testing.assert_series_equal(ch1_lat, data.channel1_designation, check_names=False)
+    ch2_lat = data.compound_position.apply(lambda x: np.nan if not x.split("-")[1] else x.split("-")[1][2:])
+    pd.testing.assert_series_equal(ch2_lat, data.channel2_designation, check_names=False)
+    # make sure channel2_designation is never nan
+    assert not data.channel2_designation.isna().any()
+
+    # create the relevant feature columns
+    data["segment"] = np.where(
+        data.channel1_segment.isna(),
+        "-" + data.channel2_segment,
+        data.channel1_segment + "-" + data.channel2_segment
+    )
+    assert not data["segment"].isna().any()
+    data["lat"] = np.where(
+        data.channel1_designation.isna(),
+        "-" + data.channel2_designation,
+        data.channel1_designation + "-" + data.channel2_designation
+    )
+    assert not data["lat"].isna().any()
+    # make sure the new feature columns are correct
+    temp = (
+        data[["segment", "lat"]]
+        .apply(
+            lambda x: x[0].split("-")[0] + x[1].split("-")[0] + "-" + x[0].split("-")[1] + x[1].split("-")[1],
+            axis=1
+        )
+    )
+    pd.testing.assert_series_equal(temp, data.compound_position, check_names=False)
+
+    df = data.copy()
+    # Remove contacts with size B-S
+    remove_size = ["B-S"]
+    idx = df.compound_size.isin(remove_size)
+    df = df[~idx].reset_index(drop=True).copy()
+    # Remove contacts with designation RM, R, RR
+    remove_designation = ["RM", "R", "RR"]
+    idx = df.channel1_designation.isin(remove_designation)
+    df = df[~idx].reset_index(drop=True).copy()
+    idx = df.channel2_designation.isin(remove_designation)
+    df = df[~idx].reset_index(drop=True).copy()
+    # Remove C7 segment
+    remove_segments = ["C7"]
+    idx = df.channel1_segment.isin(remove_segments)
+    df = df[~idx].reset_index(drop=True).copy()
+    idx = df.channel2_segment.isin(remove_segments)
+    df = df[~idx].reset_index(drop=True).copy()
+    # Remove bipolar contacts that connect between two different segments.
+    # these were recorded by mistake during experiments and won't be analyzed
+    idx = (df.channel1_segment == df.channel2_segment) | df.channel1_segment.isna()
+    df = df[idx].reset_index(drop=True).copy()
+    assert ((df.channel1_segment == df.channel2_segment) | df.channel1_segment.isna()).all()
+    return df
