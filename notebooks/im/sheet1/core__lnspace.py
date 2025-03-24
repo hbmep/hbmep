@@ -26,11 +26,15 @@ logger = logging.getLogger(__name__)
 def main(model):
     data = pd.read_csv(DATA_PATH)
     df = load(data, range_restricted=model.range_restricted)
+    
+    df.shape
+    sorted(df.conc.unique().tolist())
+
     idx = df[model.intensity] > 0
     df = df[idx].reset_index(drop=True).copy()
     df[model.intensity] = np.log2(df[model.intensity])
     df, encoder = model.load(df)
-    model.plot(df, encoder=encoder)
+    # model.plot(df, encoder=encoder)
 
     logger.info(f"Running {model._model.__name__}...")
     mcmc, posterior = model.run(df, extra_fields=["num_steps"])
@@ -64,6 +68,10 @@ def main(model):
 
 if __name__ == "__main__":
     model = ImmunoModel()
+    model.range_restricted = True
+    # model._model = model.hb1_l4
+    model._model = model.nhb_l4
+
     if model.range_restricted:
         model.build_dir = os.path.join(
             BUILD_DIR, "range_restricted", model._model.__name__

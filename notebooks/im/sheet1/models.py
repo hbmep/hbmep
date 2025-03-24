@@ -12,9 +12,7 @@ from utils import Site as site
 class ImmunoModel(BaseModel):
     def __init__(self, *args, **kw):
         super(ImmunoModel, self).__init__(*args, **kw)
-        self.range_restricted = True
-        self._model = self.hb1_l4
-
+        self.range_restricted = False
         self.intensity = "conc"
         self.features = ["contam"]
         self.response = ["od"]
