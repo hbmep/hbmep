@@ -1,9 +1,7 @@
 import os
-import sys
 import logging
 
 import pandas as pd
-import numpy as np
 from hbmep.util import timing, setup_logging
 
 from hbmep.notebooks.rat.model import nHB
@@ -25,9 +23,10 @@ def main(model, data_path):
     ## This logic was used for csmalar
     data = log_transform_intensity(data, model.intensity)
 
-    # idx = data[model.features[0]].isin(["amap01"])
-    # data = data[idx].reset_index(drop=True).copy()
-    # model.response = model.response[:1]
+    if model.test_run:
+        idx = data[model.features[0]].isin(["amap01"])
+        data = data[idx].reset_index(drop=True).copy()
+        model.response = model.response[:1]
 
     run(data, model)
     return
@@ -55,6 +54,7 @@ if __name__ == "__main__":
         "target_accept_prob": .95,
     }
     model._model = model.rectified_logistic
+    # model.test_run = True
 
     build_dir = f"{HOME}/reports/hbmep/notebooks/rat/lognhb/{model.name}/{experiment}/"
     model.build_dir = os.path.join(build_dir, model._model.__name__)
