@@ -6,7 +6,7 @@ import pandas as pd
 import numpy as np
 from hbmep.util import timing, setup_logging
 
-from hbmep.notebooks.rat.model import HB
+from hbmep.notebooks.rat.model import Estimation
 from hbmep.notebooks.rat.util import run, log_transform_intensity
 from constants import (
     BUILD_DIR,
@@ -75,49 +75,34 @@ def main(model):
 
 
 if __name__ == "__main__":
-    model = HB(toml_path=TOML_PATH)
+    model = Estimation(toml_path=TOML_PATH)
     model.use_mixture = False
     # model.test_run = True
 
-    # # model._model = model.hb_mvn_rl_nov_masked
-    # model._model = model.ln_hb_mvn_rl_nov_masked
-    # model.run_id = "diam"
-    # # model.run_id = "radii"
-    # # model.run_id = "vertices"
-
-    # model._model = model.hb_mvn_l4_masked
-    # # model._model = model.ln_hb_mvn_l4_masked
-    # model.use_mixture = True
-    # model.run_id = "all"
-    # # model.run_id = "diam"
-
-    model._model = model.hb_mvn_l4_masked_hmax
-    model.use_mixture = True
+    model._model = model.circ_ln_est_mvn_reference_rl_nov_masked
     model.run_id = "diam"
-    # model.run_id = "all"
-    model.test_run = True
+    # model.run_id = "radii"
+    # model.run_id = "vertices"
 
     model.mcmc_params = {
         "num_chains": 4,
 
-        # "thinning": 4,
-        # "num_warmup": 4000,
-        # "num_samples": 4000,
+        "thinning": 4,
+        "num_warmup": 4000,
+        "num_samples": 4000,
 
         # "thinning": 1,
         # "num_warmup": 1000,
         # "num_samples": 1000,
 
-        "thinning": 1,
-        "num_warmup": 400,
-        "num_samples": 400,
+        # "thinning": 1,
+        # "num_warmup": 400,
+        # "num_samples": 400,
 
     }
-    model.nuts_params = {
-        "max_tree_depth": (15, 15),
-        "target_accept_prob": .95,
-    }
+    # model.nuts_params["max_tree_depth"] = (15, 15)
+    model.nuts_params["target_accept_prob"] = .95
 
-    model.build_dir = os.path.join(BUILD_DIR, model.run_id, model.name, model._model.__name__)
+    model.build_dir = os.path.join(BUILD_DIR, "estimation", model.name, model.run_id, model._model.__name__)
     setup_logging(model.build_dir)
     main(model)
