@@ -37,7 +37,6 @@ class NonHierarchicalBaseModel(BaseModel):
         )
 
     def _combine_samples(self, df_features, combinations, temp_folder):
-        mcmc = None
         max_features = df_features.apply(pd.Series).max().values + 1
         combined_samples = None
 
@@ -45,13 +44,6 @@ class NonHierarchicalBaseModel(BaseModel):
             for response_idx, response in enumerate(self.response):
                 src = os.path.join(temp_folder, f"{response_idx}__{combination_idx}.pkl")
                 with open(src, "rb") as f: samples, = pickle.load(f)
-
-                if not self.sample_sites:
-                    if not (combination_idx or response_idx):
-                        src = os.path.join(temp_folder, "mcmc.pkl")
-                        with open(src, "rb") as f:
-                            mcmc, = pickle.load(f)
-                        self._update_sites(mcmc, samples)
 
                 if combined_samples is None:
                     combined_samples = {
@@ -68,7 +60,7 @@ class NonHierarchicalBaseModel(BaseModel):
                         idx = df_features.isin([combination])
                         combined_samples[u][:, idx, response_idx] = samples[u]
 
-        return mcmc, combined_samples
+        return combined_samples
 
     @timing
     def run(
@@ -117,6 +109,7 @@ class NonHierarchicalBaseModel(BaseModel):
 
 
         try:
+            self._update_sites(df, **kw)
             if os.path.exists(temp_folder): shutil.rmtree(temp_folder)
             os.makedirs(temp_folder, exist_ok=False)
             logger.info(f"Created temporary folder {temp_folder}")
@@ -132,8 +125,8 @@ class NonHierarchicalBaseModel(BaseModel):
             raise e
 
         else:
-            mcmc, posterior = self._combine_samples(df_features, combinations, temp_folder)
-            return mcmc, posterior
+            posterior = self._combine_samples(df_features, combinations, temp_folder)
+            return None, posterior
 
         finally:
             if os.path.exists(temp_folder): shutil.rmtree(temp_folder)
@@ -193,7 +186,7 @@ class NonHierarchicalBaseModel(BaseModel):
             raise e
 
         else:
-            _, predictive = self._combine_samples(df_features, combinations, temp_folder)
+            predictive = self._combine_samples(df_features, combinations, temp_folder)
             return predictive
 
         finally:
