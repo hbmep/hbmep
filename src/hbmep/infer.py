@@ -5,6 +5,7 @@ import pandas as pd
 import numpy as np
 from jax import random
 
+import numpyro as pyro
 from numpyro.infer import NUTS, MCMC, Predictive
 from numpyro.infer.inspect import get_dependencies as get_deps
 
@@ -43,6 +44,24 @@ def get_dependencies(
         get_regressors(df, intensity, features),
         get_response(df, response)
     )
+
+
+def trace(
+    key: random.key,
+    model: Callable,
+    intensity: np.ndarray,
+    features: np.ndarray,
+    response: np.ndarray,
+    **kw
+):
+    with pyro.handlers.seed(rng_seed=key):
+        trace = pyro.handlers.trace(model).get_trace(
+            intensity,
+            features,
+            response,
+            **kw
+        )
+    return trace
 
 
 def run(
