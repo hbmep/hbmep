@@ -19,6 +19,7 @@ logger = logging.getLogger(__name__)
 SEPARATOR = "__"
 DATASET_PLOT = "dataset.pdf"
 CURVES_PLOT = "curves.pdf"
+PREDICTIVE_PLOT = "predictive.pdf"
 SAMPLE_SITES = "sample_sites"
 REPARAM_SITES = "reparam_sites"
 OBS_SITES = "obs_sites"
@@ -42,6 +43,7 @@ class BaseModel():
     mep_window: list[float] = [0, 1]
     mep_size_window: list[float] = [0, 1]
     mep_adjust: float = 1.
+    __sites: dict[str, str] = []
 
     def __init__(
         self,
@@ -79,7 +81,8 @@ class BaseModel():
     def _update_sites(self, df: pd.DataFrame, **kw):
         if not self.sample_sites:
             model_trace = self.trace(df, **kw)
-            sites = {u: v["type"] for u, v in model_trace.items() if v["type"] != "plate"}
+            self.__sites = {u: v["type"] for u, v in model_trace.items()}
+            sites = {u: v for u, v in self.__sites.items() if v != "plate"}
             sample_sites = [u for u, v in sites.items() if v == "sample" and u != site.obs]
             deterministic_sites = [u for u, v in sites.items() if v == "deterministic"]
             reparam_sites = [u for u in deterministic_sites if site(u).raw in sample_sites]
@@ -209,12 +212,13 @@ class BaseModel():
 
     @timing
     def trace(self, df: pd.DataFrame, **kw):
-        with numpyro.handlers.seed(rng_seed=self.random_state):
-            trace = numpyro.handlers.trace(self._model).get_trace(
-                *self.get_regressors(df),
-                *self.get_response(df),
-                **kw
-            )
+        trace = mep.trace(
+            self.key,
+            self._model,
+            *self.get_regressors(df),
+            *self.get_response(df),
+            **kw
+        )
         return trace
 
     @timing
@@ -367,6 +371,33 @@ class BaseModel():
             prediction=predictive[prediction_var],
             prediction_prob=prediction_prob,
             threshold=posterior[posterior_var] if posterior is not None else None,
+            **kw
+        )
+        return
+
+    @timing
+    def plot_predictive(
+        self,
+        df: pd.DataFrame,
+        *,
+        prediction_df: pd.DataFrame,
+        predictive: dict,
+        prediction_var: str = site.obs,
+        prediction_prob: float = .95,
+        encoder: dict[str, LabelEncoder] | None = None,
+        output_path: str | None = None,
+        **kw
+    ):
+        if output_path is None: output_path = os.path.join(self.build_dir, PREDICTIVE_PLOT)
+        logger.info("Plotting predictive...")
+        mep.plot(
+            df=df,
+            **self.variables,
+            output_path=output_path,
+            encoder=encoder,
+            prediction_df=prediction_df,
+            prediction=predictive[prediction_var],
+            prediction_prob=prediction_prob,
             **kw
         )
         return

@@ -10,7 +10,7 @@ from hbmep.dataset import (
 from hbmep.plotter import plotter, plot
 from hbmep.model import BaseModel, NonHierarchicalBaseModel
 from hbmep.infer import (
-    get_regressors, get_response, get_dependencies, run, predict,
+    get_regressors, get_response, get_dependencies, trace, run, predict,
 )
 
 __version__ = version("hbmep")
