@@ -318,6 +318,6 @@ def plot(
         plt.close()
 
     pdf.close()
-    plt.show()
+    plt.close()
     logger.info(f"Saved to {output_path}")
     return
