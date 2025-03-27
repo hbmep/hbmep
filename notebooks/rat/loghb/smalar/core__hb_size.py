@@ -2,60 +2,25 @@ import os
 import sys
 import logging
 
+# import jax
+# PLATFORM = "cuda"
+# jax.config.update("jax_platforms", PLATFORM)
+
 import pandas as pd
 import numpy as np
 from hbmep.util import timing, setup_logging
 
 from hbmep.notebooks.rat.model import HB
-from hbmep.notebooks.rat.util import run, log_transform_intensity
-from constants import (
-    BUILD_DIR,
-    TOML_PATH,
-    DATA_PATH_FILTERED,
-    NO_GROUND,
-    GROUND,
-    GROUND_BIG,
-    GROUND_SMALL,
-    NO_GROUND_BIG,
-    NO_GROUND_SMALL,
-)
+from hbmep.notebooks.rat.util import load_size, run
+from constants import BUILD_DIR, TOML_PATH
 
 logger = logging.getLogger(__name__)
 
 
 @timing
 def main(model):
-    # Load data
-    src = DATA_PATH_FILTERED
-    data = pd.read_csv(src)
-    df = log_transform_intensity(data, model.intensity)
-    
     run_id = model.run_id
-    assert run_id in {"ground", "no-ground", "all"}
-    subset = []
-    match run_id:
-        case "ground": subset = GROUND
-        case "no-ground": subset = NO_GROUND
-        case "all": subset = (
-            GROUND
-            + NO_GROUND
-            + GROUND_BIG
-            + GROUND_SMALL
-            + NO_GROUND_BIG
-            + NO_GROUND_SMALL
-        ); subset = list(set(subset))
-        case _: raise ValueError
-    assert len(set(subset)) == len(subset)
-    cols = ["lat", "segment", "compound_size"]
-    assert set(subset) <= set(df[cols].apply(tuple, axis=1).tolist())
-    idx = df[cols].apply(tuple, axis=1).isin(subset)
-    df = df[idx].reset_index(drop=True).copy()
-    df[model.features[-2]] = df[model.features[-2]].replace(
-        {"-LM1": "-LM", "M-LM1": "M-LM"}
-    )
-    # df[model.features[-3]] = df[model.features[-3]].replace(
-    #     {"C5-C5": "-C5", "C6-C6": "-C6"}
-    # )
+    df = load_size(**model.variables, run_id=run_id)
 
     if model.test_run:
         os.makedirs(model.build_dir, exist_ok=True)
@@ -86,12 +51,13 @@ if __name__ == "__main__":
     # model.run_id = "no-ground"
 
     # model._model = model.hb_mvn_l4_masked
-    # model.run_id = "all"
-    # # model.run_id = "ground"
-    # model.use_mixture = True
+    model._model = model.size_all_hb_mvn_l4_masked
+    model.run_id = "all"
+    model.use_mixture = True
 
     model.mcmc_params = {
         "num_chains": 4,
+        "chain_method": "sequential",
 
         "thinning": 4,
         "num_warmup": 4000,

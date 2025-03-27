@@ -22,14 +22,23 @@ def main(model_dir):
 if __name__ == "__main__":
     model_dirs = [
 
-        # lognormal models
-        "/home/vishu/reports/hbmep/notebooks/rat/loghb/circ/diam/4000w_4000s_4c_4t_15d_95a_fm/ln_hb_mvn_rl_nov_masked",
-        "/home/vishu/reports/hbmep/notebooks/rat/loghb/shie/ground/4000w_4000s_4c_4t_15d_95a_fm/ln_hb_mvn_rl_nov_masked",
-        "/home/vishu/reports/hbmep/notebooks/rat/loghb/shie/no-ground/4000w_4000s_4c_4t_15d_95a_fm/ln_hb_mvn_rl_nov_masked",
+        # # lognormal models
 
-        # C_SMA_LAR models (XIO: fatal IO error 22 (Invalid argument) on X server)
-        "/home/vishu/reports/hbmep/notebooks/rat/loghb/smalar/4000w_4000s_4c_4t_15d_95a_fm/big-no-ground/hb_mvn_rl_nov_masked",
-        "/home/vishu/reports/hbmep/notebooks/rat/loghb/smalar/4000w_4000s_4c_4t_15d_95a_fm/small-ground/hb_mvn_rl_nov_masked",
+        # circ
+        # "/home/vishu/reports/hbmep/notebooks/rat/loghb/circ/diam/4000w_4000s_4c_4t_15d_95a_fm/ln_hb_mvn_rl_nov_masked",
+        # "/home/vishu/reports/hbmep/notebooks/rat/loghb/circ/radii/4000w_4000s_4c_4t_15d_95a_fm/ln_hb_mvn_rl_nov_masked",
+        # "/home/vishu/reports/hbmep/notebooks/rat/loghb/circ/vertices/4000w_4000s_4c_4t_15d_95a_fm/ln_hb_mvn_rl_nov_masked",
+
+        # shie
+        # "/home/vishu/reports/hbmep/notebooks/rat/loghb/shie/ground/4000w_4000s_4c_4t_15d_95a_fm/ln_hb_mvn_rl_nov_masked",
+        # "/home/vishu/reports/hbmep/notebooks/rat/loghb/shie/no-ground/4000w_4000s_4c_4t_15d_95a_fm/ln_hb_mvn_rl_nov_masked",
+        # "/home/vishu/reports/hbmep/notebooks/rat/loghb/shie/all/4000w_4000s_4c_4t_15d_95a_tm/ln_hb_mvn_rl_nov_masked",
+
+        ## C_SMA_LAR lat models (XIO: fatal IO error 22 (Invalid argument) on X server)
+        # "/home/vishu/reports/hbmep/notebooks/rat/loghb/smalar/4000w_4000s_4c_4t_15d_95a_fm/big-no-ground/hb_mvn_rl_nov_masked",
+        # "/home/vishu/reports/hbmep/notebooks/rat/loghb/smalar/4000w_4000s_4c_4t_15d_95a_fm/small-ground/hb_mvn_rl_nov_masked",
+        # "/home/vishu/reports/hbmep/notebooks/rat/loghb/smalar/4000w_4000s_4c_4t_15d_95a_fm/small-no-ground/hb_mvn_rl_nov_masked",
+        # "/home/vishu/reports/hbmep/notebooks/rat/loghb/smalar/4000w_4000s_4c_4t_15d_95a_fm/big-ground/hb_mvn_rl_nov_masked/",
 
     ]
     [main(model_dir) for model_dir in model_dirs]
