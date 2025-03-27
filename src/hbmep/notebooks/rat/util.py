@@ -7,10 +7,15 @@ import pandas as pd
 from hbmep.util import site
 
 from hbmep.notebooks.constants import DATA, REPOS, REPORTS
+from hbmep.notebooks.rat.constants import (
+    circ as circ_constants,
+    shie as shie_constants,
+    smalar as smalar_constants
+)
 logger = logging.getLogger(__name__)
 
 
-def get_paths(experiment):
+def get_paths(experiment): # example - get_paths("L_CIRC")
     build_dir = os.path.join(
         REPORTS,
         "hbmep",
@@ -267,3 +272,184 @@ def load_csmalar_data(data: pd.DataFrame):
     df = df[idx].reset_index(drop=True).copy()
     assert ((df.channel1_segment == df.channel2_segment) | df.channel1_segment.isna()).all()
     return df
+
+
+def load_circ(
+    *,
+    intensity,
+    features,
+    run_id,
+    set_reference=False,
+    **kw
+):
+    _, _, DATA_PATH, _ = get_paths(circ_constants.EXPERIMENT)
+
+    MAP = circ_constants.MAP
+    DIAM = circ_constants.DIAM
+    VERTICES = circ_constants.VERTICES
+    RADII = circ_constants.RADII
+    
+    # Load data
+    src = DATA_PATH
+    data = pd.read_csv(src)
+    df = log_transform_intensity(data, intensity)
+
+    cats = df[features[1]].unique().tolist()
+    mapping = {}
+    for cat in cats:
+        assert cat not in mapping
+        l, r = cat.split("-")
+        mapping[cat] = l[3:] + "-" + r[3:]
+    assert mapping == MAP
+    df[features[1]] = df[features[1]].replace(mapping)
+    cats = set(df[features[1]].tolist())
+    assert set(DIAM) <= cats
+    assert set(VERTICES) <= cats
+    assert set(RADII) <= cats
+    df = df.copy()
+
+    assert run_id in {"diam", "radii", "vertices", "all"}
+    match run_id:
+        case "diam": subset = DIAM
+        case "radii": subset = RADII
+        case "vertices": subset = VERTICES
+        case "all": subset = DIAM + RADII + VERTICES
+        case _: raise ValueError
+
+    if set_reference:
+        match run_id:
+            case "diam" | "radii": reference = "-C"; subset += [reference]
+            case "vertices": reference = "S-N"; subset += [reference]
+            case "all": reference = "-C"
+            case _: raise ValueError
+
+    assert set(subset) <= set(df[features[1]].values.tolist())
+    ind = df[features[1]].isin(subset)
+    df = df[ind].reset_index(drop=True).copy()
+
+    if set_reference:
+        df[features[1]] = df[features[1]].replace({reference: " " + reference})
+
+    return df
+    
+
+
+def load_shie(
+    *,
+    intensity,
+    features,
+    run_id,
+    **kw
+):
+    _, _, DATA_PATH, _ = get_paths(shie_constants.EXPERIMENT)
+
+    POSITIONS_MAP = shie_constants.POSITIONS_MAP
+    CHARGES_MAP = shie_constants.CHARGES_MAP
+    WITH_GROUND = shie_constants.WITH_GROUND
+    NO_GROUND = shie_constants.NO_GROUND
+
+    # Load data
+    src = DATA_PATH
+    data = pd.read_csv(src)
+    df = log_transform_intensity(data, intensity)
+    df[features[1]] = df[features[1]].replace(POSITIONS_MAP)
+    df[features[2]] = df[features[2]].replace(CHARGES_MAP)
+
+    assert run_id in {"ground", "no-ground", "all"}
+    match run_id:
+        case "ground": subset = WITH_GROUND
+        case "no-ground": subset = NO_GROUND
+        case "all": subset = WITH_GROUND + NO_GROUND
+        case _: raise ValueError
+    assert set(subset) <= set(df[features[1:]].apply(tuple, axis=1).values.tolist())
+    ind = df[features[1:]].apply(tuple, axis=1).isin(subset)
+    df = df[ind].reset_index(drop=True).copy()
+    return df
+
+
+def load_size(
+    *,
+    intensity,
+    features,
+    run_id,
+    **kw
+):
+    DATA_PATH_FILTERED = smalar_constants.DATA_PATH_FILTERED
+    NO_GROUND = smalar_constants.NO_GROUND
+    GROUND = smalar_constants.GROUND
+    GROUND_BIG = smalar_constants.GROUND_BIG
+    GROUND_SMALL = smalar_constants.GROUND_SMALL
+    NO_GROUND_BIG = smalar_constants.NO_GROUND_BIG
+    NO_GROUND_SMALL = smalar_constants.NO_GROUND_SMALL
+
+    # Load data
+    src = DATA_PATH_FILTERED
+    data = pd.read_csv(src)
+    df = log_transform_intensity(data, intensity)
+    
+    assert run_id in {"ground", "no-ground", "all"}
+    subset = []
+    match run_id:
+        case "ground": subset = GROUND
+        case "no-ground": subset = NO_GROUND
+        case "all": subset = (
+            GROUND
+            + NO_GROUND
+            + GROUND_BIG
+            + GROUND_SMALL
+            + NO_GROUND_BIG
+            + NO_GROUND_SMALL
+        ); subset = list(set(subset))
+        case _: raise ValueError
+    assert len(set(subset)) == len(subset)
+    cols = ["lat", "segment", "compound_size"]
+    assert set(subset) <= set(df[cols].apply(tuple, axis=1).tolist())
+    idx = df[cols].apply(tuple, axis=1).isin(subset)
+    df = df[idx].reset_index(drop=True).copy()
+    df[features[-2]] = df[features[-2]].replace(
+        {"-LM1": "-LM", "M-LM1": "M-LM"}
+    )
+    # df[model.features[-3]] = df[model.features[-3]].replace(
+    #     {"C5-C5": "-C5", "C6-C6": "-C6"}
+    # )
+    return df
+
+
+def load_lat(
+    *,
+    intensity,
+    features,
+    run_id,
+    **kw
+):
+    DATA_PATH_FILTERED = smalar_constants.DATA_PATH_FILTERED
+    GROUND_BIG = smalar_constants.GROUND_BIG
+    GROUND_SMALL = smalar_constants.GROUND_SMALL
+    NO_GROUND_BIG = smalar_constants.NO_GROUND_BIG
+    NO_GROUND_SMALL = smalar_constants.NO_GROUND_SMALL
+
+    # Load data
+    src = DATA_PATH_FILTERED
+    data = pd.read_csv(src)
+    df = log_transform_intensity(data, intensity)
+    
+    assert run_id in {"small-ground", "big-ground", "small-no-ground", "big-no-ground"}
+    subset = []
+    match run_id:
+        case "small-ground": subset = GROUND_SMALL
+        case "big-ground": subset = GROUND_BIG
+        case "small-no-ground": subset = NO_GROUND_SMALL
+        case "big-no-ground": subset = NO_GROUND_BIG
+        case _: raise ValueError
+    assert len(set(subset)) == len(subset)
+    cols = ["lat", "segment", "compound_size"]
+    assert set(subset) <= set(df[cols].apply(tuple, axis=1).tolist())
+    idx = df[cols].apply(tuple, axis=1).isin(subset)
+    df = df[idx].reset_index(drop=True).copy()
+    df[features[-1]] = df[features[-1]].replace(
+        {"-LM1": "-LM", "M-LM1": "M-LM"}
+    )
+    # df[model.features[-2]] = df[model.features[-3]].replace(
+    #     {"C5-C5": "-C5", "C6-C6": "-C6"}
+    # )
+    return
