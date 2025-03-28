@@ -50,14 +50,13 @@ if __name__ == "__main__":
     model.run_id = "ground"
     # model.run_id = "no-ground"
 
-    # model._model = model.hb_mvn_l4_masked
-    model._model = model.size_all_hb_mvn_l4_masked
+    model._model = model.hb_l4_masked
     model.run_id = "all"
     model.use_mixture = True
+    response = 0
 
     model.mcmc_params = {
         "num_chains": 4,
-        "chain_method": "sequential",
 
         "thinning": 4,
         "num_warmup": 4000,
@@ -78,5 +77,10 @@ if __name__ == "__main__":
     }
 
     model.build_dir = os.path.join(BUILD_DIR, model.name, model.run_id, model._model.__name__)
+
+    if model.run_id == "all":
+        model.response = model.response[response: response + 1]
+        model.build_dir = os.path.join(model.build_dir, model.response[0])
+
     setup_logging(model.build_dir)
     main(model)
