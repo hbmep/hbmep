@@ -4,6 +4,9 @@ import logging
 
 import numpy as np
 import pandas as pd
+from scipy import stats
+import matplotlib.pyplot as plt
+import seaborn as sns
 from hbmep.util import site
 
 from hbmep.notebooks.constants import DATA, REPOS, REPORTS
@@ -339,6 +342,7 @@ def load_shie(
     intensity,
     features,
     run_id,
+    set_reference=False,
     **kw
 ):
     _, _, DATA_PATH, _ = get_paths(shie_constants.EXPERIMENT)
@@ -361,9 +365,24 @@ def load_shie(
         case "no-ground": subset = NO_GROUND
         case "all": subset = WITH_GROUND + NO_GROUND
         case _: raise ValueError
+
+    if set_reference:
+        reference = ('-C', 'Biphasic')
+        match run_id:
+            case "no-ground": subset += [reference]
+            case "ground" | "all": pass
+            case _: raise ValueError
+
     assert set(subset) <= set(df[features[1:]].apply(tuple, axis=1).values.tolist())
     ind = df[features[1:]].apply(tuple, axis=1).isin(subset)
     df = df[ind].reset_index(drop=True).copy()
+
+    if set_reference:
+        ind = df[features[1:]].apply(tuple, axis=1).isin([reference])
+        assert df.loc[ind, features[1]].nunique() == 1
+        assert df.loc[ind, features[1]].unique()[0] == "-C"
+        df.loc[ind, features[1]] = " -C"
+
     return df
 
 
@@ -453,3 +472,42 @@ def load_lat(
     #     {"C5-C5": "-C5", "C6-C6": "-C6"}
     # )
     return
+
+
+def make_test(diff, mask=True):
+    test = stats.wilcoxon(diff, axis=0, nan_policy="omit")
+    pvalue = test.pvalue
+    if mask: pvalue = mask_upper(pvalue)
+    pvalue.shape
+    _test = stats.ttest_1samp(diff, popmean=0, axis=0, nan_policy="omit")
+    statistic = _test.statistic
+    if mask: statistic = mask_upper(statistic)
+    statistic.shape
+    deg = _test.df.astype(float)
+    if mask: deg = mask_upper(deg)
+    deg.shape
+    return pvalue, statistic, deg
+
+
+def make_plot(pvalue, statistic, deg, labels):
+    num_labels = len(labels)
+    fig, axes = plt.subplots(1, 1, constrained_layout=True, squeeze=False, figsize=(1.5 * num_labels, .8 * num_labels))
+    ax = axes[0, 0]
+    sns.heatmap(pvalue, annot=False, ax=ax, cbar=False)
+    # Annotate
+    pvalue_annot_kws = {"ha": 'center', "va": 'center'}
+    annotate_heatmap(ax, pvalue,  np.round(pvalue, 3), 0.5, 0.5, star=True, star_arr=pvalue, **pvalue_annot_kws)
+    deg_annot_kws = {"ha": 'left', "va": 'bottom'}
+    annotate_heatmap(ax, pvalue, 1 + deg.astype(int), 0, 1, **deg_annot_kws)
+    statistic_annot_kws = {"ha": 'center', "va": 'top'}
+    annotate_heatmap(ax, pvalue, np.round(statistic, 3), 0.5, 0, **statistic_annot_kws)
+    ax.set_xticklabels(labels=labels, rotation=15, ha="right");
+    ax.set_yticklabels(labels=labels, rotation=0);
+    plt.show()
+    return fig, axes
+
+
+def make_compare(diff, labels):
+    pvalue, statistic, deg = make_test(diff)
+    axes = make_plot(pvalue, statistic, deg, labels)
+    return pvalue, statistic, deg, axes

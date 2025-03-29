@@ -3,7 +3,7 @@ import logging
 
 import pandas as pd
 
-from hbmep.util import setup_logging
+from hbmep.util import setup_logging, timing
 
 from hbmep.notebooks.rat.model import HB
 from hbmep.notebooks.rat.util import run
@@ -14,6 +14,7 @@ logger = logging.getLogger(__name__)
 BUILD_DIR = os.path.join(REPORTS, "hbmep", "notebooks", "rat", "combined_data")
 
 
+@timing
 def main(model):
     run_id = model.run_id
     assert run_id in {
@@ -56,12 +57,17 @@ if __name__ == "__main__":
     model.use_mixture = False
     # model.test_run = True
 
-    model._model = model.hb_l4_masked
-    model.use_mixture = True
     model.run_id = "L_CIRC___L_SHIE___C_SMA_LAR"
+    model.use_mixture = True
 
-    response_id = 5
+    response_id = 1
     model.response = model.response[response_id: response_id + 1]
+
+    # model._model = model.hb_l4_masked
+
+    model._model = model.hb_l4_masked_mmax0
+    model.h_prior = .1
+    model.concentration1 = 1
 
     model.mcmc_params = {
         "num_chains": 4,
@@ -85,6 +91,11 @@ if __name__ == "__main__":
     }
 
     assert model.num_response == 1
-    model.build_dir = os.path.join(BUILD_DIR, model.name, model._model.__name__, model.run_id, model.response[0])
+    model.build_dir = os.path.join(BUILD_DIR, model.name, model._model.__name__, model.run_id)
+    
+    if model._model.__name__ in {"hb_l4_masked_mmax0"}:
+        model.build_dir = os.path.join(model.build_dir, f"h_prior_{model.h_prior}__conc1_{model.concentration1}")
+
+    model.build_dir = os.path.join(model.build_dir, model.response[0])
     setup_logging(model.build_dir)
     main(model)
