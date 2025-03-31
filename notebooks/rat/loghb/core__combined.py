@@ -12,6 +12,13 @@ from hbmep.notebooks.constants import DATA, REPORTS
 logger = logging.getLogger(__name__)
 
 BUILD_DIR = os.path.join(REPORTS, "hbmep", "notebooks", "rat", "combined_data")
+CONFIG = {
+    "variables": {
+        "intensity": "pulse_amplitude",
+        "features": ["participant", "combination_cdf"],
+        "response": ["LADM", "LBiceps", "LDeltoid", "LECR", "LFCR", "LTriceps"]
+    }
+}
 
 
 @timing
@@ -19,6 +26,7 @@ def main(model):
     run_id = model.run_id
     assert run_id in {
         "L_CIRC___L_SHIE___C_SMA_LAR",
+        "L_CIRC___L_SHIE___C_SMA_LAR___J_RCML"
     }
     src = os.path.join(DATA, "rat", f"{run_id}.csv")
     df = pd.read_csv(src)
@@ -46,28 +54,33 @@ def main(model):
 
 
 if __name__ == "__main__":
-    config = {
-        "variables": {
-            "intensity": "pulse_amplitude",
-            "features": ["participant", "combination_cdf"],
-            "response": ["LADM", "LBiceps", "LDeltoid", "LECR", "LFCR", "LTriceps"]
-        }
-    }
+    config = {u: v.copy() for u, v in CONFIG.items()}
+    # config = {
+    #     "variables": {
+    #         "intensity": "pulse_amplitude",
+    #         "features": ["participant", "combination_cdf"],
+    #         "response": ["LADM", "LBiceps", "LDeltoid", "LECR", "LFCR", "LTriceps"]
+    #     }
+    # }
     model = HB(config=config)
     model.use_mixture = False
     # model.test_run = True
 
-    model.run_id = "L_CIRC___L_SHIE___C_SMA_LAR"
+    # model.run_id = "L_CIRC___L_SHIE___C_SMA_LAR"
+    model.run_id = "L_CIRC___L_SHIE___C_SMA_LAR___J_RCML"
     model.use_mixture = True
 
-    response_id = 1
+    response_id = 3
     model.response = model.response[response_id: response_id + 1]
 
     # model._model = model.hb_l4_masked
 
-    model._model = model.hb_l4_masked_mmax0
+    # model._model = model.hb_l4_masked_mmax0
+    # model.h_prior = .1
+    # model.concentration1 = 1
+
+    model._model = model.hb_l4_masked_mmax1
     model.h_prior = .1
-    model.concentration1 = 1
 
     model.mcmc_params = {
         "num_chains": 4,
@@ -95,6 +108,8 @@ if __name__ == "__main__":
     
     if model._model.__name__ in {"hb_l4_masked_mmax0"}:
         model.build_dir = os.path.join(model.build_dir, f"h_prior_{model.h_prior}__conc1_{model.concentration1}")
+    elif model._model.__name__ in {"hb_l4_masked_mmax1"}:
+        model.build_dir = os.path.join(model.build_dir, f"h_prior_{model.h_prior}")
 
     model.build_dir = os.path.join(model.build_dir, model.response[0])
     setup_logging(model.build_dir)

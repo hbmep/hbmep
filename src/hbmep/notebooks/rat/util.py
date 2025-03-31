@@ -13,7 +13,8 @@ from hbmep.notebooks.constants import DATA, REPOS, REPORTS
 from hbmep.notebooks.rat.constants import (
     circ as circ_constants,
     shie as shie_constants,
-    smalar as smalar_constants
+    smalar as smalar_constants,
+    rcml as rcml_constants
 )
 logger = logging.getLogger(__name__)
 
@@ -474,11 +475,32 @@ def load_lat(
     return
 
 
-def make_test(diff, mask=True):
+def load_rcml(
+    *,
+    intensity,
+    features,
+    run_id,
+    set_reference=False,
+    **kw
+):
+    _, _, DATA_PATH, _ = get_paths(rcml_constants.EXPERIMENT)
+    # Load data
+    src = DATA_PATH
+    data = pd.read_csv(src)
+    df = log_transform_intensity(data, intensity)
+    assert run_id in {"all"}
+    return df
+
+
+def make_test(diff, mask=True, correction=False):
     test = stats.wilcoxon(diff, axis=0, nan_policy="omit")
     pvalue = test.pvalue
     if mask: pvalue = mask_upper(pvalue)
     pvalue.shape
+    if correction:
+        idx = np.tril_indices_from(pvalue, k=-1)
+        corrected = stats.false_discovery_control(pvalue[idx])
+        pvalue[idx] = corrected
     _test = stats.ttest_1samp(diff, popmean=0, axis=0, nan_policy="omit")
     statistic = _test.statistic
     if mask: statistic = mask_upper(statistic)
@@ -486,10 +508,12 @@ def make_test(diff, mask=True):
     deg = _test.df.astype(float)
     if mask: deg = mask_upper(deg)
     deg.shape
-    return pvalue, statistic, deg
+    me = np.nanmean(diff, axis=0)
+    eff = me / np.nanstd(diff, axis=0)
+    return pvalue, statistic, deg, me, eff
 
 
-def make_plot(pvalue, statistic, deg, labels):
+def make_plot(pvalue, statistic, deg, me, eff, labels):
     num_labels = len(labels)
     fig, axes = plt.subplots(1, 1, constrained_layout=True, squeeze=False, figsize=(1.5 * num_labels, .8 * num_labels))
     ax = axes[0, 0]
@@ -500,14 +524,21 @@ def make_plot(pvalue, statistic, deg, labels):
     deg_annot_kws = {"ha": 'left', "va": 'bottom'}
     annotate_heatmap(ax, pvalue, 1 + deg.astype(int), 0, 1, **deg_annot_kws)
     statistic_annot_kws = {"ha": 'center', "va": 'top'}
-    annotate_heatmap(ax, pvalue, np.round(statistic, 3), 0.5, 0, **statistic_annot_kws)
+    # annotate_heatmap(ax, pvalue, np.round(statistic, 3), 0.5, 0, **statistic_annot_kws)
+    annotate_heatmap(ax, pvalue, np.round(me, 3), 0.5, 0, **statistic_annot_kws)
     ax.set_xticklabels(labels=labels, rotation=15, ha="right");
     ax.set_yticklabels(labels=labels, rotation=0);
     plt.show()
     return fig, axes
 
 
-def make_compare(diff, labels):
-    pvalue, statistic, deg = make_test(diff)
-    axes = make_plot(pvalue, statistic, deg, labels)
-    return pvalue, statistic, deg, axes
+def make_compare(diff, labels, correction=False):
+    pvalue, statistic, deg, me, eff = make_test(diff, correction=correction)
+    axes = make_plot(pvalue, statistic, deg, me, eff, labels)
+    return pvalue, statistic, deg, me, eff, axes
+
+
+
+intensity = "pulse_amplitude"
+features = ["participant", "compound_position"]
+rcml_df = load_rcml(intensity=intensity, features=features, run_id="all")
