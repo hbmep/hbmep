@@ -21,6 +21,9 @@ logger = logging.getLogger(__name__)
 def main(model):
     run_id = model.run_id
     df = load_size(**model.variables, run_id=run_id)
+    idx = df["segment"].apply(lambda x: "C6" in x)
+    df = df[idx].reset_index(drop=True).copy()
+    model.features = ["participant", "lat", "compound_size"]
 
     if model.test_run:
         os.makedirs(model.build_dir, exist_ok=True)
@@ -46,14 +49,16 @@ if __name__ == "__main__":
     model.use_mixture = False
     # model.test_run = True
 
-    model._model = model.hb_mvn_rl_nov_masked
-    model.run_id = "ground"
-    # model.run_id = "no-ground"
-
-    model._model = model.hb_l4_masked
-    model.run_id = "all"
+    # model._model = model.hb_mvn_rl_nov_masked
+    model._model = model.hb_mvn_rl_masked
     model.use_mixture = True
-    response = 0
+    model.run_id = "size-ground"
+    model.run_id = "size-no-ground"
+
+    # model._model = model.hb_l4_masked
+    # model.run_id = "all"
+    # model.use_mixture = True
+    # response = 5
 
     model.mcmc_params = {
         "num_chains": 4,

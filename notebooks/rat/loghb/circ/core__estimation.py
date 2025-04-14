@@ -7,52 +7,21 @@ import numpy as np
 from hbmep.util import timing, setup_logging
 
 from hbmep.notebooks.rat.model import Estimation
-from hbmep.notebooks.rat.util import run, log_transform_intensity
-from constants import (
-    BUILD_DIR,
-    TOML_PATH,
-    DATA_PATH,
-    MAP,
-    DIAM,
-    VERTICES,
-    RADII
-)
+from hbmep.notebooks.rat.util import load_circ, run
+from constants import BUILD_DIR, TOML_PATH
 
 logger = logging.getLogger(__name__)
 
 
 @timing
 def main(model):
-    # Load data
-    src = DATA_PATH
-    data = pd.read_csv(src)
-    df = log_transform_intensity(data, model.intensity)
-
-    cats = df[model.features[1]].unique().tolist()
-    mapping = {}
-    for cat in cats:
-        assert cat not in mapping
-        l, r = cat.split("-")
-        mapping[cat] = l[3:] + "-" + r[3:]
-    assert mapping == MAP
-    df[model.features[1]] = df[model.features[1]].replace(mapping)
-    cats = set(df[model.features[1]].tolist())
-    assert set(DIAM) <= cats
-    assert set(VERTICES) <= cats
-    assert set(RADII) <= cats
-    df = df.copy()
-
     run_id = model.run_id
-    assert run_id in {"diam", "radii", "vertices", "all"}
-    match run_id:
-        case "diam": subset = DIAM
-        case "radii": subset = RADII
-        case "vertices": subset = VERTICES
-        case "all": subset = DIAM + RADII + VERTICES
-        case _: raise ValueError
-    assert set(subset) <= set(df[model.features[1]].values.tolist())
-    ind = df[model.features[1]].isin(subset)
-    df = df[ind].reset_index(drop=True).copy()
+
+    set_reference = False
+    if "reference" in model._model.__name__:
+        set_reference = True
+
+    df = load_circ(**model.variables, run_id=model.run_id, set_reference=set_reference)
 
     if model.test_run:
         model.build_dir = os.path.join(model.build_dir, "test_run")
@@ -79,10 +48,16 @@ if __name__ == "__main__":
     model.use_mixture = False
     # model.test_run = True
 
-    model._model = model.circ_ln_est_mvn_reference_rl_nov_masked
+    # model._model = model.circ_est_mvn_reference_rl_nov_masked
+    # model.run_id = "diam"
+    # # model.run_id = "radii"
+    # # model.run_id = "vertices"
+
+    model._model = model.circ_est_mvn_reference_rl_masked
+    model.use_mixture = True
     model.run_id = "diam"
-    # model.run_id = "radii"
-    # model.run_id = "vertices"
+    model.run_id = "radii"
+    model.run_id = "vertices"
 
     model.mcmc_params = {
         "num_chains": 4,
@@ -100,7 +75,8 @@ if __name__ == "__main__":
         # "num_samples": 400,
 
     }
-    # model.nuts_params["max_tree_depth"] = (15, 15)
+    model.nuts_params["max_tree_depth"] = (15, 15)
+    # model.nuts_params["max_tree_depth"] = (12, 12)
     model.nuts_params["target_accept_prob"] = .95
 
     model.build_dir = os.path.join(BUILD_DIR, "estimation", model.name, model.run_id, model._model.__name__)

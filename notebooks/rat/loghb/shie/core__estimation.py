@@ -6,24 +6,26 @@ import pandas as pd
 import numpy as np
 from hbmep.util import timing, setup_logging
 
-from hbmep.notebooks.rat.model import HB
-from hbmep.notebooks.rat.util import load_lat, run
+from hbmep.notebooks.rat.model import Estimation
+from hbmep.notebooks.rat.util import load_shie, run
 from constants import BUILD_DIR, TOML_PATH
 
 logger = logging.getLogger(__name__)
 
 
 @timing
-def main(model, remove_c5=False):
+def main(model):
     run_id = model.run_id
-    df = load_lat(**model.variables, run_id=run_id)
-    # idx = df["segment"].apply(lambda x: "C6" in x)
-    # df = df[idx].reset_index(drop=True).copy()
-    # model.features = ["participant", "lat"]
+
+    set_reference = False
+    if "reference" in model._model.__name__:
+        set_reference = True
+
+    df = load_shie(**model.variables, run_id=model.run_id, set_reference=set_reference)
 
     if model.test_run:
-        os.makedirs(model.build_dir, exist_ok=True)
         model.build_dir = os.path.join(model.build_dir, "test_run")
+        os.makedirs(model.build_dir, exist_ok=True)
         subset = ["amap01", "amap02"]
         idx = df[model.features[0]].isin(subset)
         df = df[idx].reset_index(drop=True).copy()
@@ -35,24 +37,23 @@ def main(model, remove_c5=False):
             "num_samples": 400,
         }
 
+    model.features = [model.features[0], model.features[1:]]
+    logger.info(f"*** run id: {run_id} ***")
+    logger.info(f"*** model: {model._model.__name__} ***")
     run(df, model, extra_fields=["num_steps"])
     return
 
 
 if __name__ == "__main__":
-    model = HB(toml_path=TOML_PATH)
-    model.features = ["participant", "segment", "lat"]
-    model.use_mixture = False
+    model = Estimation(toml_path=TOML_PATH)
     # model.test_run = True
 
-    # model._model = model.hb_mvn_rl_nov_masked
-    model._model = model.hb_mvn_rl_masked
-    model.use_mixture = True
-    model.run_id = "lat-small-ground"
-    # model.run_id = "lat-big-ground"
+    model._model = model.circ_est_mvn_reference_rl_nov_masked
+    model.run_id = "all"
 
-    # model.run_id = "lat-small-no-ground"
-    # model.run_id = "lat-big-no-ground"
+    model._model = model.circ_est_mvn_reference_rl_masked
+    model.use_mixture = True
+    model.run_id = "all"
 
     model.mcmc_params = {
         "num_chains": 4,
@@ -70,11 +71,9 @@ if __name__ == "__main__":
         # "num_samples": 400,
 
     }
-    model.nuts_params = {
-        "max_tree_depth": (15, 15),
-        "target_accept_prob": .95,
-    }
+    model.nuts_params["max_tree_depth"] = (15, 15)
+    model.nuts_params["target_accept_prob"] = .95
 
-    model.build_dir = os.path.join(BUILD_DIR, model.name, model.run_id, model._model.__name__)
+    model.build_dir = os.path.join(BUILD_DIR, "estimation", model.name, model.run_id, model._model.__name__)
     setup_logging(model.build_dir)
     main(model)

@@ -41,13 +41,19 @@ if __name__ == "__main__":
     model.use_mixture = False
     # model.test_run = True
 
-    # model._model = model.hb_mvn_rl_nov_masked
-    # # model.run_id = "ground"
+    model._model = model.hb_mvn_rl_nov_masked
+    model.use_mixture = True
+    model.run_id = "all"
+    # model.run_id = "ground"
     # model.run_id = "no-ground"
 
-    model._model = model.hb_mvn_l4_masked
-    model.run_id = "all"
-    model.use_mixture = True
+    # model._model = model.hb_mvn_l4_masked
+    # model.run_id = "all"
+    # model.use_mixture = True
+
+    # model._model = model.hb_mvn_rl_masked
+    # model.run_id = "all"
+    # model.use_mixture = True
 
     model.mcmc_params = {
         "num_chains": 4,

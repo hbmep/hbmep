@@ -2,10 +2,13 @@ import os
 import pickle
 import logging 
 
+from jax import random
 import numpy as np
 import pandas as pd
 from scipy import stats
 import matplotlib.pyplot as plt
+from matplotlib.colors import rgb_to_hsv, hsv_to_rgb
+from matplotlib.backends.backend_pdf import PdfPages
 import seaborn as sns
 from hbmep.util import site
 
@@ -75,7 +78,7 @@ def run(data, model, encoder=None, **kw):
     else:
         df = data.copy()
     logger.info(f"df.shape {df.shape}")
-    # model.plot(df, encoder=encoder)
+    # model.plot(df, encoder=encoder); return
     mcmc, posterior = model.run(df=df, **kw)
 
     # Save
@@ -337,7 +340,6 @@ def load_circ(
     return df
     
 
-
 def load_shie(
     *,
     intensity,
@@ -407,12 +409,12 @@ def load_size(
     data = pd.read_csv(src)
     df = log_transform_intensity(data, intensity)
     
-    assert run_id in {"ground", "no-ground", "all"}
+    assert run_id in {"size-ground", "size-no-ground", "size-all"}
     subset = []
     match run_id:
-        case "ground": subset = GROUND
-        case "no-ground": subset = NO_GROUND
-        case "all": subset = (
+        case "size-ground": subset = GROUND
+        case "size-no-ground": subset = NO_GROUND
+        case "size-all": subset = (
             GROUND
             + NO_GROUND
             + GROUND_BIG
@@ -453,13 +455,13 @@ def load_lat(
     data = pd.read_csv(src)
     df = log_transform_intensity(data, intensity)
     
-    assert run_id in {"small-ground", "big-ground", "small-no-ground", "big-no-ground"}
+    assert run_id in {"lat-small-ground", "lat-big-ground", "lat-small-no-ground", "lat-big-no-ground"}
     subset = []
     match run_id:
-        case "small-ground": subset = GROUND_SMALL
-        case "big-ground": subset = GROUND_BIG
-        case "small-no-ground": subset = NO_GROUND_SMALL
-        case "big-no-ground": subset = NO_GROUND_BIG
+        case "lat-small-ground": subset = GROUND_SMALL
+        case "lat-big-ground": subset = GROUND_BIG
+        case "lat-small-no-ground": subset = NO_GROUND_SMALL
+        case "lat-big-no-ground": subset = NO_GROUND_BIG
         case _: raise ValueError
     assert len(set(subset)) == len(subset)
     cols = ["lat", "segment", "compound_size"]
@@ -472,7 +474,48 @@ def load_lat(
     # df[model.features[-2]] = df[model.features[-3]].replace(
     #     {"C5-C5": "-C5", "C6-C6": "-C6"}
     # )
-    return
+    return df
+
+
+def load_rcml_data(data: pd.DataFrame):
+    data = data.copy()
+    ch1 = data.compound_position.apply(lambda x: np.nan if not x.split("-")[0] else x.split("-")[0][:2])
+    pd.testing.assert_series_equal(ch1, data.channel1_segment, check_names=False)
+    ch2 = data.compound_position.apply(lambda x: np.nan if not x.split("-")[1] else x.split("-")[1][:2])
+    pd.testing.assert_series_equal(ch2, data.channel2_segment, check_names=False)
+    # make sure channel2_segment is never nan
+    assert not data.channel2_segment.isna().any()
+    # make sure columns channel1_designation and channel2_designation are correct
+    ch1_lat = data.compound_position.apply(lambda x: np.nan if not x.split("-")[0] else x.split("-")[0][2:])
+    pd.testing.assert_series_equal(ch1_lat, data.channel1_laterality, check_names=False)
+    ch2_lat = data.compound_position.apply(lambda x: np.nan if not x.split("-")[1] else x.split("-")[1][2:])
+    pd.testing.assert_series_equal(ch2_lat, data.channel2_laterality, check_names=False)
+    # make sure channel2_designation is never nan
+    assert not data.channel2_laterality.isna().any()
+
+    # create the relevant feature columns
+    data["segment"] = np.where(
+        data.channel1_segment.isna(),
+        "-" + data.channel2_segment,
+        data.channel1_segment + "-" + data.channel2_segment
+    )
+    assert not data["segment"].isna().any()
+    data["lat"] = np.where(
+        data.channel1_laterality.isna(),
+        "-" + data.channel2_laterality,
+        data.channel1_laterality + "-" + data.channel2_laterality
+    )
+    assert not data["lat"].isna().any()
+    # make sure the new feature columns are correct
+    temp = (
+        data[["segment", "lat"]]
+        .apply(
+            lambda x: x[0].split("-")[0] + x[1].split("-")[0] + "-" + x[0].split("-")[1] + x[1].split("-")[1],
+            axis=1
+        )
+    )
+    pd.testing.assert_series_equal(temp, data.compound_position, check_names=False)
+    return data
 
 
 def load_rcml(
@@ -483,12 +526,30 @@ def load_rcml(
     set_reference=False,
     **kw
 ):
+    GROUND = rcml_constants.GROUND
+    ROSTRAL_CAUDAL = rcml_constants.ROSTRAL_CAUDAL
+    MIDLINE_LATERAL = rcml_constants.MIDLINE_LATERAL
+    ROOT_ALIGNED = rcml_constants.ROOT_ALIGNED
+
     _, _, DATA_PATH, _ = get_paths(rcml_constants.EXPERIMENT)
     # Load data
     src = DATA_PATH
     data = pd.read_csv(src)
+    data = load_rcml_data(data)
     df = log_transform_intensity(data, intensity)
-    assert run_id in {"all"}
+    assert run_id in {"all", "ground", "rostral-caudal"}
+
+    subset = []
+    match run_id:
+        case "ground": subset = GROUND
+        case "rostral-caudal": subset = ROSTRAL_CAUDAL
+        case "all": subset = GROUND + ROSTRAL_CAUDAL + MIDLINE_LATERAL + ROOT_ALIGNED
+        case _: raise ValueError
+    assert len(set(subset)) == len(subset)
+    cols = ["segment", "lat"]
+    assert set(subset) <= set(df[cols].apply(tuple, axis=1).tolist())
+    idx = df[cols].apply(tuple, axis=1).isin(subset)
+    df = df[idx].reset_index(drop=True).copy()
     return df
 
 
@@ -528,17 +589,94 @@ def make_plot(pvalue, statistic, deg, me, eff, labels):
     annotate_heatmap(ax, pvalue, np.round(me, 3), 0.5, 0, **statistic_annot_kws)
     ax.set_xticklabels(labels=labels, rotation=15, ha="right");
     ax.set_yticklabels(labels=labels, rotation=0);
-    plt.show()
     return fig, axes
 
 
 def make_compare(diff, labels, correction=False):
     pvalue, statistic, deg, me, eff = make_test(diff, correction=correction)
-    axes = make_plot(pvalue, statistic, deg, me, eff, labels)
-    return pvalue, statistic, deg, me, eff, axes
+    fig, axes = make_plot(pvalue, statistic, deg, me, eff, labels)
+    return pvalue, statistic, deg, me, eff, fig, axes
 
 
+def make_pdf(figs, output_path):
+    print("Making pdf...")
+    with PdfPages(output_path) as pdf:
+        for fig in figs:
+            pdf.savefig(fig, bbox_inches='tight') 
+    print(f"Saved to {output_path}")
+    return
 
-intensity = "pulse_amplitude"
-features = ["participant", "compound_position"]
-rcml_df = load_rcml(intensity=intensity, features=features, run_id="all")
+
+def _adjust_brightness(rgb_in, val):
+    hsv = rgb_to_hsv(rgb_in)
+    hsv[2] = val  # Adjust the brightness (value component in HSV)
+    rgb_out = hsv_to_rgb(hsv)
+    return rgb_out
+
+
+def _get_cmap_muscles_alt():
+    vec_muscle = np.array(["Trapezius", "Deltoid", "Biceps", "Triceps", "ECR", "FCR", "APB", "ADM", "TA", "EDB", "AH", "FDI", "auc_target"])
+    cmap_mus_dark = np.array([
+        _adjust_brightness(np.array([0.6350, 0.0780, 0.1840]), 0.5),  # trapz
+        np.array([1, 133, 113]) / 255,  # delt
+        np.array([166, 97, 26]) / 255,  # biceps
+        np.array([44, 123, 182]) / 255,  # triceps
+        np.array([52, 0, 102]) / 255,  # ecr
+        _adjust_brightness(np.array([0.5, 0.5, 0.5]), 0.3),  # fcr
+        np.array([208, 28, 139]) / 255,  # apb
+        np.array([77, 172, 38]) / 255,  # adm
+        np.array([215, 25, 28]) / 255,  # ta
+        np.array([123, 50, 148]) / 255,  # edb
+        _adjust_brightness(np.array([153, 79, 0]) / 256, 0.4),  # ah
+        np.array([231, 226, 61]) / 255,  # fdi
+        np.array([255, 100, 0]) / 255,  # auc_target
+    ])
+    cmap_mus_light = np.array([
+        _adjust_brightness(np.array([0.6350, 0.0780, 0.1840]), 0.8),  # trapz
+        np.array([128, 205, 193]) / 255,  # delt
+        np.array([223, 194, 125]) / 255,  # biceps
+        np.array([171, 217, 233]) / 255,  # triceps
+        _adjust_brightness(np.array([200, 40, 0]) / 255, 0.6),  # ecr
+        _adjust_brightness(np.array([0.5, 0.5, 0.5]), 0.6),  # fcr
+        np.array([241, 182, 218]) / 255,  # apb
+        np.array([184, 225, 134]) / 255,  # adm
+        np.array([253, 174, 97]) / 255,  # ta
+        np.array([194, 165, 207]) / 255,  # edb
+        _adjust_brightness(np.array([153, 79, 0]) / 256, 0.6),  # ah
+        _adjust_brightness(np.array([23, 54, 124]) / 256, 0.6),  # fdi
+        np.array([255, 100, 0]) / 255,  # auc_target
+    ])
+    # Create a DataFrame to hold muscle names and corresponding colors
+    T_color = pd.DataFrame({
+        'muscle': vec_muscle,
+        'cmap_mus_light': [tuple(c) for c in cmap_mus_light],
+        'cmap_mus_dark': [tuple(c) for c in cmap_mus_dark],
+    })
+    # Convert RGB to hex
+    T_color['cmap_mus_light_hex'] = T_color['cmap_mus_light'].apply(
+        lambda x: '#%02x%02x%02x' % tuple([int(255 * v) for v in x]))
+    T_color['cmap_mus_dark_hex'] = T_color['cmap_mus_dark'].apply(
+        lambda x: '#%02x%02x%02x' % tuple([int(255 * v) for v in x]))
+    return cmap_mus_dark, cmap_mus_light, vec_muscle, T_color
+
+
+def get_response_colors(response: list[str]):
+    cmap_mus_dark, cmap_mus_light, vec_muscle, T_color = _get_cmap_muscles_alt()
+    cmap_dict = dict(zip(vec_muscle, cmap_mus_dark))
+    colors = []
+    for response in response: colors.append(cmap_dict[response[1:]])
+    return colors
+
+
+def compare_less_than(key, left, right, n_iters=50):
+    left = left.copy()
+    right = right.copy()
+    prob = []
+    for _ in range(n_iters):
+        key, subkey = random.split(key)
+        left_shuffled = np.array(random.permutation(subkey, left))
+        key, subkey = random.split(key)
+        right_shuffled = np.array(random.permutation(subkey, right))
+        prob.append((left_shuffled < right_shuffled).mean())
+    prob = np.mean(np.array(prob))
+    return key, prob
