@@ -188,6 +188,7 @@ def figure():
 		num_features,
     ) = load(model_dir)
     posterior.keys()
+    suptitle = f"{model.run_id}/{model._model.__name__}/mix:{model.use_mixture}"
 
     a = np.nanmean(posterior[site.a], axis=0)
     a = a.reshape(a.shape[0], -1, a.shape[-1])
@@ -224,7 +225,8 @@ def figure():
             pos_charge_idx],
             label=pos_charge,
             ax=ax,
-            color=colors_map[pos_charge]
+            color=colors_map[pos_charge],
+            marker="o"
         )
     ax.tick_params(axis="x", rotation=45)
     ax.legend(bbox_to_anchor=(-.05, 1), loc="upper right", reverse=True)
@@ -241,6 +243,8 @@ def figure():
             color=colors_map[pos_charge_inv],
             # markerfacecolor=[colors_map[u[1]] for u in y]
         )
+        if pos_charge_idx == reference_idx:
+            ax.vlines(xme[i], linestyle="--", color=colors_map[pos_charge_inv], ymax=len(y) - 1, ymin=0)
     ax.tick_params(axis="x", rotation=45)
 
     model_dir = "/home/vishu/reports/hbmep/notebooks/rat/loghb/shie/estimation/4000w_4000s_4c_4t_15d_95a_tm/all/circ_est_mvn_reference_rl_masked"
@@ -256,6 +260,7 @@ def figure():
         *_,
     ) = load(model_dir)
     posterior.keys()
+    suptitle += f"\n{model.run_id}/{model._model.__name__}/mix:{model.use_mixture}"
 
     param = posterior["a_delta_loc"]
     print(param.shape)
@@ -276,6 +281,7 @@ def figure():
             sides = ["right", "top"]
             ax.spines[sides].set_visible(False)
 
+    fig.suptitle(suptitle)
     return fig
 
 

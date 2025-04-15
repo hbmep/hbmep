@@ -70,17 +70,24 @@ if __name__ == "__main__":
     model.run_id = "L_CIRC___L_SHIE___C_SMA_LAR___J_RCML"
     model.use_mixture = True
 
-    response_id = 3
+    response_id = 1
     model.response = model.response[response_id: response_id + 1]
 
     # model._model = model.hb_l4_masked
+    model._model = model.hb_l4_masked_hmaxPooled
 
-    # model._model = model.hb_l4_masked_mmax0
+    # model._model = model.hb_l4_masked_hmax
     # model.h_prior = .1
-    # model.concentration1 = 1
 
-    model._model = model.hb_l4_masked_mmax1
-    model.h_prior = .1
+    # # model._model = model.hb_l4_masked_mmax0
+    # model._model = model.hb_l4_masked_mmax2
+    # # model._model = model.hb_l4_masked_mmax0_features_masked
+    # model.h_prior = .1
+    # # model.concentration1 = 1
+    # model.concentration1 = 10
+
+    # model._model = model.hb_l4_masked_mmax1
+    # model.h_prior = .1
 
     model.mcmc_params = {
         "num_chains": 4,
@@ -106,7 +113,7 @@ if __name__ == "__main__":
     assert model.num_response == 1
     model.build_dir = os.path.join(BUILD_DIR, model.name, model._model.__name__, model.run_id)
     
-    if model._model.__name__ in {"hb_l4_masked_mmax0"}:
+    if model._model.__name__ in {"hb_l4_masked_mmax0", "hb_l4_masked_mmax2"}:
         model.build_dir = os.path.join(model.build_dir, f"h_prior_{model.h_prior}__conc1_{model.concentration1}")
     elif model._model.__name__ in {"hb_l4_masked_mmax1"}:
         model.build_dir = os.path.join(model.build_dir, f"h_prior_{model.h_prior}")

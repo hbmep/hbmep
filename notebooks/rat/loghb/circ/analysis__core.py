@@ -94,7 +94,7 @@ def threshold_analysis(model_dir, correction=False):
     # +ve row, -ve column
     diff = -diff
 
-    plt.close("all")
+    # plt.close("all")
     pvalue, statistic, deg, me, eff, fig, axes = make_compare(diff, labels, correction=correction)
     fig.suptitle(f"{'/'.join(model.build_dir.split('/')[-2:])}\ncorrection:{correction}")
     return fig
@@ -167,6 +167,7 @@ def figure(model_dirs):
         *_
     ) = load(model_dir)
     posterior.keys()
+    suptitle = f"{model.run_id}/{model._model.__name__}/mix:{model.use_mixture}"
 
     model.features
     a = np.nanmean(posterior[site.a], axis=0)
@@ -221,6 +222,8 @@ def figure(model_dirs):
             ecolor=colors_map[pos],
             color=colors_map[pos],
         )
+        if pos_idx == reference_idx:
+            ax.vlines(xme[i], linestyle="--", color=colors_map[pos], ymax=len(y) - 1, ymin=0)
     ax.tick_params(axis="x", rotation=45)
 
     model_dir = model_dirs[1]
@@ -237,6 +240,7 @@ def figure(model_dirs):
         *_
     ) = load(model_dir)
     posterior.keys()
+    suptitle += f"\n{model.run_id}/{model._model.__name__}/mix:{model.use_mixture}"
 
     param = posterior["a_delta_loc"]
     print(param.shape)
@@ -262,7 +266,8 @@ def figure(model_dirs):
             sides = ["right", "top"]
             ax.spines[sides].set_visible(False)
 
-    plt.close("all")
+    # plt.close("all")
+    fig.suptitle(suptitle)
     return fig
 
 

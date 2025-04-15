@@ -389,6 +389,65 @@ def load_shie(
     return df
 
 
+def load_lat(
+    *,
+    intensity,
+    features,
+    run_id,
+    set_reference=False,
+    **kw
+):
+    DATA_PATH_FILTERED = smalar_constants.DATA_PATH_FILTERED
+    GROUND_BIG = smalar_constants.GROUND_BIG
+    GROUND_SMALL = smalar_constants.GROUND_SMALL
+    NO_GROUND_BIG = smalar_constants.NO_GROUND_BIG
+    NO_GROUND_SMALL = smalar_constants.NO_GROUND_SMALL
+
+    # Load data
+    src = DATA_PATH_FILTERED
+    data = pd.read_csv(src)
+    df = log_transform_intensity(data, intensity)
+    
+    assert run_id in {"lat-small-ground", "lat-big-ground", "lat-small-no-ground", "lat-big-no-ground"}
+    subset = []
+    match run_id:
+        case "lat-small-ground": subset = GROUND_SMALL
+        case "lat-big-ground": subset = GROUND_BIG
+        case "lat-small-no-ground": subset = NO_GROUND_SMALL
+        case "lat-big-no-ground": subset = NO_GROUND_BIG
+        case _: raise ValueError
+
+    if set_reference:
+        reference = "-M"
+        match run_id:
+            case "lat-small-ground": pass
+            case "lat-big-ground": pass
+            case "lat-small-no-ground": subset += [('-M', '-C5', 'S'), ('-M', '-C6', 'S')]
+            case "lat-big-no-ground": subset += [('-M', '-C5', 'B'), ('-M', '-C6', 'B')]
+            case _: raise ValueError
+
+    assert len(set(subset)) == len(subset)
+    cols = ["lat", "segment", "compound_size"]
+    assert set(subset) <= set(df[cols].apply(tuple, axis=1).tolist())
+    idx = df[cols].apply(tuple, axis=1).isin(subset)
+    df = df[idx].reset_index(drop=True).copy()
+    df[features[-1]] = df[features[-1]].replace(
+        {"-LM1": "-LM", "M-LM1": "M-LM"}
+    )
+
+    if set_reference:
+        if "no-ground" in run_id:
+            df["segment"] = df["segment"].apply(lambda x: f"-{x.split('-')[-1]}")
+        df["lat"] = df["lat"].replace({reference: " " + reference})
+
+    # if set_reference:
+    #     t = df.groupby(cols, as_index=False)[features[0]].agg(lambda x: x.nunique())
+    #     keys = t[cols].apply(tuple, axis=1); values = t[features[0]]
+    #     key, values = zip(*sorted(zip(keys, values)))
+    #     print(list(zip(keys, values)))
+    return df
+
+
 def load_size(
     *,
     intensity,
@@ -432,46 +491,6 @@ def load_size(
         {"-LM1": "-LM", "M-LM1": "M-LM"}
     )
     # df[model.features[-3]] = df[model.features[-3]].replace(
-    #     {"C5-C5": "-C5", "C6-C6": "-C6"}
-    # )
-    return df
-
-
-def load_lat(
-    *,
-    intensity,
-    features,
-    run_id,
-    **kw
-):
-    DATA_PATH_FILTERED = smalar_constants.DATA_PATH_FILTERED
-    GROUND_BIG = smalar_constants.GROUND_BIG
-    GROUND_SMALL = smalar_constants.GROUND_SMALL
-    NO_GROUND_BIG = smalar_constants.NO_GROUND_BIG
-    NO_GROUND_SMALL = smalar_constants.NO_GROUND_SMALL
-
-    # Load data
-    src = DATA_PATH_FILTERED
-    data = pd.read_csv(src)
-    df = log_transform_intensity(data, intensity)
-    
-    assert run_id in {"lat-small-ground", "lat-big-ground", "lat-small-no-ground", "lat-big-no-ground"}
-    subset = []
-    match run_id:
-        case "lat-small-ground": subset = GROUND_SMALL
-        case "lat-big-ground": subset = GROUND_BIG
-        case "lat-small-no-ground": subset = NO_GROUND_SMALL
-        case "lat-big-no-ground": subset = NO_GROUND_BIG
-        case _: raise ValueError
-    assert len(set(subset)) == len(subset)
-    cols = ["lat", "segment", "compound_size"]
-    assert set(subset) <= set(df[cols].apply(tuple, axis=1).tolist())
-    idx = df[cols].apply(tuple, axis=1).isin(subset)
-    df = df[idx].reset_index(drop=True).copy()
-    df[features[-1]] = df[features[-1]].replace(
-        {"-LM1": "-LM", "M-LM1": "M-LM"}
-    )
-    # df[model.features[-2]] = df[model.features[-3]].replace(
     #     {"C5-C5": "-C5", "C6-C6": "-C6"}
     # )
     return df
