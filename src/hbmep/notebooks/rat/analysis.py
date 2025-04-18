@@ -1,4 +1,5 @@
 import numpy as np
+from scipy import stats
 
 ignore_warnings = np.errstate(divide='ignore', invalid='ignore')
 
@@ -54,26 +55,34 @@ def evaluate_response(
 
 
 def evaluate_entropy(
-    *, x, y_norm
+    *, x, y_norm, num_nans
 ):
     y = y_norm.copy()
-    # Calculate selectivity
-    p = np.nansum(y, axis=-1, keepdims=True)
+    p = np.sum(y, axis=-1, keepdims=True)
+    assert np.isnan(p[0, ...]).sum() == num_nans
 
     with ignore_warnings:
-        p = np.where(p, y / p, 1 / y.shape[-1])
+        p_ = np.where(p, y / p, 1 / y.shape[-1])
+        p = np.where(np.isnan(y), np.nan, p_)
         print(p.shape)
+        assert np.isnan(p[0, ..., 0]).sum() == num_nans
 
     with ignore_warnings:
-        plogp = np.where(p, p * np.log(p), 0)
+        plogp_ = np.where(p, p * np.log(p), 0)
+        plogp = np.where(np.isnan(y), np.nan, plogp_)
         print(plogp.shape)
+        assert np.isnan(plogp[0, ..., 0]).sum() == num_nans
 
-    entropy = 1 + (plogp.sum(axis=-1) / np.log(y.shape[-1]))
+    entropy_ = 1 + (np.sum(plogp, axis=-1) / np.log(y.shape[-1]))
+    entropy = 1 - (stats.entropy(p, axis=-1) / np.log(y.shape[-1]))
+    np.testing.assert_almost_equal(entropy, entropy_)
     print(f"entropy.shape {entropy.shape}")
-    print(f"entropy.isnan.sum: {np.isnan(entropy).sum()}")
+    assert np.isnan(entropy[0, ...]).sum() == num_nans
+    assert np.all(np.isnan(entropy).any(axis=0) == np.isnan(entropy).all(axis=0))
 
     auc = np.trapz(y=entropy, x=x, axis=0)
     print(f"auc.shape {auc.shape}")
+    assert np.isnan(auc).sum() == num_nans
 
     return (
         p,

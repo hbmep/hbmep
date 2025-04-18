@@ -453,6 +453,7 @@ def load_size(
     intensity,
     features,
     run_id,
+    set_reference=False,
     **kw
 ):
     DATA_PATH_FILTERED = smalar_constants.DATA_PATH_FILTERED
@@ -469,6 +470,7 @@ def load_size(
     df = log_transform_intensity(data, intensity)
     
     assert run_id in {"size-ground", "size-no-ground", "size-all"}
+    if run_id == "all": assert not set_reference
     subset = []
     match run_id:
         case "size-ground": subset = GROUND
@@ -490,9 +492,16 @@ def load_size(
     df[features[-2]] = df[features[-2]].replace(
         {"-LM1": "-LM", "M-LM1": "M-LM"}
     )
-    # df[model.features[-3]] = df[model.features[-3]].replace(
-    #     {"C5-C5": "-C5", "C6-C6": "-C6"}
-    # )
+
+    if set_reference:
+        df["compound_size"] = df["compound_size"].replace({"S": " S"})
+
+    # if set_reference:
+    #     t = df.groupby(cols, as_index=False)[features[0]].agg(lambda x: x.nunique())
+    #     keys = t[cols].apply(tuple, axis=1); values = t[features[0]]
+    #     key, values = zip(*sorted(zip(keys, values)))
+    #     print(list(zip(keys, values)))
+
     return df
 
 
@@ -597,7 +606,7 @@ def make_plot(pvalue, statistic, deg, me, eff, labels):
     num_labels = len(labels)
     fig, axes = plt.subplots(1, 1, constrained_layout=True, squeeze=False, figsize=(1.5 * num_labels, .8 * num_labels))
     ax = axes[0, 0]
-    sns.heatmap(pvalue, annot=False, ax=ax, cbar=False)
+    sns.heatmap(pvalue, annot=False, ax=ax, cbar=False, vmin=0, vmax=1)
     # Annotate
     pvalue_annot_kws = {"ha": 'center', "va": 'center'}
     annotate_heatmap(ax, pvalue,  np.round(pvalue, 3), 0.5, 0.5, star=True, star_arr=pvalue, **pvalue_annot_kws)
