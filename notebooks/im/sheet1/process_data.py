@@ -4,9 +4,11 @@ import pandas as pd
 import numpy as np
 import pandas as pd
 
-HOME = os.getenv("HOME")
-DATA_PATH = f"{HOME}/repos/refactor/hbmep/notebooks/im/data/sheet1.xlsx"
-BUILD_DIR = f"{HOME}/reports/hbmep/notebooks/im/hbmep-processed"
+from hbmep.notebooks.constants import DATA
+from constants import MAPPING
+
+DATA_PATH = f"{DATA}/im/sheet1_corrected.xlsx"
+BUILD_DIR = f"{DATA}/im/"
 os.makedirs(BUILD_DIR, exist_ok=True)
 
 
@@ -45,6 +47,7 @@ def read_plate(skiprows, plate_id, input, hue, plate, response):
     response += df[response_columns].values.reshape(-1,).tolist()
     return
 
+
 input, hue, plate, response = [], [], [], []
 plates = [
     read_plate(
@@ -64,7 +67,20 @@ df.conc = df.conc.astype(np.float64)
 df.dilution = df.dilution.astype(str)
 df.plate = df.plate.astype(str)
 df.od = df.od.astype(np.float64)
+df = df.rename(columns={"dilution": "contam"}).copy()
 
-output_path = os.path.join(BUILD_DIR, "sheet1.csv")
+t = df.contam.unique().tolist()
+t = [u for u in t if ":" in u]
+t_map = [u.replace(",", "").split(":")[1] for u in t]
+t_map = [-len(u[1:]) for u in t_map]
+t, t_map = zip(*sorted(zip(t, t_map), key=lambda x: x[1]))
+t_map = [f"1e{u}" for u in t_map]
+t_map = [f"{i + 1}__{u}" for i, u in enumerate(t_map)]
+mapping = dict(zip(t, t_map))
+mapping["0"] = "0__0"
+assert mapping == MAPPING
+df["contam_mapped"] = df.contam.map(MAPPING)
+
+output_path = os.path.join(BUILD_DIR, "sheet1_corrected.csv")
 df.to_csv(output_path, index=False)
 print(f"Saved to {output_path}")
