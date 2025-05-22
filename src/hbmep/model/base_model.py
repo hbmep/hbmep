@@ -7,7 +7,7 @@ from collections import OrderedDict
 import arviz as az
 import pandas as pd
 import numpy as np
-from jax import random, numpy as jnp
+from jax import random, numpy as jnp, Array
 import numpyro
 from numpyro.infer import MCMC
 from sklearn.preprocessing import LabelEncoder
@@ -43,7 +43,6 @@ class BaseModel():
     mep_window: list[float] = [0, 1]
     mep_size_window: list[float] = [0, 1]
     mep_adjust: float = 1.
-    __sites: dict[str, str] = []
 
     def __init__(
         self,
@@ -58,6 +57,7 @@ class BaseModel():
         self.deterministic_sites: list[str] = []
         self.reparam_sites: list[str] = []
         self.obs_sites: list[str] = []
+        self.trace_sites = dict[str, str]
 
         if toml_path is not None:
             try:
@@ -78,20 +78,19 @@ class BaseModel():
         for key, value in config.get("mep_metadata", {}).items():
             setattr(self, key, value)
             
-    def _update_sites(self, df: pd.DataFrame, **kw):
-        if not self.sample_sites:
-            model_trace = self.trace(df, **kw)
-            self.__sites = {u: v["type"] for u, v in model_trace.items()}
-            sites = {u: v for u, v in self.__sites.items() if v != "plate"}
-            sample_sites = [u for u, v in sites.items() if v == "sample" and u != site.obs]
-            deterministic_sites = [u for u, v in sites.items() if v == "deterministic"]
-            reparam_sites = [u for u in deterministic_sites if site(u).raw in sample_sites]
-            obs_sites = [u for u in deterministic_sites if u not in sample_sites + reparam_sites]
-            obs_sites += [site.obs]
-            self.sample_sites = sample_sites
-            self.deterministic_sites = deterministic_sites
-            self.reparam_sites = reparam_sites
-            self.obs_sites = obs_sites
+    def _update_sites(self, model_trace):
+        sites = {u: v["type"] for u, v in model_trace.items()}
+        sample_sites = [u for u, v in sites.items() if v == "sample" and site.obs not in u.split("_")]
+        deterministic_sites = [u for u, v in sites.items() if v == "deterministic" and site.obs not in u.split("_")]
+        reparam_sites = [u for u in deterministic_sites if any([u in v.split("_") for v in sample_sites])]
+        obs_sites = [u for u in deterministic_sites if u not in sample_sites + reparam_sites]
+        obs_sites += [u for u in sites.keys() if site.obs in u.split("_")]
+        obs_sites = list(set(obs_sites))
+        self.sample_sites = sample_sites
+        self.deterministic_sites = deterministic_sites
+        self.reparam_sites = reparam_sites
+        self.obs_sites = obs_sites
+        self.trace_sites = sites
 
     @property
     def key(self):
@@ -211,9 +210,14 @@ class BaseModel():
         return mu, alpha, beta
 
     @timing
-    def trace(self, df: pd.DataFrame, **kw):
+    def trace(
+        self,
+		df: pd.DataFrame,
+		key: Array | None = None,
+		**kw
+    ):
         trace = mep.trace(
-            self.key,
+            self.key if key is None else key,
             self._model,
             *self.get_regressors(df),
             *self.get_response(df),
@@ -228,11 +232,14 @@ class BaseModel():
         mcmc: MCMC = None,
         extra_fields: list | tuple = (),
         init_params = None,
+        key: Array | None = None,
         **kw
     ) -> tuple[MCMC, dict]:
-        self._update_sites(df, **kw)
+        if not self.sample_sites:
+            model_trace = self.trace(df, key=key, **kw)
+            self._update_sites(model_trace)
         mcmc, posterior = mep.run(
-            self.key,
+            self.key if key is None else key,
             self._model,
             *self.get_regressors(df),
             *self.get_response(df),
@@ -266,16 +273,19 @@ class BaseModel():
         df: pd.DataFrame,
         posterior: dict | None = None,
         num_samples: int = 100,
-        return_sites: list[str] | None = None
+        return_sites: list[str] | None = None,
+        key: Array | None = None,
+        **kw
     ):
         # Generate predictions
         predictive = mep.predict(
-            self.key,
+            self.key if key is None else key,
             self._model,
             *self.get_regressors(df),
             posterior=posterior,
             num_samples=num_samples,
-            return_sites=return_sites
+            return_sites=return_sites,
+            **kw
         )
         predictive = {u: np.array(v) for u, v in predictive.items()}
         return predictive
@@ -360,6 +370,11 @@ class BaseModel():
     ):
         if output_path is None: output_path = os.path.join(self.build_dir, CURVES_PLOT)
         logger.info("Plotting curves...")
+        threshold = (
+            posterior[posterior_var] 
+            if posterior is not None and posterior_var in posterior.keys() 
+            else None
+        )
         mep.plot(
             df=df,
             **self.variables,
@@ -370,7 +385,7 @@ class BaseModel():
             prediction_df=prediction_df,
             prediction=predictive[prediction_var],
             prediction_prob=prediction_prob,
-            threshold=posterior[posterior_var] if posterior is not None else None,
+            threshold=threshold,
             **kw
         )
         return

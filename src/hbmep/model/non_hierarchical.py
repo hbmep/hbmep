@@ -5,6 +5,7 @@ import pickle
 import logging
 
 import pandas as pd
+from jax import random, Array
 import numpy as np
 from numpyro.infer import MCMC
 from joblib import Parallel, delayed
@@ -47,18 +48,18 @@ class NonHierarchicalBaseModel(BaseModel):
 
                 if combined_samples is None:
                     combined_samples = {
-                        u: np.full((v.shape[0], *max_features, self.num_response), np.nan)
+                        u: np.full((v.shape[0], *max_features, self.num_response, *v.shape[2:]), np.nan)
                         if u in self.sample_sites + self.reparam_sites
-                        else np.full((v.shape[0], df_features.shape[0], self.num_response), np.nan)
+                        else np.full((v.shape[0], df_features.shape[0], self.num_response, *v.shape[2:]), np.nan)
                         for u, v in samples.items()
                     }
 
                 for u in combined_samples.keys():
                     if u in self.sample_sites + self.reparam_sites:
-                        combined_samples[u][..., *combination, response_idx] = samples[u]
+                        combined_samples[u][:, *combination, response_idx, ...] = samples[u]
                     else:
                         idx = df_features.isin([combination])
-                        combined_samples[u][:, idx, response_idx] = samples[u]
+                        combined_samples[u][:, idx, response_idx, ...] = samples[u]
 
         return combined_samples
 
@@ -69,6 +70,7 @@ class NonHierarchicalBaseModel(BaseModel):
         mcmc: MCMC = None,
         extra_fields: list | tuple = (),
         init_params = None,
+        key: Array | None = None,
         **kw
 ):
         df_features = df[self.features].apply(tuple, axis=1)
@@ -79,14 +81,23 @@ class NonHierarchicalBaseModel(BaseModel):
         )
 
 
-        def body_run(combination_idx, response_idx):
+        def body_run(combination_idx, response_idx, trace=False):
             ccdf = (
                 df[df_features.isin([combinations[combination_idx]])]
                 .reset_index(drop=True)
                 .copy()
             )
+            if trace:
+                model_trace = mep.trace(
+                    self.key if key is None else key,
+                    self._model,
+                    *mep.get_regressors(ccdf, self.intensity, []),
+                    *mep.get_response(ccdf, self.response[response_idx]),
+                    **kw
+                )
+                return model_trace
             mcmc, posterior = mep.run(
-                self.key,
+                self.key if key is None else key,
                 self._model,
                 *mep.get_regressors(ccdf, self.intensity, []),
                 *mep.get_response(ccdf, self.response[response_idx]),
@@ -109,7 +120,9 @@ class NonHierarchicalBaseModel(BaseModel):
 
 
         try:
-            self._update_sites(df, **kw)
+            if not self.sample_sites:
+                model_trace = body_run(0, 0, trace=True)
+                self._update_sites(model_trace)
             if os.path.exists(temp_folder): shutil.rmtree(temp_folder)
             os.makedirs(temp_folder, exist_ok=False)
             logger.info(f"Created temporary folder {temp_folder}")
@@ -133,7 +146,15 @@ class NonHierarchicalBaseModel(BaseModel):
             logger.info(f"Removed temporary folder {temp_folder}")
 
     @timing
-    def predict(self, df: pd.DataFrame, posterior: dict | None = None, **kw):
+    def predict(
+        self,
+        df: pd.DataFrame,
+        posterior: dict | None = None,
+        num_samples: int = 100,
+        return_sites: list[str] | None = None,
+        key: Array | None = None,
+        **kw
+    ):
         df_features = df[self.features].apply(tuple, axis=1)
         combinations = df_features.unique().tolist()
         num_combinations = len(combinations)
@@ -149,7 +170,7 @@ class NonHierarchicalBaseModel(BaseModel):
                 .copy()
             )
             predictive = mep.predict(
-                self.key,
+                self.key if key is None else key,
                 self._model,
                 *mep.get_regressors(ccdf, self.intensity, []),
                 posterior={
@@ -170,7 +191,7 @@ class NonHierarchicalBaseModel(BaseModel):
 
         try:
             n_jobs = self.n_jobs
-            self.n_jobs = 8
+            self.n_jobs = 8 if n_jobs != 1 else n_jobs
             if os.path.exists(temp_folder): shutil.rmtree(temp_folder)
             os.makedirs(temp_folder, exist_ok=False)
             logger.info(f"Created temporary folder {temp_folder}")

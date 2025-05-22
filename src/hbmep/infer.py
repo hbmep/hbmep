@@ -129,6 +129,6 @@ def predict(
         )
 
     # Generate predictions
-    predictive = predictive_fn(key, intensity, features)
+    predictive = predictive_fn(key, intensity, features, **kw)
     predictive = {u: np.array(v) for u, v in predictive.items()}
     return predictive

@@ -242,6 +242,7 @@ def plot(
     num_rows = 10
     num_pages = num_combinations // num_rows + (num_combinations % num_rows > 0)
 
+    logger.info(output_path)
     # Iterate over pdf pages
     counter = 0
     pdf = PdfPages(output_path)

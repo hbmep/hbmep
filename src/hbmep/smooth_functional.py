@@ -35,9 +35,9 @@ def rectified_linear(x, a, b, g, eps=EPS):
     return g + z
 
 
-def rectified_logistic_s50(x, a, b, g, h, v, eps=EPS):
+def rectified_logistic_inInflectionParam(x, a, b, g, h, v, eps=EPS):
     """
     Smooth approximation of rectified-logistic function in S50 parameterization
     """
-    a = F.threshold(a, b, g, h, v)
+    a = F.get_threshold(a, b, g, h, v)
     return rectified_logistic(x, a, b, g, h, v, eps)
