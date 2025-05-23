@@ -2,6 +2,7 @@ import os
 import pickle
 
 import numpy as np
+from jax import numpy as jnp
 import pandas as pd
 
 from hbmep.model import BaseModel
@@ -11,21 +12,18 @@ from hbmep.notebooks.rat.model import HB
 from core__combined import CONFIG
 
 
-# model_dir = "/home/vishu/reports/hbmep/notebooks/rat/combined_data/4000w_4000s_4c_4t_15d_95a_tm/hb_l4_masked_mmax0/L_CIRC___L_SHIE___C_SMA_LAR/h_prior_0.1__conc1_1"
-# model_dir = "/home/vishu/reports/hbmep/notebooks/rat/combined_data/4000w_4000s_4c_4t_15d_95a_tm/hb_l4_masked_mmax1/L_CIRC___L_SHIE___C_SMA_LAR___J_RCML/h_prior_0.1"
-model_dir = "/home/vishu/reports/hbmep/notebooks/rat/combined_data/4000w_4000s_4c_4t_15d_95a_tm/hb_l4_masked_mmax0/L_CIRC___L_SHIE___C_SMA_LAR___J_RCML/h_prior_0.1__conc1_10/"
-model_dir = "/home/vishu/reports/hbmep/notebooks/rat/combined_data/4000w_4000s_4c_4t_15d_95a_tm/hb_l4_masked/L_CIRC___L_SHIE___C_SMA_LAR___J_RCML/"
+# model_dir = "/home/vishu/reports/hbmep/notebooks/rat/combined_data/4000w_4000s_4c_4t_15d_95a_tm/hb_l4_masked_mmax0/L_CIRC___L_SHIE___C_SMA_LAR___J_RCML/h_prior_0.1__conc1_10/"
+model_dir = "/home/vishu/reports/hbmep/notebooks/rat/combined_data/4000w_4000s_4c_4t_15d_95a_tm/hb_rl_masked_hmaxPooled/L_CIRC___L_SHIE___C_SMA_LAR___J_RCML"
+# model_dir = "/home/vishu/reports/hbmep/notebooks/rat/combined_data/4000w_4000s_4c_4t_15d_95a_tm/hb_l5_masked_hmaxPooled/L_CIRC___L_SHIE___C_SMA_LAR___J_RCML"
 base_model = BaseModel(config=CONFIG)
 
 df = None
 encoder = None
 posterior = None
+named_params = [site.a, site.b, site.g, site.h, site.v, "h_fraction", "h_max"]
 
 for respond_idx, response in enumerate(base_model.response):
     response_dir = os.path.join(model_dir, response)
-    # if response == "LBiceps":
-    #     print(f"Reading alt {response}...")
-    #     response_dir = "/home/vishu/reports/hbmep/notebooks/rat/combined_data/4000w_4000s_4c_4t_15d_95a_tm/hb_l4_masked_mmax2/L_CIRC___L_SHIE___C_SMA_LAR___J_RCML/h_prior_0.1__conc1_10/LBiceps"
     src = os.path.join(response_dir, "inf.pkl")
     with open(src, "rb") as f:
         curr_df, curr_encoder, curr_posterior, = pickle.load(f)
@@ -33,6 +31,7 @@ for respond_idx, response in enumerate(base_model.response):
     with open(src, "rb") as f:
         model, = pickle.load(f)
 
+    curr_posterior = {u: v for u, v in curr_posterior.items() if u in named_params}
     if df is None:
         df = curr_df.copy()
         encoder = curr_encoder
@@ -49,7 +48,7 @@ model.response = base_model.response.copy()
 model.build_dir = model_dir
 for u, v in posterior.items(): print(u, v.shape)
 
-named_params = [site.a, site.b, site.g, site.h, "h_fraction", "h_max", "h_max_fraction", "h_max_global"]
+named_params = [site.a, site.b, site.g, site.h, site.v, "h_fraction", "h_max"]
 posterior = {u: posterior[u] for u in named_params if u in posterior.keys()}
 for u, v in posterior.items(): print(u, v.shape)
 
@@ -81,10 +80,23 @@ def body_check_1(named_params):
     return
 
 
-named_params = [site.a, site.b, site.g, site.h, "h_fraction"]
+named_params = [site.a, site.b, site.g, site.h, site.v, "h_fraction"]
 posterior = {u: body_mask(u) if u in named_params else v for u, v in posterior.items()}
 for u, v in posterior.items(): print(u, v.shape)
 body_check_1(named_params)
+
+_, features = model.get_regressors(df)
+g = posterior[site.g].copy(); h_max = posterior["h_max"].copy()
+response = df[model.response].to_numpy().copy()
+response = response[None, ...] - g[:, *features.T]
+response /= jnp.array(h_max)[:, *features.T]; response = np.array(response)
+response += g[:, *features.T]
+response = np.mean(response, axis=0)
+assert response.min() > 0
+norm_columns = [f"{r}_norm" for r in model.response]
+df[norm_columns] = response
+
+assert not np.any(posterior[site.h] > posterior["h_max"])
 
 output_path = os.path.join(model_dir, "combined_inf.pkl")
 with open(output_path, "wb") as f:
