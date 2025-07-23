@@ -101,4 +101,4 @@ def invert_combination(
 
 
 def generate_response_colors(n: int, palette="rainbow", low=0, high=1):
-    return sns.color_palette(palette="rainbow", as_cmap=True)(np.linspace(low, high, n))
+    return sns.color_palette(palette=palette, as_cmap=True)(np.linspace(low, high, n))

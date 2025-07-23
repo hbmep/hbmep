@@ -1,5 +1,6 @@
 import os
 import pickle
+import warnings
 import logging 
 
 from jax import random
@@ -19,6 +20,9 @@ from hbmep.notebooks.rat.constants import (
     smalar as smalar_constants,
     rcml as rcml_constants
 )
+
+SEPARATOR = "___"
+COMBINATION_CDF = "combination_cdf"
 logger = logging.getLogger(__name__)
 
 
@@ -53,7 +57,8 @@ def get_paths(experiment): # example - get_paths("L_CIRC")
     return build_dir, toml_path, data_path, mep_matrix_path
 
 
-def log_transform_intensity(df: pd.DataFrame, intensity: str):
+def log_transform_intensity(df: pd.DataFrame, intensity: str, convert=True):
+    # return df
     data = df.copy()
     intensities = sorted(data[intensity].unique().tolist())
     min_intensity = intensities[0]
@@ -143,27 +148,32 @@ def predict(df, encoder, posterior, model, mcmc):
     return
 
 
-def load_model(model_dir):
-    src = os.path.join(model_dir, "inf.pkl")
+def load_model(
+    model_dir,
+    inference_file="inf.pkl",
+    model_file="model.pkl",
+    mcmc_file="mcmc.pkl",
+):
+    src = os.path.join(model_dir, inference_file)
     with open(src, "rb") as f:
         df, encoder, posterior, = pickle.load(f)
 
-    src = os.path.join(model_dir, "model.pkl")
+    src = os.path.join(model_dir, model_file)
     with open(src, "rb") as f:
         model, = pickle.load(f)
 
     mcmc = None
     try:
-        src = os.path.join(model_dir, "mcmc.pkl")
+        src = os.path.join(model_dir, mcmc_file)
         with open(src, "rb") as f:
             mcmc, = pickle.load(f)
     except FileNotFoundError:
-        logger.info("mcmc.pkl not found. Attempting to read from model_dict.pkl")
+        logger.info(f"{mcmc_file} not found. Attempting to read from model_dict.pkl")
     except ValueError as e:
         logger.info("Encountered ValueError, trace is below")
         logger.info(e)
     else:
-        logger.info("Found mcmc.pkl")
+        logger.info(f"Found {model_file}")
 
     if mcmc is None:
         try:
@@ -199,7 +209,7 @@ def mask_upper(arr):
     return arr
 
 
-def annotate_heatmap(ax, cmap_arr, arr, l, r, star=False, star_arr=None, **kw):
+def annotate_heatmap(ax, cmap_arr, arr, l, r, star=False, star_arr=None, fontsize=None, **kw):
     n = arr.shape[0]
     colors = np.where(cmap_arr > .6, "k", "white")
 
@@ -212,8 +222,7 @@ def annotate_heatmap(ax, cmap_arr, arr, l, r, star=False, star_arr=None, **kw):
                 if pvalue < 0.001: text += "***"
                 elif pvalue < 0.01: text += "**"
                 elif pvalue < 0.05: text += "*"
-            # ax.text(x + l, y + r, (y, x), **kw, color=colors[y, x])
-            ax.text(x + l, y + r, text, **kw, color=colors[y, x])
+            ax.text(x + l, y + r, text, **kw, color=colors[y, x], size=fontsize)
 
 
 def load_csmalar_data(data: pd.DataFrame):
@@ -469,13 +478,13 @@ def load_size(
     data = pd.read_csv(src)
     df = log_transform_intensity(data, intensity)
     
-    assert run_id in {"size-ground", "size-no-ground", "size-all"}
+    assert run_id in {"size-ground", "size-no-ground", "all"}
     if run_id == "all": assert not set_reference
     subset = []
     match run_id:
         case "size-ground": subset = GROUND
         case "size-no-ground": subset = NO_GROUND
-        case "size-all": subset = (
+        case "all": subset = (
             GROUND
             + NO_GROUND
             + GROUND_BIG
@@ -538,11 +547,16 @@ def load_rcml_data(data: pd.DataFrame):
     temp = (
         data[["segment", "lat"]]
         .apply(
-            lambda x: x[0].split("-")[0] + x[1].split("-")[0] + "-" + x[0].split("-")[1] + x[1].split("-")[1],
+            lambda x: (
+                x[0].split("-")[0] + x[1].split("-")[0] + "-" +
+                x[0].split("-")[1] + x[1].split("-")[1]
+            ),
             axis=1
         )
     )
-    pd.testing.assert_series_equal(temp, data.compound_position, check_names=False)
+    pd.testing.assert_series_equal(
+        temp, data.compound_position, check_names=False
+    )
     return data
 
 
@@ -571,7 +585,9 @@ def load_rcml(
     match run_id:
         case "ground": subset = GROUND
         case "rostral-caudal": subset = ROSTRAL_CAUDAL
-        case "all": subset = GROUND + ROSTRAL_CAUDAL + MIDLINE_LATERAL + ROOT_ALIGNED
+        case "all": subset = (
+            GROUND + ROSTRAL_CAUDAL + MIDLINE_LATERAL + ROOT_ALIGNED
+        )
         case _: raise ValueError
     assert len(set(subset)) == len(subset)
     cols = ["segment", "lat"]
@@ -581,49 +597,373 @@ def load_rcml(
     return df
 
 
-def make_test(diff, mask=True, correction=False):
-    test = stats.wilcoxon(diff, axis=0, nan_policy="omit")
+def make_test(diff, mask=True, correction=False, use_nonparametric=False):
+    with np.errstate(invalid="ignore"):
+        if use_nonparametric:
+            test = stats.wilcoxon(diff, axis=0, nan_policy="omit")
+        else:
+            test = stats.ttest_1samp(
+                diff, axis=0, nan_policy="omit", popmean=0
+            )
     pvalue = test.pvalue
     if mask: pvalue = mask_upper(pvalue)
-    pvalue.shape
+
     if correction:
-        idx = np.tril_indices_from(pvalue, k=-1)
-        corrected = stats.false_discovery_control(pvalue[idx])
-        pvalue[idx] = corrected
+        if mask:
+            idx = np.tril_indices_from(pvalue, k=-1)
+            corrected = stats.false_discovery_control(pvalue[idx])
+            pvalue[idx] = corrected
+        else:
+            pvalue = stats.false_discovery_control(pvalue)
+
     _test = stats.ttest_1samp(diff, popmean=0, axis=0, nan_policy="omit")
-    statistic = _test.statistic
-    if mask: statistic = mask_upper(statistic)
-    statistic.shape
-    deg = _test.df.astype(float)
-    if mask: deg = mask_upper(deg)
-    deg.shape
+    deg = _test.df
     me = np.nanmean(diff, axis=0)
-    eff = me / np.nanstd(diff, axis=0)
-    return pvalue, statistic, deg, me, eff
+    return pvalue, deg, me,
 
 
-def make_plot(pvalue, statistic, deg, me, eff, labels):
+def make_plot(pvalue, deg, me, labels, figsize=None, ax=None, fontsize=None):
     num_labels = len(labels)
-    fig, axes = plt.subplots(1, 1, constrained_layout=True, squeeze=False, figsize=(1.5 * num_labels, .8 * num_labels))
-    ax = axes[0, 0]
-    sns.heatmap(pvalue, annot=False, ax=ax, cbar=False, vmin=0, vmax=1)
+    if ax is None:
+        if figsize is None: figsize = (1.5 * num_labels, .8 * num_labels)
+        fig, axes = plt.subplots(
+            1, 1, constrained_layout=True, squeeze=False, figsize=figsize
+        )
+        ax = axes[0, 0]
+    else: fig = None; axes = None
+    sns.heatmap(
+        pvalue, annot=False, ax=ax, cbar=False, vmin=0, vmax=1,
+        xticklabels=labels, yticklabels=labels,
+    )
     # Annotate
     pvalue_annot_kws = {"ha": 'center', "va": 'center'}
-    annotate_heatmap(ax, pvalue,  np.round(pvalue, 3), 0.5, 0.5, star=True, star_arr=pvalue, **pvalue_annot_kws)
+    annotate_heatmap(
+        ax, pvalue,  np.round(pvalue, 3), 0.5, 0.5, star=True,
+        star_arr=pvalue, **pvalue_annot_kws, fontsize=fontsize
+    )
     deg_annot_kws = {"ha": 'left', "va": 'bottom'}
-    annotate_heatmap(ax, pvalue, 1 + deg.astype(int), 0, 1, **deg_annot_kws)
+    annotate_heatmap(
+        ax, pvalue, 1 + deg, 0, 1, **deg_annot_kws, fontsize=fontsize
+    )
     statistic_annot_kws = {"ha": 'center', "va": 'top'}
-    # annotate_heatmap(ax, pvalue, np.round(statistic, 3), 0.5, 0, **statistic_annot_kws)
-    annotate_heatmap(ax, pvalue, np.round(me, 3), 0.5, 0, **statistic_annot_kws)
-    ax.set_xticklabels(labels=labels, rotation=15, ha="right");
-    ax.set_yticklabels(labels=labels, rotation=0);
+    annotate_heatmap(
+        ax, pvalue, np.round(me, 3), 0.5, 0, **statistic_annot_kws,
+        fontsize=fontsize
+    )
+    ax.set_xticklabels(labels=labels, rotation=25, ha="right", size="x-small")
+    ax.set_yticklabels(labels=labels, rotation=0, size="xx-small")
     return fig, axes
 
 
-def make_compare(diff, labels, correction=False):
-    pvalue, statistic, deg, me, eff = make_test(diff, correction=correction)
-    fig, axes = make_plot(pvalue, statistic, deg, me, eff, labels)
-    return pvalue, statistic, deg, me, eff, fig, axes
+def make_compare(
+    diff, positions, correction=False, figsize=None, ax=None,
+    fontsize=None, use_nonparametric=False
+):
+    _, labels = zip(*positions)
+    pvalue, deg, me, = make_test(
+        diff, correction=correction, use_nonparametric=use_nonparametric
+    )
+    fig, axes = make_plot(
+        pvalue, deg, me, labels, figsize=figsize, ax=ax, fontsize=fontsize
+    )
+    return pvalue, deg, me, fig, axes
+
+
+def make_compare3p(
+    measure,
+	positions,
+    sort=True,
+	correction=False,
+	negate=False,
+	fig=None,
+	palette="viridis",
+    consistent_colors=False,
+	skip_heatmap=False,
+    lineplot=False,
+    use_nonparametric=False,
+):
+    idx, positions = zip(*positions)
+    measure = measure[..., idx].copy()                              # (S, P, C)
+
+
+    def body_pairwise(measure):
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore", category=RuntimeWarning)
+            measure_mean = np.nanmean(measure, axis=0)              # (P, C)
+            diff = measure[..., None] - measure[..., None, :]       # (S, P, C, C)
+            diff = np.nanmean(diff, axis=0)                         # (P, C, C)
+            diff_mean = np.nanmean(diff, axis=0)                    # (C, C)
+            diff_err = stats.sem(diff, axis=0, nan_policy="omit")   # (C, C)
+        return measure_mean, diff, diff_mean, diff_err
+
+
+    # Determine order and reference
+    measure_mean, diff, diff_mean, diff_err = body_pairwise(measure)
+    t = diff_mean < 0 if negate else diff_mean > 0
+    t = t.sum(axis=-1)
+    t = [(i, u, v) for i, (u, v) in enumerate(zip(positions, t))]
+    if sort: t = sorted(t, key=lambda x: (x[-1], x[0]))
+    t = [(u, v) for u, v, _ in t]
+    idx, positions = zip(*t); positions = list(zip(range(len(positions)), positions))
+    measure = measure[..., idx]
+    measure_mean, diff, diff_mean, diff_err = body_pairwise(measure)
+    subjects = [f"amap0{i + 1}" for i in range(measure_mean.shape[0])]
+
+    # Set colors
+    colors = sns.color_palette(palette=palette, n_colors=len(positions))
+    t = [u for _, u in positions]
+    if consistent_colors: t = sorted(t)
+    colors = dict(zip(t, colors))
+
+    # Plot
+    if fig is None:
+        nr, nc = 1, 3
+        fig, axes = plt.subplots(
+            *(nr, nc), figsize=(5 * nc, 3.2 * nr), squeeze=False, constrained_layout=True
+        )
+    else: fig, axes = fig
+
+    df = pd.DataFrame(measure_mean, index=subjects, columns=positions)
+    df = df.reset_index().melt(id_vars='index', var_name='position', value_name='value')
+    df = df.rename(columns={'index': 'subject'}).sort_values(by="position")
+    df_mean = df.groupby("position")["value"].mean().reset_index()
+    # df_mean = df.groupby("position", observed=True)["value"].median().reset_index()
+    df_mean = df_mean.sort_values(by="position")
+    df.position = df.position.apply(lambda x: x[1])
+    df_mean.position = df_mean.position.apply(lambda x: x[1])
+
+    ax = axes[0, 0]; ax.clear()
+    if lineplot:
+        sns.lineplot(
+            data=df,
+			x='position',
+			y='value',
+			hue='subject',
+			palette=["grey"] * len(subjects),
+			ax=ax,
+			legend=False,
+			alpha=.4
+        )
+        sns.scatterplot(
+            data=df,
+			x="position",
+			y="value",
+			hue="position",
+			palette=colors,
+			zorder=10,
+			ax=ax,
+			edgecolor="w"
+        )
+        sns.scatterplot(
+            data=df_mean,
+            x="position",
+            y="value",
+            hue="position",
+            palette=colors,
+            s=80,
+            zorder=20,
+            ax=ax,
+            legend=False,
+            marker="^",
+            facecolor="grey",
+            edgecolor="w"
+        )
+    else:
+        sns.lineplot(
+            data=df,
+			x="subject",
+			y="value",
+			hue="position",
+			palette=colors,
+			ax=ax,
+			marker="o"
+        )
+    ax.get_legend().set_title("")
+    ax.tick_params(axis="x", rotation=45, labelsize="xx-small")
+
+    ax = axes[0, 1]; ax.clear()
+    for pos_idx, pos_inv in positions:
+        if negate:
+            xme = diff_mean[-1, :]
+            xerr = diff_err[..., -1, :]
+        else:
+            xme = diff_mean[:, -1]
+            xerr = diff_err[..., :, -1]
+        xme = xme[pos_idx]
+        xerr = xerr[pos_idx]
+        ax.errorbar(
+            x=xme,
+            xerr=xerr,
+            y=pos_inv,
+            fmt="o",
+            ecolor=colors[pos_inv],
+            color=colors[pos_inv],
+        )
+    ax.vlines(
+        xme,
+        linestyle="-",
+        color=colors[positions[-1][1]],
+        ymax=(len(positions) - 1),
+        ymin=0
+    )
+    ax.tick_params(axis="x", rotation=25, labelsize="x-small")
+    ax.tick_params(axis="y", rotation=0, labelsize="x-small")
+
+    if not skip_heatmap:
+        ax = axes[0, 2]; ax.clear()
+        *_, = make_compare(
+            (-diff) if negate else diff,
+            positions,
+            ax=ax,
+            fontsize="xx-small",
+            correction=correction,
+            use_nonparametric=use_nonparametric,
+        )
+        ax.text(x=.9, y=.9, s=f"correction:{correction}", transform=ax.transAxes, ha='right', va="top")
+
+    for i in range(axes.shape[0]):
+        for j in range(axes.shape[1]):
+            ax = axes[i, j]
+            ax.set_xlabel(""); ax.set_ylabel("")
+            sides = ["top", "right"]
+            ax.spines[sides].set_visible(False)
+            if ax.get_legend(): ax.get_legend().remove()
+
+    ax = axes[0, 0]
+    ax.legend(bbox_to_anchor=(-.2, 1), loc="upper right", reverse=True, fontsize="x-small")
+    # return (fig, axes), positions, diff_mean, diff_err, colors, negate
+    return (fig, axes), positions, measure_mean, diff, diff_mean, diff_err, negate,
+
+
+def make_compare3p_bar(
+    measure,
+	positions,
+    negate=False,
+	correction=False,
+	fig=None,
+	palette="viridis",
+    consistent_colors=False,
+	skip_heatmap=False,
+    lineplot=False,
+):
+    idx, positions = zip(*positions)
+    measure = measure[..., idx].copy()  # (S, P, C)
+    # assert negate is False
+    if negate: measure *= -1
+
+
+    def body_pairwise(measure):
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore", category=RuntimeWarning)
+            diff = np.nanmean(measure, axis=0)  # (P, C)
+            diff_mean = np.nanmean(diff, axis=0)    # (C,)
+            diff_err = stats.sem(diff, axis=0, nan_policy="omit")   # (C,)
+        return diff, diff_mean, diff_err
+
+
+    _, diff_mean, diff_err = body_pairwise(measure)
+    t = [(i, u, v) for i, (u, v) in enumerate(zip(positions, diff_mean))]
+    t = sorted(t, key=lambda x: (x[-1], x[0]))
+    t = [(u, v) for u, v, _ in t]
+
+    idx, positions = zip(*t); positions = list(zip(range(len(positions)), positions))
+    measure = measure[..., idx]
+    diff, diff_mean, diff_err = body_pairwise(measure)
+    subjects = [f"amap0{i + 1}" for i in range(diff.shape[0])]
+
+    # Set colors
+    colors = sns.color_palette(palette=palette, n_colors=len(positions))
+    t = [u for _, u in positions]
+    if consistent_colors: t = sorted(t)
+    colors = dict(zip(t, colors))
+
+    # Plot
+    if fig is None:
+        nr, nc = 1, 2
+        fig, axes = plt.subplots(
+            *(nr, nc), figsize=(5 * nc, 3.2 * nr), squeeze=False, constrained_layout=True
+        )
+    else: fig, axes = fig
+
+    df = pd.DataFrame(diff, index=subjects, columns=positions)
+    df = df.reset_index().melt(
+        id_vars='index', var_name='position', value_name='value'
+    )
+    df = df.rename(columns={'index': 'subject'})
+    df = df.sort_values(by="position")
+    df_mean = df.groupby("position")["value"].mean().reset_index()
+    df_mean = df_mean.sort_values(by="position")
+    df.position = df.position.apply(lambda x: x[1])
+    df_mean.position = df_mean.position.apply(lambda x: x[1])
+
+    ax = axes[0, 0]; ax.clear()
+    if lineplot:
+        sns.lineplot(
+            data=df, x='position', y='value', hue='subject', palette=["grey"] * len(subjects), ax=ax, legend=False, alpha=.4
+        )
+        sns.scatterplot(
+            data=df, x="position", y="value", hue="position", palette=colors, zorder=10, ax=ax, edgecolor="w"
+        )
+        sns.scatterplot(
+            data=df_mean,
+            x="position",
+            y="value",
+            hue="position",
+            palette=colors,
+            s=80,
+            zorder=20,
+            ax=ax,
+            legend=False,
+            marker="^",
+            facecolor="grey",
+            edgecolor="w"
+        )
+    else:
+        sns.lineplot(
+            data=df, x="subject", y="value", hue="position", palette=colors, ax=ax, marker="o"
+        )
+    ax.get_legend().set_title("")
+    ax.tick_params(axis="x", rotation=45, labelsize="xx-small")
+
+    ax = axes[0, 1]; ax.clear()
+    for pos_idx, pos_inv in positions:
+        ax.bar(
+            x=pos_inv,
+            height=diff_mean[pos_idx],
+            color=colors[pos_inv],
+        )
+        ax.errorbar(
+            x=pos_inv,
+            y=diff_mean[pos_idx],
+            yerr=diff_err[pos_idx],
+            fmt='none',
+            ecolor="k",
+            capsize=5,
+        )
+    ax.tick_params(axis="x", rotation=25, labelsize="x-small")
+    ax.tick_params(axis="y", rotation=0, labelsize="x-small")
+
+    pvalue, deg, me, = make_test(diff, mask=False, correction=correction)
+    pvalue = np.round(pvalue, 3)
+    deg = 1 + deg
+
+    xticklabels = [(pos_inv, pvalue[pos_idx], deg[pos_idx]) for pos_idx, pos_inv in positions]
+    xticklabels = [(u, f"\np={v}, ", f"N={t}") for u, v, t in xticklabels]
+    xticklabels = ["".join(u) for u in xticklabels]
+    ax.set_xticks(range(4)); ax.set_xticklabels(xticklabels)
+    ax.text(x=.1, y=.9, s=f"correction:{correction}", transform=ax.transAxes, ha='left', va="top")
+
+    for i in range(axes.shape[0]):
+        for j in range(axes.shape[1]):
+            ax = axes[i, j]
+            ax.set_xlabel(""); ax.set_ylabel("")
+            sides = ["top", "right"]
+            ax.spines[sides].set_visible(False)
+            if ax.get_legend(): ax.get_legend().remove()
+
+    ax = axes[0, 0]
+    ax.legend(bbox_to_anchor=(-.2, 1), loc="upper right", reverse=True)
+    return (fig, axes), positions, diff_mean, diff_err, colors, negate,
 
 
 def make_pdf(figs, output_path):
@@ -633,6 +973,19 @@ def make_pdf(figs, output_path):
             pdf.savefig(fig, bbox_inches='tight') 
     print(f"Saved to {output_path}")
     return
+
+
+def make_dump(args: tuple, output_path=None):
+    with open(output_path, "wb") as f:
+        pickle.dump(args, f)
+    print(f"Dumped to {output_path}")
+    return
+
+
+def load_dump(src):
+    with open(src, "rb") as f:
+        args = pickle.load(f)
+    return args
 
 
 def _adjust_brightness(rgb_in, val):
@@ -708,3 +1061,54 @@ def compare_less_than(key, left, right, n_iters=50):
         prob.append((left_shuffled < right_shuffled).mean())
     prob = np.mean(np.array(prob))
     return key, prob
+
+
+def arg_mode(a, axis, argmax=True):
+    # a.shape (S, P, C, M)
+    a = a.copy()
+    t = np.nanmean(a, axis=0)
+    if argmax: mode = np.argmax(t, axis=axis)
+    else: mode = np.argmin(t, axis=axis)
+    mode = stats.mode(mode, axis=0, nan_policy="omit").mode
+    mode = np.array(list(zip(range(mode.shape[0]), mode)))
+    t = a[..., *mode.T]
+    for i in range(t.shape[-1]): np.testing.assert_almost_equal(a[..., i, mode[i, 1]], t[..., i])
+    return t, mode
+
+
+def minus_mean_of_rest(y):
+    si = []
+    for r in range(y.shape[-1]):
+        si.append(
+            y[..., r]
+            - np.mean(np.delete(y, r, axis=-1), axis=-1)
+        )
+    si = np.array(si)
+    si = np.moveaxis(si, 0, -1)
+    return si
+
+
+def make_combined(
+    experiment,
+    load_fn,
+    intensity,
+    features,
+    response,
+    run_id,
+    set_reference=False,
+    seperator=SEPARATOR,
+    **kw,
+):
+    df = load_fn(
+        intensity=intensity,
+        features=features,
+        run_id=run_id,
+        set_reference=set_reference,
+        **kw
+    )
+    df[COMBINATION_CDF] = (
+        df[features[1:]].apply(tuple, axis=1)
+        .apply(lambda x: seperator.join(x))
+        .apply(lambda x: f"{x}{seperator}{experiment}")
+    )
+    return df[[intensity, features[0], COMBINATION_CDF, *response]] 

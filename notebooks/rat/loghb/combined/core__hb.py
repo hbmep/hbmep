@@ -12,7 +12,9 @@ from hbmep.notebooks.constants import DATA, REPORTS
 
 logger = logging.getLogger(__name__)
 
-BUILD_DIR = os.path.join(REPORTS, "hbmep", "notebooks", "rat", "loghb", "combined_data")
+BUILD_DIR = os.path.join(
+    REPORTS, "hbmep", "notebooks", "rat", "loghb", "combined_data"
+)
 CONFIG = {
     "variables": {
         "intensity": "pulse_amplitude",
@@ -27,6 +29,7 @@ def main(model):
     run_id = model.run_id
     assert run_id in {
         "L_CIRC___L_SHIE___C_SMA_LAR",
+        "L_CIRC___L_SHIE___C_SMA_LAR___original",
         "L_CIRC___L_SHIE___C_SMA_LAR___J_RCML"
     }
     src = os.path.join(DATA, "rat", f"{run_id}.csv")
@@ -38,7 +41,9 @@ def main(model):
         subset = ["amap01", "amap02"]
         idx = df[model.features[0]].isin(subset)
         df = df[idx].reset_index(drop=True).copy()
-        subset = ["SE-NW___L_CIRC", "NE-SW___L_CIRC", "S-N___L_CIRC", "E-W___L_CIRC"]
+        subset = [
+            "SE-NW___L_CIRC", "NE-SW___L_CIRC", "S-N___L_CIRC", "E-W___L_CIRC"
+        ]
         idx = df[model.features[1]].isin(subset)
         df = df[idx].reset_index(drop=True).copy()
 
@@ -63,17 +68,20 @@ if __name__ == "__main__":
     model.test_run = True
 
     # model.run_id = "L_CIRC___L_SHIE___C_SMA_LAR___J_RCML"
-    model.run_id = "L_CIRC___L_SHIE___C_SMA_LAR"
+    # model.run_id = "L_CIRC___L_SHIE___C_SMA_LAR"
+    model.run_id = "L_CIRC___L_SHIE___C_SMA_LAR___original"
 
     # response_id = None
-    # response_id = 1
-    response_id = int(sys.argv[1:][0])
+    response_id = 0
+    # response_id = int(sys.argv[1:][0])
+    # response_id = int(input("Enter response idx: "))
     model.response = model.response[response_id: response_id + 1]
 
     # model._model = model.hb_l5_masked_hmaxPooled
     # model._model = model.hb_rl_masked_hmaxPooled
-    # model._model = model.fixed_hb_rl_masked_hmaxPooled
-    model._model = model.hb_rl_masked
+    # model._model = model.hb_rl_masked
+    # model._model = model.hb_rl_masked_sharp
+    model._model = model.hb_rl
 
     model.mcmc_params = {
         "num_chains": 4,
