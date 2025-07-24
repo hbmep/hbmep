@@ -2817,6 +2817,108 @@ class HB(BaseModel):
                         obs=response
                     )
 
+    def hb_rl_hmaxPooled(self, intensity, features, response=None, **kw):
+        num_data = intensity.shape[0]
+        num_features = np.max(features, axis=0) + 1
+
+        mask_obs = True
+        if response is not None: mask_obs = np.invert(np.isnan(response))
+
+
+        a_loc = pyro.sample(
+            site.a.loc, dist.TruncatedNormal(150., 50., low=0)
+        )
+        a_scale = pyro.sample(site.a.scale, dist.HalfNormal(150.))
+
+        b_scale = pyro.sample(site.b.scale, dist.HalfNormal(1.))
+        g_scale = pyro.sample(site.g.scale, dist.HalfNormal(.1))
+        # h_scale = pyro.sample(site.h.scale, dist.HalfNormal(5.))
+        v_scale = pyro.sample(site.v.scale, dist.HalfNormal(5.))
+
+        c1_scale = pyro.sample(site.c1.scale, dist.HalfNormal(5.))
+        c2_scale = pyro.sample(site.c2.scale, dist.HalfNormal(.5))
+
+        with pyro.plate(site.num_response, self.num_response):
+            h_max_loc = pyro.sample("h_max_loc", dist.Exponential(.1))
+            h_max_scale = pyro.sample("h_max_scale", dist.HalfNormal(5.))
+
+            with pyro.plate(site.num_features[0], num_features[0], dim=-3):
+                h_max = pyro.sample("h_max", dist.TruncatedNormal(
+                    h_max_loc, h_max_scale, low=0
+                ))
+
+        with pyro.plate(site.num_response, self.num_response):
+            with pyro.plate(site.num_features[1], num_features[1]):
+                with pyro.plate(site.num_features[0], num_features[0]):
+                    a = pyro.sample(
+                        site.a, dist.TruncatedNormal(a_loc, a_scale, low=0)
+                    )
+
+                    b_raw = pyro.sample(site.b.raw, dist.HalfNormal(1))
+                    b = pyro.deterministic(site.b, b_scale * b_raw)
+
+                    g_raw = pyro.sample(site.g.raw, dist.HalfNormal(1))
+                    g = pyro.deterministic(site.g, g_scale * g_raw)
+
+                    h_fraction = pyro.sample("h_fraction", dist.Beta(
+                        concentration1=1, concentration0=1
+                    ))
+                    h = pyro.deterministic(site.h, h_fraction * h_max)
+
+                    v_raw = pyro.sample(site.v.raw, dist.HalfNormal(1))
+                    v = pyro.deterministic(site.v, v_scale * v_raw)
+
+                    c1_raw = pyro.sample(site.c1.raw, dist.HalfNormal(1))
+                    c1 = pyro.deterministic(site.c1, c1_scale * c1_raw)
+
+                    c2_raw = pyro.sample(site.c2.raw, dist.HalfNormal(1))
+                    c2 = pyro.deterministic(site.c2, c2_scale * c2_raw)
+
+        if self.use_mixture: q = pyro.sample(
+            site.outlier_prob, dist.Uniform(0., 0.01)
+        )
+
+        with pyro.handlers.mask(mask=mask_obs):
+            with pyro.plate(site.num_response, self.num_response):
+                with pyro.plate(site.num_data, num_data):
+                    mu, alpha, beta = self.gamma_likelihood(
+                        SF.rectified_logistic,
+                        intensity,
+                        (
+                            a[*features.T],
+                            b[*features.T],
+                            g[*features.T],
+                            h[*features.T],
+                            v[*features.T],
+                            EPS,
+                        ),
+                        c1[*features.T],
+                        c2[*features.T],
+                    )
+                    pyro.deterministic(site.mu, mu)
+
+                    if self.use_mixture:
+                        mixing_distribution = dist.Categorical(
+                            probs=jnp.stack([1 - q, q], axis=-1)
+                        )
+                        component_distributions=[
+                            dist.Gamma(concentration=alpha, rate=beta),
+                            dist.HalfNormal(scale=(g[*features.T] + h[*features.T]))
+                        ]
+                        Mixture = dist.MixtureGeneral(
+                            mixing_distribution=mixing_distribution,
+                            component_distributions=component_distributions
+                        )
+
+                    pyro.sample(
+                        site.obs,
+                        (
+                            Mixture if self.use_mixture
+                            else dist.Gamma(concentration=alpha, rate=beta)
+                        ),
+                        obs=response
+                    )
+
     def hb_rlsharp(self, intensity, features, response=None, **kw):
         num_data = intensity.shape[0]
         num_features = np.max(features, axis=0) + 1
@@ -2862,6 +2964,108 @@ class HB(BaseModel):
 
                 c2_raw = pyro.sample(site.c2.raw, dist.HalfNormal(1))
                 c2 = pyro.deterministic(site.c2, c2_scale * c2_raw)
+
+        if self.use_mixture: q = pyro.sample(
+            site.outlier_prob, dist.Uniform(0., 0.01)
+        )
+
+        with pyro.handlers.mask(mask=mask_obs):
+            with pyro.plate(site.num_response, self.num_response):
+                with pyro.plate(site.num_data, num_data):
+                    mu, alpha, beta = self.gamma_likelihood(
+                        SF.rectified_logistic,
+                        intensity,
+                        (
+                            a[*features.T],
+                            b[*features.T],
+                            g[*features.T],
+                            h[*features.T],
+                            h[*features.T] + v[*features.T],
+                            EPS,
+                        ),
+                        c1[*features.T],
+                        c2[*features.T],
+                    )
+                    pyro.deterministic(site.mu, mu)
+
+                    if self.use_mixture:
+                        mixing_distribution = dist.Categorical(
+                            probs=jnp.stack([1 - q, q], axis=-1)
+                        )
+                        component_distributions=[
+                            dist.Gamma(concentration=alpha, rate=beta),
+                            dist.HalfNormal(scale=(g[*features.T] + h[*features.T]))
+                        ]
+                        Mixture = dist.MixtureGeneral(
+                            mixing_distribution=mixing_distribution,
+                            component_distributions=component_distributions
+                        )
+
+                    pyro.sample(
+                        site.obs,
+                        (
+                            Mixture if self.use_mixture
+                            else dist.Gamma(concentration=alpha, rate=beta)
+                        ),
+                        obs=response
+                    )
+
+    def hb_rlsharp_hmaxPooled(self, intensity, features, response=None, **kw):
+        num_data = intensity.shape[0]
+        num_features = np.max(features, axis=0) + 1
+
+        mask_obs = True
+        if response is not None: mask_obs = np.invert(np.isnan(response))
+
+
+        a_loc = pyro.sample(
+            site.a.loc, dist.TruncatedNormal(150., 50., low=0)
+        )
+        a_scale = pyro.sample(site.a.scale, dist.HalfNormal(150.))
+
+        b_scale = pyro.sample(site.b.scale, dist.HalfNormal(1.))
+        g_scale = pyro.sample(site.g.scale, dist.HalfNormal(.1))
+        # h_scale = pyro.sample(site.h.scale, dist.HalfNormal(5.))
+        v_scale = pyro.sample(site.v.scale, dist.HalfNormal(5.))
+
+        c1_scale = pyro.sample(site.c1.scale, dist.HalfNormal(5.))
+        c2_scale = pyro.sample(site.c2.scale, dist.HalfNormal(.5))
+
+        with pyro.plate(site.num_response, self.num_response):
+            h_max_loc = pyro.sample("h_max_loc", dist.Exponential(.1))
+            h_max_scale = pyro.sample("h_max_scale", dist.HalfNormal(5.))
+
+            with pyro.plate(site.num_features[0], num_features[0], dim=-3):
+                h_max = pyro.sample("h_max", dist.TruncatedNormal(
+                    h_max_loc, h_max_scale, low=0
+                ))
+
+        with pyro.plate(site.num_response, self.num_response):
+            with pyro.plate(site.num_features[1], num_features[1]):
+                with pyro.plate(site.num_features[0], num_features[0]):
+                    a = pyro.sample(
+                        site.a, dist.TruncatedNormal(a_loc, a_scale, low=0)
+                    )
+
+                    b_raw = pyro.sample(site.b.raw, dist.HalfNormal(1))
+                    b = pyro.deterministic(site.b, b_scale * b_raw)
+
+                    g_raw = pyro.sample(site.g.raw, dist.HalfNormal(1))
+                    g = pyro.deterministic(site.g, g_scale * g_raw)
+
+                    h_fraction = pyro.sample("h_fraction", dist.Beta(
+                        concentration1=1, concentration0=1
+                    ))
+                    h = pyro.deterministic(site.h, h_fraction * h_max)
+
+                    v_raw = pyro.sample(site.v.raw, dist.HalfNormal(1))
+                    v = pyro.deterministic(site.v, v_scale * v_raw)
+
+                    c1_raw = pyro.sample(site.c1.raw, dist.HalfNormal(1))
+                    c1 = pyro.deterministic(site.c1, c1_scale * c1_raw)
+
+                    c2_raw = pyro.sample(site.c2.raw, dist.HalfNormal(1))
+                    c2 = pyro.deterministic(site.c2, c2_scale * c2_raw)
 
         if self.use_mixture: q = pyro.sample(
             site.outlier_prob, dist.Uniform(0., 0.01)

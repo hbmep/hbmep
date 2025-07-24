@@ -30,7 +30,8 @@ def main(model):
     assert run_id in {
         "L_CIRC___L_SHIE___C_SMA_LAR",
         "L_CIRC___L_SHIE___C_SMA_LAR___combined",
-        "L_CIRC___L_SHIE___C_SMA_LAR___J_RCML"
+        "L_CIRC___L_SHIE___C_SMA_LAR___J_RCML",
+        "L_CIRC___L_SHIE___C_SMA_LAR___J_RCML___combined",
     }
     src = os.path.join(DATA, "rat", f"{run_id}.csv")
     df = pd.read_csv(src)
@@ -42,7 +43,10 @@ def main(model):
         idx = df[model.features[0]].isin(subset)
         df = df[idx].reset_index(drop=True).copy()
         subset = [
-            "SE-NW___L_CIRC", "NE-SW___L_CIRC", "S-N___L_CIRC", "E-W___L_CIRC"
+            "SE-NW___L_CIRC",
+            "NE-SW___L_CIRC",
+            "S-N___L_CIRC",
+            "E-W___L_CIRC"
         ]
         idx = df[model.features[1]].isin(subset)
         df = df[idx].reset_index(drop=True).copy()
@@ -70,6 +74,7 @@ if __name__ == "__main__":
     # model.run_id = "L_CIRC___L_SHIE___C_SMA_LAR___J_RCML"
     # model.run_id = "L_CIRC___L_SHIE___C_SMA_LAR"
     model.run_id = "L_CIRC___L_SHIE___C_SMA_LAR___combined"
+    # model.run_id = "L_CIRC___L_SHIE___C_SMA_LAR___J_RCML___combined"
 
     # response_id = None
     response_id = 0
@@ -81,8 +86,10 @@ if __name__ == "__main__":
     # model._model = model.hb_rl_masked_hmaxPooled
     # model._model = model.hb_rl_masked
     # model._model = model.hb_rl_masked_sharp
-    model._model = model.hb_rl
+    # model._model = model.hb_rl
     # model._model = model.hb_rlsharp
+    model._model = model.hb_rl_hmaxPooled
+    # model._model = model.hb_rlsharp_hmaxPooled
 
     model.mcmc_params = {
         "num_chains": 4,
