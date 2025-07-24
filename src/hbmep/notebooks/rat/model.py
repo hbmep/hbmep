@@ -2817,7 +2817,7 @@ class HB(BaseModel):
                         obs=response
                     )
 
-    def hb_rl_sharp(self, intensity, features, response=None, **kw):
+    def hb_rlsharp(self, intensity, features, response=None, **kw):
         num_data = intensity.shape[0]
         num_features = np.max(features, axis=0) + 1
 

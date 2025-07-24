@@ -82,7 +82,7 @@ if __name__ == "__main__":
     # model._model = model.hb_rl_masked
     # model._model = model.hb_rl_masked_sharp
     model._model = model.hb_rl
-    # model._model = model.hb_rl_sharp
+    # model._model = model.hb_rlsharp
 
     model.mcmc_params = {
         "num_chains": 4,
