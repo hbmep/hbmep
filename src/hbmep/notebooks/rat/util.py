@@ -26,7 +26,7 @@ COMBINATION_CDF = "combination_cdf"
 logger = logging.getLogger(__name__)
 
 
-def get_paths(experiment): # example - get_paths("L_CIRC")
+def get_paths(experiment):
     build_dir = os.path.join(
         REPORTS,
         "hbmep",
@@ -58,18 +58,22 @@ def get_paths(experiment): # example - get_paths("L_CIRC")
 
 
 def log_transform_intensity(df: pd.DataFrame, intensity: str, convert=True):
-    # return df
     data = df.copy()
     intensities = sorted(data[intensity].unique().tolist())
     min_intensity = intensities[0]
     assert min_intensity >= 0
     if min_intensity > 0: pass
     else:
-        logger.info(f"Minimum intensity is {min_intensity}. Handling this before taking log2...")
+        logger.info(
+            f"Minimum intensity is {min_intensity}."
+            + " Handling this before taking log2..."
+        )
         replace_zero_with = 2 ** -1
         assert replace_zero_with < intensities[1]
         logger.info(f"Replacing {min_intensity} with {replace_zero_with}")
-        data[intensity] = data[intensity].replace({min_intensity: replace_zero_with})
+        data[intensity] = data[intensity].replace(
+            {min_intensity: replace_zero_with}
+        )
         intensities = sorted(data[intensity].unique().tolist())[:5]
         logger.info(f"New minimum intensities: {intensities}")
     data[intensity] = np.log2(data[intensity])
@@ -168,7 +172,9 @@ def load_model(
         with open(src, "rb") as f:
             mcmc, = pickle.load(f)
     except FileNotFoundError:
-        logger.info(f"{mcmc_file} not found. Attempting to read from model_dict.pkl")
+        logger.info(
+            f"{mcmc_file} not found. Attempting to read from model_dict.pkl"
+        )
     except ValueError as e:
         logger.info("Encountered ValueError, trace is below")
         logger.info(e)
@@ -183,7 +189,10 @@ def load_model(
         except FileNotFoundError:
             logger.info("model_dict.pkl not found.")
         except ValueError as e:
-            logger.info("Encountered ValueError, trace is below. Possibly issue with unpacking.")
+            logger.info(
+                "Encountered ValueError, trace is below."
+                + " Possibly issue with unpacking."
+            )
             logger.info(e)
         else:
             logger.info("Found model_dict.pkl")
@@ -209,7 +218,9 @@ def mask_upper(arr):
     return arr
 
 
-def annotate_heatmap(ax, cmap_arr, arr, l, r, star=False, star_arr=None, fontsize=None, **kw):
+def annotate_heatmap(
+    ax, cmap_arr, arr, l, r, star=False, star_arr=None, fontsize=None, **kw
+):
     n = arr.shape[0]
     colors = np.where(cmap_arr > .6, "k", "white")
 
@@ -222,23 +233,41 @@ def annotate_heatmap(ax, cmap_arr, arr, l, r, star=False, star_arr=None, fontsiz
                 if pvalue < 0.001: text += "***"
                 elif pvalue < 0.01: text += "**"
                 elif pvalue < 0.05: text += "*"
-            ax.text(x + l, y + r, text, **kw, color=colors[y, x], size=fontsize)
+            ax.text(
+                x + l, y + r, text, **kw, color=colors[y, x], size=fontsize
+            )
 
 
 def load_csmalar_data(data: pd.DataFrame):
     data = data.copy()
     # make sure columns channel1_segment and channel2_segment are correct
-    ch1 = data.compound_position.apply(lambda x: np.nan if not x.split("-")[0] else x.split("-")[0][:2])
-    pd.testing.assert_series_equal(ch1, data.channel1_segment, check_names=False)
-    ch2 = data.compound_position.apply(lambda x: np.nan if not x.split("-")[1] else x.split("-")[1][:2])
-    pd.testing.assert_series_equal(ch2, data.channel2_segment, check_names=False)
+    ch1 = data.compound_position.apply(
+        lambda x: np.nan if not x.split("-")[0] else x.split("-")[0][:2]
+    )
+    pd.testing.assert_series_equal(
+        ch1, data.channel1_segment, check_names=False
+    )
+    ch2 = data.compound_position.apply(
+        lambda x: np.nan if not x.split("-")[1] else x.split("-")[1][:2]
+    )
+    pd.testing.assert_series_equal(
+        ch2, data.channel2_segment, check_names=False
+    )
     # make sure channel2_segment is never nan
     assert not data.channel2_segment.isna().any()
     # make sure columns channel1_designation and channel2_designation are correct
-    ch1_lat = data.compound_position.apply(lambda x: np.nan if not x.split("-")[0] else x.split("-")[0][2:])
-    pd.testing.assert_series_equal(ch1_lat, data.channel1_designation, check_names=False)
-    ch2_lat = data.compound_position.apply(lambda x: np.nan if not x.split("-")[1] else x.split("-")[1][2:])
-    pd.testing.assert_series_equal(ch2_lat, data.channel2_designation, check_names=False)
+    ch1_lat = data.compound_position.apply(
+        lambda x: np.nan if not x.split("-")[0] else x.split("-")[0][2:]
+    )
+    pd.testing.assert_series_equal(
+        ch1_lat, data.channel1_designation, check_names=False
+    )
+    ch2_lat = data.compound_position.apply(
+        lambda x: np.nan if not x.split("-")[1] else x.split("-")[1][2:]
+    )
+    pd.testing.assert_series_equal(
+        ch2_lat, data.channel2_designation, check_names=False       
+    )
     # make sure channel2_designation is never nan
     assert not data.channel2_designation.isna().any()
 
@@ -259,11 +288,16 @@ def load_csmalar_data(data: pd.DataFrame):
     temp = (
         data[["segment", "lat"]]
         .apply(
-            lambda x: x[0].split("-")[0] + x[1].split("-")[0] + "-" + x[0].split("-")[1] + x[1].split("-")[1],
+            lambda x: (
+                x[0].split("-")[0] + x[1].split("-")[0]
+                + "-" + x[0].split("-")[1] + x[1].split("-")[1]
+            ),
             axis=1
         )
     )
-    pd.testing.assert_series_equal(temp, data.compound_position, check_names=False)
+    pd.testing.assert_series_equal(
+        temp, data.compound_position, check_names=False
+    )
 
     df = data.copy()
     # Remove contacts with size B-S
@@ -284,9 +318,15 @@ def load_csmalar_data(data: pd.DataFrame):
     df = df[~idx].reset_index(drop=True).copy()
     # Remove bipolar contacts that connect between two different segments.
     # these were recorded by mistake during experiments and won't be analyzed
-    idx = (df.channel1_segment == df.channel2_segment) | df.channel1_segment.isna()
+    idx = (
+        (df.channel1_segment == df.channel2_segment)
+        | df.channel1_segment.isna()
+    )
     df = df[idx].reset_index(drop=True).copy()
-    assert ((df.channel1_segment == df.channel2_segment) | df.channel1_segment.isna()).all()
+    assert (
+        (df.channel1_segment == df.channel2_segment)
+        | df.channel1_segment.isna()
+    ).all()
     return df
 
 
@@ -299,7 +339,6 @@ def load_circ(
     **kw
 ):
     _, _, DATA_PATH, _ = get_paths(circ_constants.EXPERIMENT)
-
     MAP = circ_constants.MAP
     DIAM = circ_constants.DIAM
     VERTICES = circ_constants.VERTICES
@@ -358,7 +397,6 @@ def load_shie(
     **kw
 ):
     _, _, DATA_PATH, _ = get_paths(shie_constants.EXPERIMENT)
-
     POSITIONS_MAP = shie_constants.POSITIONS_MAP
     CHARGES_MAP = shie_constants.CHARGES_MAP
     WITH_GROUND = shie_constants.WITH_GROUND
@@ -385,7 +423,9 @@ def load_shie(
             case "ground" | "all": pass
             case _: raise ValueError
 
-    assert set(subset) <= set(df[features[1:]].apply(tuple, axis=1).values.tolist())
+    assert set(subset) <= set(
+        df[features[1:]].apply(tuple, axis=1).values.tolist()
+    )
     ind = df[features[1:]].apply(tuple, axis=1).isin(subset)
     df = df[ind].reset_index(drop=True).copy()
 
@@ -417,7 +457,10 @@ def load_lat(
     data = pd.read_csv(src)
     df = log_transform_intensity(data, intensity)
     
-    assert run_id in {"lat-small-ground", "lat-big-ground", "lat-small-no-ground", "lat-big-no-ground"}
+    assert run_id in {
+        "lat-small-ground", "lat-big-ground", "lat-small-no-ground",
+        "lat-big-no-ground"
+    }
     subset = []
     match run_id:
         case "lat-small-ground": subset = GROUND_SMALL
@@ -431,8 +474,12 @@ def load_lat(
         match run_id:
             case "lat-small-ground": pass
             case "lat-big-ground": pass
-            case "lat-small-no-ground": subset += [('-M', '-C5', 'S'), ('-M', '-C6', 'S')]
-            case "lat-big-no-ground": subset += [('-M', '-C5', 'B'), ('-M', '-C6', 'B')]
+            case "lat-small-no-ground": subset += [
+                ('-M', '-C5', 'S'), ('-M', '-C6', 'S')
+            ]
+            case "lat-big-no-ground": subset += [
+                ('-M', '-C5', 'B'), ('-M', '-C6', 'B')
+            ]
             case _: raise ValueError
 
     assert len(set(subset)) == len(subset)
@@ -446,11 +493,15 @@ def load_lat(
 
     if set_reference:
         if "no-ground" in run_id:
-            df["segment"] = df["segment"].apply(lambda x: f"-{x.split('-')[-1]}")
+            df["segment"] = df["segment"].apply(
+                lambda x: f"-{x.split('-')[-1]}"
+            )
         df["lat"] = df["lat"].replace({reference: " " + reference})
 
     # if set_reference:
-    #     t = df.groupby(cols, as_index=False)[features[0]].agg(lambda x: x.nunique())
+    #     t = df.groupby(cols, as_index=False)[features[0]].agg(
+    #         lambda x: x.nunique()
+    #     )
     #     keys = t[cols].apply(tuple, axis=1); values = t[features[0]]
     #     key, values = zip(*sorted(zip(keys, values)))
     #     print(list(zip(keys, values)))
@@ -506,27 +557,44 @@ def load_size(
         df["compound_size"] = df["compound_size"].replace({"S": " S"})
 
     # if set_reference:
-    #     t = df.groupby(cols, as_index=False)[features[0]].agg(lambda x: x.nunique())
+    #     t = df.groupby(cols, as_index=False)[features[0]].agg(
+    #         lambda x: x.nunique()
+    #     )
     #     keys = t[cols].apply(tuple, axis=1); values = t[features[0]]
     #     key, values = zip(*sorted(zip(keys, values)))
     #     print(list(zip(keys, values)))
-
     return df
 
 
 def load_rcml_data(data: pd.DataFrame):
     data = data.copy()
-    ch1 = data.compound_position.apply(lambda x: np.nan if not x.split("-")[0] else x.split("-")[0][:2])
-    pd.testing.assert_series_equal(ch1, data.channel1_segment, check_names=False)
-    ch2 = data.compound_position.apply(lambda x: np.nan if not x.split("-")[1] else x.split("-")[1][:2])
-    pd.testing.assert_series_equal(ch2, data.channel2_segment, check_names=False)
+    ch1 = data.compound_position.apply(
+        lambda x: np.nan if not x.split("-")[0] else x.split("-")[0][:2]
+    )
+    pd.testing.assert_series_equal(
+        ch1, data.channel1_segment, check_names=False
+    )
+    ch2 = data.compound_position.apply(
+        lambda x: np.nan if not x.split("-")[1] else x.split("-")[1][:2]
+    )
+    pd.testing.assert_series_equal(
+        ch2, data.channel2_segment, check_names=False
+    )
     # make sure channel2_segment is never nan
     assert not data.channel2_segment.isna().any()
     # make sure columns channel1_designation and channel2_designation are correct
-    ch1_lat = data.compound_position.apply(lambda x: np.nan if not x.split("-")[0] else x.split("-")[0][2:])
-    pd.testing.assert_series_equal(ch1_lat, data.channel1_laterality, check_names=False)
-    ch2_lat = data.compound_position.apply(lambda x: np.nan if not x.split("-")[1] else x.split("-")[1][2:])
-    pd.testing.assert_series_equal(ch2_lat, data.channel2_laterality, check_names=False)
+    ch1_lat = data.compound_position.apply(
+        lambda x: np.nan if not x.split("-")[0] else x.split("-")[0][2:]
+    )
+    pd.testing.assert_series_equal(
+        ch1_lat, data.channel1_laterality, check_names=False
+    )
+    ch2_lat = data.compound_position.apply(
+        lambda x: np.nan if not x.split("-")[1] else x.split("-")[1][2:]
+    )
+    pd.testing.assert_series_equal(
+        ch2_lat, data.channel2_laterality, check_names=False
+    )
     # make sure channel2_designation is never nan
     assert not data.channel2_laterality.isna().any()
 
@@ -572,8 +640,8 @@ def load_rcml(
     ROSTRAL_CAUDAL = rcml_constants.ROSTRAL_CAUDAL
     MIDLINE_LATERAL = rcml_constants.MIDLINE_LATERAL
     ROOT_ALIGNED = rcml_constants.ROOT_ALIGNED
-
     _, _, DATA_PATH, _ = get_paths(rcml_constants.EXPERIMENT)
+
     # Load data
     src = DATA_PATH
     data = pd.read_csv(src)
@@ -605,6 +673,21 @@ def make_test(diff, mask=True, correction=False, use_nonparametric=False):
             test = stats.ttest_1samp(
                 diff, axis=0, nan_policy="omit", popmean=0
             )
+
+    _test = stats.ttest_1samp(diff, popmean=0, axis=0, nan_policy="omit")
+    deg = _test.df
+    _ci = np.array(_test.confidence_interval())
+
+    me = np.nanmean(diff, axis=0)
+    sem = stats.sem(diff, axis=0, nan_policy="omit")
+    t = np.nanstd(diff, axis=0) / (np.sqrt((~np.isnan(diff)).sum(axis=0) - 1))
+    np.testing.assert_almost_equal(t, sem)
+
+    alpha = 0.05
+    t_crit = stats.t.ppf(1 - alpha/2, deg)
+    ci = np.array([me - t_crit * sem, me + t_crit * sem])
+    np.testing.assert_almost_equal(_ci, ci)
+
     pvalue = test.pvalue
     if mask: pvalue = mask_upper(pvalue)
 
@@ -616,13 +699,12 @@ def make_test(diff, mask=True, correction=False, use_nonparametric=False):
         else:
             pvalue = stats.false_discovery_control(pvalue)
 
-    _test = stats.ttest_1samp(diff, popmean=0, axis=0, nan_policy="omit")
-    deg = _test.df
-    me = np.nanmean(diff, axis=0)
-    return pvalue, deg, me,
+    return pvalue, deg, me, sem
 
 
-def make_plot(pvalue, deg, me, labels, figsize=None, ax=None, fontsize=None):
+def make_plot(
+    pvalue, deg, me, sem, labels, figsize=None, ax=None, fontsize=None
+):
     num_labels = len(labels)
     if ax is None:
         if figsize is None: figsize = (1.5 * num_labels, .8 * num_labels)
@@ -645,9 +727,20 @@ def make_plot(pvalue, deg, me, labels, figsize=None, ax=None, fontsize=None):
     annotate_heatmap(
         ax, pvalue, 1 + deg, 0, 1, **deg_annot_kws, fontsize=fontsize
     )
-    statistic_annot_kws = {"ha": 'center', "va": 'top'}
+    statistic_annot_kws = {"ha": 'left', "va": 'top'}
     annotate_heatmap(
-        ax, pvalue, np.round(me, 3), 0.5, 0, **statistic_annot_kws,
+        ax, pvalue, np.round(me, 3), 0.1, 0.1, **statistic_annot_kws,
+        fontsize=fontsize
+    )
+    statistic_annot_kws = {"ha": 'right', "va": 'top'}
+    annotate_heatmap(
+        ax, pvalue, np.round(sem, 3), 0.9, 0.1, **statistic_annot_kws,
+        fontsize=fontsize
+    )
+    change = np.round(((2 ** me) - 1) * 100, 2)
+    statistic_annot_kws = {"ha": 'left', "va": 'top'}
+    annotate_heatmap(
+        ax, pvalue, change, 0.1, 0.7, **statistic_annot_kws,
         fontsize=fontsize
     )
     ax.set_xticklabels(labels=labels, rotation=25, ha="right", size="x-small")
@@ -660,11 +753,11 @@ def make_compare(
     fontsize=None, use_nonparametric=False
 ):
     _, labels = zip(*positions)
-    pvalue, deg, me, = make_test(
+    pvalue, deg, me, sem, = make_test(
         diff, correction=correction, use_nonparametric=use_nonparametric
     )
     fig, axes = make_plot(
-        pvalue, deg, me, labels, figsize=figsize, ax=ax, fontsize=fontsize
+        pvalue, deg, me, sem, labels, figsize=figsize, ax=ax, fontsize=fontsize
     )
     return pvalue, deg, me, fig, axes
 
@@ -704,7 +797,9 @@ def make_compare3p(
     t = [(i, u, v) for i, (u, v) in enumerate(zip(positions, t))]
     if sort: t = sorted(t, key=lambda x: (x[-1], x[0]))
     t = [(u, v) for u, v, _ in t]
-    idx, positions = zip(*t); positions = list(zip(range(len(positions)), positions))
+    idx, positions = zip(*t); positions = list(
+        zip(range(len(positions)), positions)
+    )
     measure = measure[..., idx]
     measure_mean, diff, diff_mean, diff_err = body_pairwise(measure)
     subjects = [f"amap0{i + 1}" for i in range(measure_mean.shape[0])]
@@ -719,15 +814,17 @@ def make_compare3p(
     if fig is None:
         nr, nc = 1, 3
         fig, axes = plt.subplots(
-            *(nr, nc), figsize=(5 * nc, 3.2 * nr), squeeze=False, constrained_layout=True
+            *(nr, nc), figsize=(7 * nc, 4.5 * nr), squeeze=False,
+            constrained_layout=True
         )
     else: fig, axes = fig
 
     df = pd.DataFrame(measure_mean, index=subjects, columns=positions)
-    df = df.reset_index().melt(id_vars='index', var_name='position', value_name='value')
+    df = df.reset_index().melt(
+        id_vars='index', var_name='position', value_name='value'
+    )
     df = df.rename(columns={'index': 'subject'}).sort_values(by="position")
     df_mean = df.groupby("position")["value"].mean().reset_index()
-    # df_mean = df.groupby("position", observed=True)["value"].median().reset_index()
     df_mean = df_mean.sort_values(by="position")
     df.position = df.position.apply(lambda x: x[1])
     df_mean.position = df_mean.position.apply(lambda x: x[1])
@@ -819,7 +916,10 @@ def make_compare3p(
             correction=correction,
             use_nonparametric=use_nonparametric,
         )
-        ax.text(x=.9, y=.9, s=f"correction:{correction}", transform=ax.transAxes, ha='right', va="top")
+        ax.text(
+            x=.9, y=.9, s=f"correction:{correction}", transform=ax.transAxes,
+            ha='right', va="top"
+        )
 
     for i in range(axes.shape[0]):
         for j in range(axes.shape[1]):
@@ -830,9 +930,14 @@ def make_compare3p(
             if ax.get_legend(): ax.get_legend().remove()
 
     ax = axes[0, 0]
-    ax.legend(bbox_to_anchor=(-.2, 1), loc="upper right", reverse=True, fontsize="x-small")
-    # return (fig, axes), positions, diff_mean, diff_err, colors, negate
-    return (fig, axes), positions, measure_mean, diff, diff_mean, diff_err, negate,
+    ax.legend(
+        bbox_to_anchor=(-.2, 1), loc="upper right", reverse=True,
+        fontsize="x-small"
+    )
+    return (
+        (fig, axes), positions, measure_mean, diff, diff_mean, diff_err,
+        negate,
+    )
 
 
 def make_compare3p_bar(
@@ -866,7 +971,9 @@ def make_compare3p_bar(
     t = sorted(t, key=lambda x: (x[-1], x[0]))
     t = [(u, v) for u, v, _ in t]
 
-    idx, positions = zip(*t); positions = list(zip(range(len(positions)), positions))
+    idx, positions = zip(*t); positions = list(
+        zip(range(len(positions)), positions)
+    )
     measure = measure[..., idx]
     diff, diff_mean, diff_err = body_pairwise(measure)
     subjects = [f"amap0{i + 1}" for i in range(diff.shape[0])]
@@ -881,7 +988,8 @@ def make_compare3p_bar(
     if fig is None:
         nr, nc = 1, 2
         fig, axes = plt.subplots(
-            *(nr, nc), figsize=(5 * nc, 3.2 * nr), squeeze=False, constrained_layout=True
+            *(nr, nc), figsize=(5 * nc, 3.2 * nr), squeeze=False,
+            constrained_layout=True
         )
     else: fig, axes = fig
 
@@ -899,10 +1007,12 @@ def make_compare3p_bar(
     ax = axes[0, 0]; ax.clear()
     if lineplot:
         sns.lineplot(
-            data=df, x='position', y='value', hue='subject', palette=["grey"] * len(subjects), ax=ax, legend=False, alpha=.4
+            data=df, x='position', y='value', hue='subject',
+            palette=["grey"] * len(subjects), ax=ax, legend=False, alpha=.4
         )
         sns.scatterplot(
-            data=df, x="position", y="value", hue="position", palette=colors, zorder=10, ax=ax, edgecolor="w"
+            data=df, x="position", y="value", hue="position",
+            palette=colors, zorder=10, ax=ax, edgecolor="w"
         )
         sns.scatterplot(
             data=df_mean,
@@ -920,7 +1030,8 @@ def make_compare3p_bar(
         )
     else:
         sns.lineplot(
-            data=df, x="subject", y="value", hue="position", palette=colors, ax=ax, marker="o"
+            data=df, x="subject", y="value", hue="position",
+            palette=colors, ax=ax, marker="o"
         )
     ax.get_legend().set_title("")
     ax.tick_params(axis="x", rotation=45, labelsize="xx-small")
@@ -943,15 +1054,21 @@ def make_compare3p_bar(
     ax.tick_params(axis="x", rotation=25, labelsize="x-small")
     ax.tick_params(axis="y", rotation=0, labelsize="x-small")
 
-    pvalue, deg, me, = make_test(diff, mask=False, correction=correction)
+    pvalue, deg, me, sem, = make_test(diff, mask=False, correction=correction)
     pvalue = np.round(pvalue, 3)
     deg = 1 + deg
 
-    xticklabels = [(pos_inv, pvalue[pos_idx], deg[pos_idx]) for pos_idx, pos_inv in positions]
+    xticklabels = [
+        (pos_inv, pvalue[pos_idx], deg[pos_idx])
+        for pos_idx, pos_inv in positions
+    ]
     xticklabels = [(u, f"\np={v}, ", f"N={t}") for u, v, t in xticklabels]
     xticklabels = ["".join(u) for u in xticklabels]
     ax.set_xticks(range(4)); ax.set_xticklabels(xticklabels)
-    ax.text(x=.1, y=.9, s=f"correction:{correction}", transform=ax.transAxes, ha='left', va="top")
+    ax.text(
+        x=.1, y=.9, s=f"correction:{correction}", transform=ax.transAxes,
+        ha='left', va="top"
+    )
 
     for i in range(axes.shape[0]):
         for j in range(axes.shape[1]):
@@ -996,7 +1113,12 @@ def _adjust_brightness(rgb_in, val):
 
 
 def _get_cmap_muscles_alt():
-    vec_muscle = np.array(["Trapezius", "Deltoid", "Biceps", "Triceps", "ECR", "FCR", "APB", "ADM", "TA", "EDB", "AH", "FDI", "auc_target"])
+    vec_muscle = np.array(
+        [
+            "Trapezius", "Deltoid", "Biceps", "Triceps", "ECR", "FCR", "APB",
+            "ADM", "TA", "EDB", "AH", "FDI", "auc_target"
+        ]
+    )
     cmap_mus_dark = np.array([
         _adjust_brightness(np.array([0.6350, 0.0780, 0.1840]), 0.5),  # trapz
         np.array([1, 133, 113]) / 255,  # delt
@@ -1042,7 +1164,9 @@ def _get_cmap_muscles_alt():
 
 
 def get_response_colors(response: list[str]):
-    cmap_mus_dark, cmap_mus_light, vec_muscle, T_color = _get_cmap_muscles_alt()
+    (
+        cmap_mus_dark, cmap_mus_light, vec_muscle, T_color
+    ) = _get_cmap_muscles_alt()
     cmap_dict = dict(zip(vec_muscle, cmap_mus_dark))
     colors = []
     for response in response: colors.append(cmap_dict[response[1:]])
@@ -1072,7 +1196,9 @@ def arg_mode(a, axis, argmax=True):
     mode = stats.mode(mode, axis=0, nan_policy="omit").mode
     mode = np.array(list(zip(range(mode.shape[0]), mode)))
     t = a[..., *mode.T]
-    for i in range(t.shape[-1]): np.testing.assert_almost_equal(a[..., i, mode[i, 1]], t[..., i])
+    for i in range(t.shape[-1]): np.testing.assert_almost_equal(
+        a[..., i, mode[i, 1]], t[..., i]
+    )
     return t, mode
 
 
