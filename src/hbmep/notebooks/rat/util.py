@@ -218,24 +218,47 @@ def mask_upper(arr):
     return arr
 
 
-def annotate_heatmap(
-    ax, cmap_arr, arr, l, r, star=False, star_arr=None, fontsize=None, **kw
-):
-    n = arr.shape[0]
-    colors = np.where(cmap_arr > .6, "k", "white")
+# def annotate_heatmap(
+#     ax, cmap_arr, arr, l, r, star=False, star_arr=None, fontsize=None, **kw
+# ):
+#     n = arr.shape[0]
+#     colors = np.where(cmap_arr > .6, "k", "white")
 
+#     for y in range(n):
+#         for x in range(n):
+#             if x >= y: continue
+#             text = f"{arr[y, x]}"
+#             if star:
+#                 pvalue = star_arr[y, x]
+#                 if pvalue < 0.001: text += "***"
+#                 elif pvalue < 0.01: text += "**"
+#                 elif pvalue < 0.05: text += "*"
+#             ax.text(
+#                 x + l, y + r, text, **kw, color=colors[y, x], size=fontsize
+#             )
+
+
+def annotate_heatmap(
+    ax,
+    cmap_arr,
+    annot_arr,
+    annot_position,
+    **kw
+):
+    n = annot_arr.shape[0]
+    annot_colors = np.where(cmap_arr > .6, "k", "white")
     for y in range(n):
         for x in range(n):
             if x >= y: continue
-            text = f"{arr[y, x]}"
-            if star:
-                pvalue = star_arr[y, x]
-                if pvalue < 0.001: text += "***"
-                elif pvalue < 0.01: text += "**"
-                elif pvalue < 0.05: text += "*"
+            text = annot_arr[y, x].item()
             ax.text(
-                x + l, y + r, text, **kw, color=colors[y, x], size=fontsize
+                x + annot_position[0],
+                y + annot_position[1],
+                text,
+                color=annot_colors[y, x],
+                **kw,
             )
+    return
 
 
 def load_csmalar_data(data: pd.DataFrame):
@@ -702,9 +725,23 @@ def make_test(diff, mask=True, correction=False, use_nonparametric=False):
     return pvalue, deg, me, sem
 
 
-def make_plot(
-    pvalue, deg, me, sem, labels, figsize=None, ax=None, fontsize=None
+def make_heatmap(
+    pvalue, df, me, sem, labels, figsize=None, ax=None, fontsize=None,
+    include_change=True
 ):
+    if include_change:
+        change = ((2 ** me) - 1) * 100
+        change = np.round(change, 0)
+        change = change.astype(int).astype(str)
+        change = np.char.add(change, "%")
+
+    me = np.round(me, 3)
+    me = me.astype(str)
+    sem = np.round(sem, 3)
+    sem = sem.astype(str)
+    ci = np.char.add(np.char.add(me, " ± "), sem)
+    df = df.astype(str)
+
     num_labels = len(labels)
     if ax is None:
         if figsize is None: figsize = (1.5 * num_labels, .8 * num_labels)
@@ -718,30 +755,45 @@ def make_plot(
         xticklabels=labels, yticklabels=labels,
     )
     # Annotate
-    pvalue_annot_kws = {"ha": 'center', "va": 'center'}
-    annotate_heatmap(
-        ax, pvalue,  np.round(pvalue, 3), 0.5, 0.5, star=True,
-        star_arr=pvalue, **pvalue_annot_kws, fontsize=fontsize
+    annot_arr = np.round(pvalue, 3).astype(str)
+    annot_arr = np.where(
+        pvalue < 0.001,
+        np.char.add(annot_arr, "***"),
+        annot_arr
     )
-    deg_annot_kws = {"ha": 'left', "va": 'bottom'}
-    annotate_heatmap(
-        ax, pvalue, 1 + deg, 0, 1, **deg_annot_kws, fontsize=fontsize
+    annot_arr = np.where(
+        (pvalue >= 0.001) & (pvalue < 0.01),
+        np.char.add(annot_arr, "**"),
+        annot_arr
     )
-    statistic_annot_kws = {"ha": 'left', "va": 'top'}
-    annotate_heatmap(
-        ax, pvalue, np.round(me, 3), 0.1, 0.1, **statistic_annot_kws,
-        fontsize=fontsize
+    annot_arr = np.where(
+        (pvalue >= 0.01) & (pvalue < 0.05),
+        np.char.add(annot_arr, "*"),
+        annot_arr
     )
-    statistic_annot_kws = {"ha": 'right', "va": 'top'}
+    annot_kws = {"ha": 'center', "va": 'center'}
     annotate_heatmap(
-        ax, pvalue, np.round(sem, 3), 0.9, 0.1, **statistic_annot_kws,
-        fontsize=fontsize
+        ax=ax, cmap_arr=pvalue, annot_arr=annot_arr,
+        annot_position=(0.5, .75), **annot_kws, fontsize=fontsize
     )
-    change = np.round(((2 ** me) - 1) * 100, 2)
-    statistic_annot_kws = {"ha": 'left', "va": 'top'}
+    annot_arr = ci
+    annot_kws = {"ha": 'center', "va": 'center'}
     annotate_heatmap(
-        ax, pvalue, change, 0.1, 0.7, **statistic_annot_kws,
-        fontsize=fontsize
+        ax=ax, cmap_arr=pvalue, annot_arr=annot_arr,
+        annot_position=(0.5, .5), **annot_kws, fontsize=fontsize
+    )
+    if include_change:
+        annot_arr = change
+        annot_kws = {"ha": 'center', "va": 'center'}
+        annotate_heatmap(
+            ax=ax, cmap_arr=pvalue, annot_arr=annot_arr,
+            annot_position=(0.5, .25), **annot_kws, fontsize=fontsize
+        )
+    annot_arr = df
+    annot_kws = {"ha": 'left', "va": 'bottom'}
+    annotate_heatmap(
+        ax=ax, cmap_arr=pvalue, annot_arr=annot_arr,
+        annot_position=(0, 1), **annot_kws, fontsize=fontsize
     )
     ax.set_xticklabels(labels=labels, rotation=25, ha="right", size="x-small")
     ax.set_yticklabels(labels=labels, rotation=0, size="xx-small")
@@ -756,7 +808,7 @@ def make_compare(
     pvalue, deg, me, sem, = make_test(
         diff, correction=correction, use_nonparametric=use_nonparametric
     )
-    fig, axes = make_plot(
+    fig, axes = make_heatmap(
         pvalue, deg, me, sem, labels, figsize=figsize, ax=ax, fontsize=fontsize
     )
     return pvalue, deg, me, fig, axes
@@ -1202,16 +1254,17 @@ def arg_mode(a, axis, argmax=True):
     return t, mode
 
 
-def minus_mean_of_rest(y):
-    si = []
-    for r in range(y.shape[-1]):
-        si.append(
-            y[..., r]
-            - np.mean(np.delete(y, r, axis=-1), axis=-1)
-        )
-    si = np.array(si)
-    si = np.moveaxis(si, 0, -1)
-    return si
+def minus_mean_of_rest(a):
+    n = a.shape[-1]
+    sum_all = np.sum(a, axis=-1, keepdims=True)
+    return a - (sum_all - a) / (n - 1)
+
+
+def topk_minus_rest(a, k=2):
+    sorted_vals = np.sort(a, axis=-1)[..., ::-1]
+    topk_mean = np.mean(sorted_vals[..., :k], axis=-1)
+    rest_mean = np.mean(sorted_vals[..., k:], axis=-1)
+    return topk_mean - rest_mean
 
 
 def make_combined(
