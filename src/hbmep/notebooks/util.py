@@ -56,9 +56,15 @@ def load_model(
     with open(src, "rb") as f:
         df, encoder, posterior, = pickle.load(f)
 
-    src = os.path.join(model_dir, model_file)
-    with open(src, "rb") as f:
-        model, = pickle.load(f)
+    model = None
+    try:
+        src = os.path.join(model_dir, model_file)
+        with open(src, "rb") as f:
+            model, = pickle.load(f)
+    except FileNotFoundError:
+        logger.info(f"{model_file} not found.")
+    else:
+        logger.info(f"Found {model_file}")
 
     mcmc = None
     try:
@@ -74,7 +80,7 @@ def load_model(
         logger.info("Encountered ValueError, trace is below")
         logger.info(e)
     else:
-        logger.info(f"Found {model_file}")
+        logger.info(f"Found {mcmc_file}")
 
     if mcmc is None:
         try:
