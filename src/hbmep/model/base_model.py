@@ -50,7 +50,7 @@ class BaseModel():
 		toml_path: str | None = None,
 		config: dict | None = None
     ):
-        self.nam: str = "base_model"
+        self.name: str = "base_model"
         self.build_dir: str = ""
         self.random_state: int = 0
         self.sample_sites: list[str] = []
