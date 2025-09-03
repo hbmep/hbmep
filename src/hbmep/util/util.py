@@ -8,7 +8,7 @@ import numpy as np
 from sklearn.preprocessing import LabelEncoder
 
 logger = logging.getLogger(__name__)
-FORMAT =  "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+FORMAT = "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
 
 
 def timing(f):
@@ -101,4 +101,4 @@ def invert_combination(
 
 
 def generate_response_colors(n: int, palette="rainbow", low=0, high=1):
-    return sns.color_palette(palette="rainbow", as_cmap=True)(np.linspace(low, high, n))
+    return sns.color_palette(palette=palette, as_cmap=True)(np.linspace(low, high, n))
