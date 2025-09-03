@@ -6,6 +6,7 @@ from numpyro.diagnostics import hpdi
 from sklearn.preprocessing import LabelEncoder
 
 import matplotlib.pyplot as plt
+import matplotlib.ticker as mticker
 from matplotlib.backends.backend_pdf import PdfPages
 import seaborn as sns
 
@@ -79,12 +80,14 @@ def plotter(
     threshold_hdi: np.ndarray | None = None,
     threshold_prob: float = 0.95,
     axes: plt.Axes | None = None,
+    yscale: str | None = None,
     **kw
 ):
     num_response = len(response)
     hue = kw.pop("hue", None)
     if hue is None or isinstance(hue, str): hue = [hue] * num_response
-    colors = kw.pop("response_colors", generate_response_colors(num_response))
+    colors = kw.pop("response_colors", None)
+    if colors is None: colors = generate_response_colors(num_response)
     xoffset = kw.pop("xoffset", 0.5)
     curve_kwargs = kw.pop("curve_kwargs", CURVE_KW)
     threshold_kwargs = kw.pop("threshold_kwargs", THRESHOLD_KW)
@@ -130,6 +133,9 @@ def plotter(
         ax.set_xlim(left=lo - xoffset, right=hi + xoffset)
         ax.sharex(axes[0])
         if ax.get_legend() is not None: ax.get_legend().remove()
+        if yscale is not None:
+            ax.set_yscale(yscale)
+            ax.yaxis.set_minor_formatter(mticker.NullFormatter())
         counter += 1
 
         # MEP size scatter plot and fitted curve
@@ -153,6 +159,9 @@ def plotter(
                 ax.sharey(axes[counter - 1])
                 ax.tick_params(axis="x", rotation=90)
                 if ax.get_legend(): ax.get_legend().remove()
+                if yscale is not None:
+                    ax.set_yscale(yscale)
+                    ax.yaxis.set_minor_formatter(mticker.NullFormatter())
             counter += 1
 
         # Threshold kde
@@ -316,7 +325,7 @@ def plot(
 
         logger.info(f"Page {page + 1} of {num_pages} done.")
         pdf.savefig(fig)
-        plt.close()
+        plt.close(fig)
 
     pdf.close()
     plt.close()
