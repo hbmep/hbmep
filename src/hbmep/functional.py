@@ -6,7 +6,7 @@ import numpy as np
 def with_attributes(**kwargs):
     """
     Decorator to add arbitrary attributes to a function.
-    
+
     Example:
         @with_attributes(
             inverse=logistic4_inverse,
@@ -58,10 +58,8 @@ def integrate_rectified_logistic(x, a, b, g, h, v):
         z += (g - v) * x
         return z
 
-
     z = body_integrate(jnp.maximum(x, a)) - body_integrate(a)
     z += g * jnp.minimum(x, a)
-    # z = jnp.where(x <= a, g * x, (g * a) + body_integrate(x) - body_integrate(a))
     return z
 
 
