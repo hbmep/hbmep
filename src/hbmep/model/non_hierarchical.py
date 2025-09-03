@@ -22,7 +22,7 @@ class NonHierarchicalBaseModel(BaseModel):
         super(NonHierarchicalBaseModel, self).__init__(*args, **kw)
         self.name = "non_hierarchical_base_model"
         self.n_jobs = n_jobs
-        self.pre_dispatch="1*n_jobs"
+        self.pre_dispatch = "1*n_jobs"
         self.prefer = "threads"
 
     @property
@@ -69,17 +69,16 @@ class NonHierarchicalBaseModel(BaseModel):
         df: pd.DataFrame,
         mcmc: MCMC = None,
         extra_fields: list | tuple = (),
-        init_params = None,
+        init_params=None,
         key: Array | None = None,
         **kw
-):
+    ):
         df_features = df[self.features].apply(tuple, axis=1)
         combinations = df_features.unique().tolist()
         num_combinations = len(combinations)
         temp_folder = os.path.join(
             self.build_dir, f"hbmep_temp_folder_run"
         )
-
 
         def body_run(combination_idx, response_idx, trace=False):
             ccdf = (
@@ -108,7 +107,7 @@ class NonHierarchicalBaseModel(BaseModel):
             output_path = os.path.join(
                 temp_folder, f"{response_idx}__{combination_idx}.pkl"
             )
-            with open(output_path, "wb") as f: 
+            with open(output_path, "wb") as f:
                 pickle.dump((posterior,), f)
             if not (combination_idx or response_idx):
                 output_path = os.path.join(temp_folder, "mcmc.pkl")
@@ -117,7 +116,6 @@ class NonHierarchicalBaseModel(BaseModel):
             ccdf, mcmc, posterior, output_path = None, None, None, None
             del ccdf, mcmc, posterior, output_path
             gc.collect()
-
 
         try:
             if not self.sample_sites:
@@ -162,7 +160,6 @@ class NonHierarchicalBaseModel(BaseModel):
             self.build_dir, f"hbmep_temp_folder_predict"
         )
 
-
         def body_predict(combination_idx, response_idx):
             ccdf = (
                 df[df_features.isin([combinations[combination_idx]])]
@@ -187,7 +184,6 @@ class NonHierarchicalBaseModel(BaseModel):
             ccdf, predictive, output_path = None, None, None
             del ccdf, predictive, output_path
             gc.collect()
-
 
         try:
             n_jobs = self.n_jobs

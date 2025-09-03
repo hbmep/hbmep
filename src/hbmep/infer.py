@@ -71,13 +71,13 @@ def run(
     features: np.ndarray,
     response: np.ndarray,
     nuts_params: dict | None = None,
-    mcmc_params: dict | None = None, 
+    mcmc_params: dict | None = None,
     mcmc: MCMC | None = None,
     extra_fields: list | tuple = (),
-    init_params = None,
+    init_params=None,
     **kw
 ) -> tuple[MCMC, dict]:
-    if mcmc is None: 
+    if mcmc is None:
         kernel = NUTS(model, **nuts_params)
         mcmc = MCMC(kernel, **mcmc_params)
         msg = f"Running..."
@@ -115,13 +115,13 @@ def predict(
     return_sites: list[str] | None = None,
     **kw
 ):
-    if posterior is None: # prior predictive
+    if posterior is None:               # prior predictive
         predictive_fn = Predictive(
             model=model,
             num_samples=num_samples,
             return_sites=return_sites
         )
-    else: # posterior predictive
+    else:                               # posterior predictive
         predictive_fn = Predictive(
             model=model,
             posterior_samples=posterior,

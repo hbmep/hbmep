@@ -47,8 +47,8 @@ class BaseModel():
     def __init__(
         self,
         *,
-		toml_path: str | None = None,
-		config: dict | None = None
+        toml_path: str | None = None,
+        config: dict | None = None
     ):
         self.name: str = "base_model"
         self.build_dir: str = ""
@@ -77,7 +77,7 @@ class BaseModel():
             self.nuts_params[key] = value
         for key, value in config.get("mep_metadata", {}).items():
             setattr(self, key, value)
-            
+
     def _update_sites(self, model_trace):
         sites = {u: v["type"] for u, v in model_trace.items()}
         sample_sites = [u for u, v in sites.items() if v == "sample" and site.obs not in u.split("_")]
@@ -96,7 +96,7 @@ class BaseModel():
     def key(self):
         return random.key(self.random_state)
 
-    @key.setter # TODO: Check this
+    @key.setter     # TODO: Check this
     def key(self, random_state):
         if not isinstance(random_state, int):
             raise ValueError("New random state must be an integer")
@@ -171,8 +171,8 @@ class BaseModel():
     @timing
     def load(
         self,
-		df: pd.DataFrame,
-		mask_non_positive: bool = True
+        df: pd.DataFrame,
+        mask_non_positive: bool = True
     ) -> tuple[pd.DataFrame, dict[str, LabelEncoder]]:
         # Concatenate (necessary) features
         for i, feature in enumerate(self.features):
@@ -212,9 +212,9 @@ class BaseModel():
     @timing
     def trace(
         self,
-		df: pd.DataFrame,
-		key: Array | None = None,
-		**kw
+        df: pd.DataFrame,
+        key: Array | None = None,
+        **kw
     ):
         trace = mep.trace(
             self.key if key is None else key,
@@ -231,7 +231,7 @@ class BaseModel():
         df: pd.DataFrame,
         mcmc: MCMC = None,
         extra_fields: list | tuple = (),
-        init_params = None,
+        init_params=None,
         key: Array | None = None,
         **kw
     ) -> tuple[MCMC, dict]:
@@ -366,13 +366,13 @@ class BaseModel():
         encoder: dict[str, LabelEncoder] | None = None,
         mep_array: np.ndarray | None = None,
         output_path: str | None = None,
-        **kw        
+        **kw
     ):
         if output_path is None: output_path = os.path.join(self.build_dir, CURVES_PLOT)
         logger.info("Plotting curves...")
         threshold = (
-            posterior[posterior_var] 
-            if posterior is not None and posterior_var in posterior.keys() 
+            posterior[posterior_var]
+            if posterior is not None and posterior_var in posterior.keys()
             else None
         )
         mep.plot(

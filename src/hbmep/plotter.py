@@ -233,7 +233,7 @@ def plot(
         if prediction_prob and prediction_hdi is None:
             prediction_hdi = hpdi(prediction, prob=prediction_prob)
         prediction = prediction.mean(axis=0, keepdims=True)
-        num_cols +=1
+        num_cols += 1
 
     if threshold is not None:
         if not len(features): threshold = threshold[:, None, ...]
@@ -293,7 +293,7 @@ def plot(
             if threshold is not None:
                 ccthresh = threshold[:, *cc, :]
                 ccthresh_hdi = threshold_hdi[:, *cc, :]
-                
+
             plotter(
                 ccdf,
                 intensity=intensity,

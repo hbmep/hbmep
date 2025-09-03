@@ -8,7 +8,7 @@ EPS = 1e-3
 
 def _smooth_max(x, eps):
     """
-    Smooth approximation of the maximum function: x \mapsto max(0, x)
+    Smooth approximation of the maximum function: x -> max(0, x)
     """
     eps = eps / jnp.log(2)
     z = x + (

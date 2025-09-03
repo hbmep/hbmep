@@ -27,7 +27,7 @@ def load(
     features: list[str],
     response: list[str],
     mask_non_positive: bool = True
- ) -> tuple[pd.DataFrame, dict[str, LabelEncoder]]:
+) -> tuple[pd.DataFrame, dict[str, LabelEncoder]]:
     assert set([intensity, *features, *response]) <= set(df.columns)
 
     # Positive response constraint
@@ -45,8 +45,8 @@ def load(
 
 def inverse_transform(
     df: pd.DataFrame,
-	encoder: dict[str, LabelEncoder],
-	features: list[str] | None = None,
+    encoder: dict[str, LabelEncoder],
+    features: list[str] | None = None,
     *kw
 ) -> pd.DataFrame:
     df = df.copy()
