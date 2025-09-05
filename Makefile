@@ -1,30 +1,24 @@
-SHELL := /bin/bash
-CWD := $(dir $(abspath $(lastword $(MAKEFILE_LIST))))
-PY_VERSION ?= 3.11
+SHELL := bash
+.ONESHELL:
+.SHELLFLAGS := -eu -o pipefail -c
 
-define activate_venv
-	@echo "Activating virtual environment and installing dependencies..."
-	source .venv/bin/activate && \
-	pip install --upgrade pip
-endef
+PY ?= python3.11
+VENV := .venv
+PIP := $(VENV)/bin/python -m pip
 
-.PHONY: base
+.PHONY: base env dev clean
+
 base:
-	rm -rf .venv build
-	@echo "Creating virtual environment..."
-	python$(PY_VERSION) -m venv .venv
+	rm -rf $(VENV) build
+	@echo "Creating virtual environment with $(PY)..."
+	$(PY) -m venv $(VENV)
+	@echo "Upgrading pip..."
+	$(PIP) install --upgrade pip
 
-.PHONY: build
-build: base
-	$(activate_venv) && \
-	pip install .
+env: base
+	@echo "Installing package..."
+	$(PIP) install .
 
-.PHONY: dev
 dev: base
-	$(activate_venv) && \
-	pip install -e .[dev]
-
-.PHONY: rsch
-rsch: base
-	$(activate_venv) && \
-	pip install -e .[rsch]
+	@echo "Installing package for development..."
+	$(PIP) install -e ".[dev]"
