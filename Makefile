@@ -6,7 +6,7 @@ PY ?= python3.11
 VENV := .venv
 PIP := $(VENV)/bin/python -m pip
 
-.PHONY: base env dev clean
+.PHONY: base env dev docs
 
 base:
 	rm -rf $(VENV) build
@@ -22,3 +22,7 @@ env: base
 dev: base
 	@echo "Installing package for development..."
 	$(PIP) install -e ".[dev]"
+
+docs:
+	@source .venv/bin/activate && \
+	sphinx-autobuild docs/source/ docs/build/html/
