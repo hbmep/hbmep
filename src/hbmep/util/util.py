@@ -5,6 +5,9 @@ from functools import wraps
 
 import seaborn as sns
 import numpy as np
+import matplotlib.pyplot as plt
+from matplotlib.figure import Figure
+from matplotlib.backends.backend_pdf import PdfPages
 from sklearn.preprocessing import LabelEncoder
 
 logger = logging.getLogger(__name__)
@@ -102,3 +105,20 @@ def invert_combination(
 
 def generate_response_colors(n: int, palette="rainbow", low=0, high=1):
     return sns.color_palette(palette=palette, as_cmap=True)(np.linspace(low, high, n))
+
+
+def make_pdf(figures: list[Figure], output_path: str):
+    """
+    Save a list of matplotlib figures to a multi-page PDF.
+
+    Args:
+        figures (List[Figure]): List of figures to save.
+        output_path (str): Path to the output PDF file.
+    """
+    logger.info(f"Saving pdf...")
+    with PdfPages(output_path) as pdf:
+        for fig in figures:
+            pdf.savefig(fig, bbox_inches='tight') 
+            plt.close(fig)
+    logger.info(f"Saved to {output_path}")
+    return
