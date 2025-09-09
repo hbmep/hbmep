@@ -7,7 +7,6 @@ from sklearn.preprocessing import LabelEncoder
 
 import matplotlib.pyplot as plt
 import matplotlib.ticker as mticker
-from matplotlib.backends.backend_pdf import PdfPages
 import seaborn as sns
 
 import hbmep as mep
@@ -25,7 +24,6 @@ def get_mep_data(
     mep_response: list[str] = None,
     mep_window: list[float] = [0, 1],
     mep_size_window: list[float] | None = None,
-    mep_adjust: float = 1.,
     **kw
 ):
     if not (response is None or mep_response is None) and mep_response != response:
@@ -38,12 +36,7 @@ def get_mep_data(
     assert (mep_size_window[0] >= mep_window[0]) and (mep_size_window[1] <= mep_window[1])
 
     mep_time = np.linspace(*mep_window, mep_array.shape[1])
-    mep_array = mep_array / np.nanmax(mep_array, axis=1, keepdims=True)
-    mep_array = mep_adjust * mep_array
-
-    mep_time_offset = 10 / mep_array.shape[1]
-    lo, hi = mep_size_window[0] - mep_time_offset, mep_size_window[1] + mep_time_offset
-    idx = (mep_time >= lo) & (mep_time <= hi)
+    idx = (mep_time > mep_size_window[0]) & (mep_time < mep_size_window[1])
     mep_array = mep_array[:, idx, ...]
     mep_time = mep_time[idx]
     return mep_array, mep_time
@@ -53,15 +46,20 @@ def mep_plotter(
     mep_array: np.ndarray,
     intensity: np.ndarray,
     mep_time: np.ndarray | None = None,
+    mep_adjust: list[float] = 1,
     ax: plt.Axes | None = None,
     **kwargs
 ):
     if ax is None: _, ax = plt.subplots(1, 1)
     if mep_time is None: mep_time = np.linspace(0, 1, mep_array.shape[1])
+    max_amplitude = np.nanmax(mep_array, keepdims=True)
+    mep_array /= max_amplitude
+    mep_array *= mep_adjust
     for i in range(mep_array.shape[0]):
         x = mep_array[i, :]
         x = x + intensity[i]
-        if not np.isnan(x).all(): ax.plot(x, mep_time, **kwargs)
+        if not np.isnan(x).all():
+            ax.plot(x, mep_time, **kwargs)
     return ax
 
 
@@ -72,6 +70,7 @@ def plotter(
     response: list[str],
     mep_array: np.ndarray | None = None,
     mep_time: np.ndarray | None = None,
+    mep_adjust: float = 1.,
     prediction_df: pd.DataFrame | None = None,
     prediction: np.ndarray | None = None,
     prediction_hdi: np.ndarray | None = None,
@@ -114,6 +113,7 @@ def plotter(
                 mep_array=mep_array[..., r],
                 intensity=df[intensity],
                 mep_time=mep_time,
+                mep_adjust=mep_adjust,
                 ax=ax,
                 color=colors[r],
                 alpha=.4,
@@ -182,7 +182,6 @@ def plot(
     intensity: str,
     features: list[str],
     response: list[str],
-    output_path: str,
     encoder: dict[str, LabelEncoder] | None = None,
     mep_array: np.ndarray | None = None,
     mep_response: list[str] | None = None,
@@ -222,7 +221,6 @@ def plot(
             mep_response=mep_response,
             mep_window=mep_window,
             mep_size_window=mep_size_window,
-            mep_adjust=mep_adjust
         )
         num_cols += 1
         annotation_offset += 1
@@ -241,7 +239,7 @@ def plot(
             threshold_hdi = hpdi(threshold, axis=0, prob=threshold_prob)
         num_cols += 1
 
-    # Setup pdf layout
+    # Setup layout
     df_features = mep.make_features(df, features)
     combinations = df_features.unique().tolist()
     combinations = sorted(combinations, key=sort_key)
@@ -251,10 +249,9 @@ def plot(
     num_rows = 10
     num_pages = num_combinations // num_rows + (num_combinations % num_rows > 0)
 
-    logger.info(output_path)
-    # Iterate over pdf pages
+    # Iterate over pages
     counter = 0
-    pdf = PdfPages(output_path)
+    figures = []
     for page in range(num_pages):
         num_rows_current = min(num_rows, num_combinations - page * num_rows)
         fig, axes = plt.subplots(
@@ -301,6 +298,7 @@ def plot(
                 response=response,
                 mep_array=ccmep_array,
                 mep_time=mep_time,
+                mep_adjust=mep_adjust,
                 prediction_df=ccpred_df,
                 prediction=ccpred,
                 prediction_hdi=ccpred_hdi,
@@ -324,10 +322,6 @@ def plot(
             counter += 1
 
         logger.info(f"Page {page + 1} of {num_pages} done.")
-        pdf.savefig(fig)
-        plt.close(fig)
+        figures.append([fig, axes])
 
-    pdf.close()
-    plt.close()
-    logger.info(f"Saved to {output_path}")
-    return
+    return figures

@@ -13,7 +13,7 @@ from numpyro.infer import MCMC
 from sklearn.preprocessing import LabelEncoder
 
 import hbmep as mep
-from hbmep.util import timing, site
+from hbmep.util import timing, site, make_pdf
 
 logger = logging.getLogger(__name__)
 SEPARATOR = "__"
@@ -341,15 +341,17 @@ class BaseModel():
     ):
         if output_path is None: output_path = os.path.join(self.build_dir, DATASET_PLOT)
         logger.info("Plotting dataset...")
-        mep.plot(
+        logger.info(output_path)
+        figures = mep.plot(
             df=df,
             **self.variables,
-            output_path=output_path,
             encoder=encoder,
             mep_array=mep_array,
             **self.mep_metadata,
             **kw
         )
+        figures = [u for u, _ in figures]
+        make_pdf(figures=figures, output_path=output_path)
         return
 
     @timing
@@ -370,15 +372,15 @@ class BaseModel():
     ):
         if output_path is None: output_path = os.path.join(self.build_dir, CURVES_PLOT)
         logger.info("Plotting curves...")
+        logger.info(output_path)
         threshold = (
             posterior[posterior_var]
             if posterior is not None and posterior_var in posterior.keys()
             else None
         )
-        mep.plot(
+        figures = mep.plot(
             df=df,
             **self.variables,
-            output_path=output_path,
             encoder=encoder,
             mep_array=mep_array,
             **self.mep_metadata,
@@ -388,6 +390,8 @@ class BaseModel():
             threshold=threshold,
             **kw
         )
+        figures = [u for u, _ in figures]
+        make_pdf(figures=figures, output_path=output_path)
         return
 
     @timing
@@ -405,7 +409,8 @@ class BaseModel():
     ):
         if output_path is None: output_path = os.path.join(self.build_dir, PREDICTIVE_PLOT)
         logger.info("Plotting predictive...")
-        mep.plot(
+        logger.info(output_path)
+        figures = mep.plot(
             df=df,
             **self.variables,
             output_path=output_path,
@@ -415,4 +420,6 @@ class BaseModel():
             prediction_prob=prediction_prob,
             **kw
         )
+        figures = [u for u, _ in figures]
+        make_pdf(figures=figures, output_path=output_path)
         return
