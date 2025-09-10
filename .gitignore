@@ -28,9 +28,8 @@ out/
 /.idea/
 
 # Tutorials (docs)
-docs/source/tutorials/*.toml*
-docs/source/tutorials/*.csv*
-docs/source/tutorials/*.npy*
-**/mock_data.csv
-**/mock_data.npy
-**/mock_data_output/
+docs/**/*.toml
+docs/**/*.csv
+docs/**/*.npy
+docs/**/*.pdf
+docs/**/*.pkl
