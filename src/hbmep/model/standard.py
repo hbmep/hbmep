@@ -98,7 +98,7 @@ class HB(BaseModel):
                         mixing_distribution = dist.Categorical(
                             probs=jnp.stack([1 - q, q], axis=-1)
                         )
-                        component_distributions=[
+                        component_distributions = [
                             dist.Gamma(concentration=alpha, rate=beta),
                             dist.HalfNormal(
                                 scale=(g[*features.T] + h[*features.T])
@@ -206,7 +206,7 @@ class HB(BaseModel):
                         mixing_distribution = dist.Categorical(
                             probs=jnp.stack([1 - q, q], axis=-1)
                         )
-                        component_distributions=[
+                        component_distributions = [
                             dist.Gamma(concentration=alpha, rate=beta),
                             dist.HalfNormal(
                                 scale=(g[*features.T] + h[*features.T])

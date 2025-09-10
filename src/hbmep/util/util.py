@@ -118,7 +118,7 @@ def make_pdf(figures: list[Figure], output_path: str):
     logger.info(f"Saving pdf...")
     with PdfPages(output_path) as pdf:
         for fig in figures:
-            pdf.savefig(fig, bbox_inches='tight') 
+            pdf.savefig(fig, bbox_inches='tight')
             plt.close(fig)
     logger.info(f"Saved to {output_path}")
     return
