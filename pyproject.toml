@@ -4,13 +4,15 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "hbmep"
-version = "0.6.2"
-authors = [
-    { name="Vishweshwar Tyagi, James R. McIntosh", email="vt2353@columbia.edu" }
-]
-description = "Hierarchical Bayesian estimation of motor-evoked potential (MEP) size recruitment curves"
-readme = "README.md"
+version = "0.7.0"
+description = "Hierarchical Bayesian estimation of motor-evoked potential recruitment curves"
+readme = { file = "README.md", content-type = "text/markdown" }
 requires-python = ">=3.11"
+license = { file = "LICENSE" }
+authors = [
+  { name = "Vishweshwar Tyagi", email = "vt2353@columbia.edu" },
+  { name = "James R. McIntosh", email = "jrm2263@cumc.columbia.edu" }
+]
 classifiers = [
     "Development Status :: 3 - Alpha",
     "Intended Audience :: Science/Research",
@@ -28,20 +30,21 @@ classifiers = [
     "Operating System :: MacOS"
 ]
 dependencies = [
-    "numpy>=1.24.2",
-    "pandas>=2.0.2",
-    "scikit-learn>=1.2.1",
+    "numpy>=1.24.2,<2.0",
     "jax>=0.4.24",
     "jaxlib>=0.4.24",
     "numpyro>=0.13.2",
+    "pandas>=2.0.2",
+    "scikit-learn>=1.2.1",
     "arviz>=0.18.0",
     "matplotlib>=3.7.0",
-    "seaborn>=0.12.2"
+    "seaborn>=0.12.2",
+    "joblib>=1.3.2",
 ]
 
 [project.optional-dependencies]
 dev = [
-    "jupyter==1.0.0",
+    "notebook>=7.3.2",
     # Testing
     "pytest>=7.4.0",
     "pytest-pycodestyle>=2.3.1",

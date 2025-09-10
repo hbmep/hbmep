@@ -1,43 +1,28 @@
-SHELL := /bin/bash
-CWD := $(dir $(abspath $(lastword $(MAKEFILE_LIST))))
+SHELL := bash
+.ONESHELL:
+.SHELLFLAGS := -eu -o pipefail -c
 
-PY_VERSION ?= 3.11
+PY ?= python3.11
+VENV := .venv
+PIP := $(VENV)/bin/python -m pip
 
-.PHONY: check-env
-check-env:
-PYTHON3_OK := $(shell python3 --version 2>&1)
-ifeq ('$(PYTHON3_OK)','')
-    $(error package 'python3' not found)
-endif
+.PHONY: base env dev docs
 
-.PHONY: venv-base
-venv-base: check-env
-	@python$(PY_VERSION) -m venv .venv
+base:
+	rm -rf $(VENV) build
+	@echo "Creating virtual environment with $(PY)..."
+	$(PY) -m venv $(VENV)
+	@echo "Upgrading pip..."
+	$(PIP) install --upgrade pip
 
-.PHONY: venv
-venv: venv-base
-	@source .venv/bin/activate && \
-	pip install --upgrade pip && \
-	pip install .
+env: base
+	@echo "Installing package..."
+	$(PIP) install .
 
-.PHONY: venv-dev
-venv-dev: venv-base
-	@source .venv/bin/activate && \
-	pip install --upgrade pip && \
-	pip install -e .[dev]
+dev: base
+	@echo "Installing package for development..."
+	$(PIP) install -e ".[dev]"
 
-.PHONY: clean
-clean:
-	rm -rf .venv
-
-run:
-	@source .venv/bin/activate && \
-	python -m hbmep $(config)
-
-html:
-	@source .venv/bin/activate && \
-	sphinx-autobuild docs/source/ docs/build/html/
-
-test:
-	@source .venv/bin/activate && \
-	pytest
+docs:
+	@echo "Building docs with sphinx-autobuild..."
+	$(VENV)/bin/sphinx-autobuild docs/source docs/build/html

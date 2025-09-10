@@ -1,3 +1,3 @@
-from .baseline import BaseModel, GammaModel
-from .bounded_optimization import BoundedOptimization
-from .rectified_logistic import RectifiedLogistic
+from .base_model import BaseModel
+from .non_hierarchical import NonHierarchicalBaseModel
+# from .optimization import BoundConstrainedOptimization
