@@ -24,5 +24,5 @@ dev: base
 	$(PIP) install -e ".[dev]"
 
 docs:
-	@source .venv/bin/activate && \
-	sphinx-autobuild docs/source/ docs/build/html/
+	@echo "Building docs with sphinx-autobuild..."
+	$(VENV)/bin/sphinx-autobuild docs/source docs/build/html
