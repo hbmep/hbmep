@@ -53,6 +53,7 @@ class BaseModel():
         self.name: str = "base_model"
         self.build_dir: str = ""
         self.random_state: int = 0
+        self._rng_key: Array = random.key(self.random_state)
         self.sample_sites: list[str] = []
         self.deterministic_sites: list[str] = []
         self.reparam_sites: list[str] = []
@@ -94,13 +95,17 @@ class BaseModel():
 
     @property
     def key(self):
-        return random.key(self.random_state)
+        return self._rng_key
 
-    @key.setter     # TODO: Check this
-    def key(self, random_state):
-        if not isinstance(random_state, int):
-            raise ValueError("New random state must be an integer")
-        self.random_state = random_state
+    @key.setter
+    def key(self, value: int | Array):
+        if isinstance(value, int):
+            self.random_state = value
+            self._rng_key = random.key(value)
+        elif isinstance(value, Array):
+            self._rng_key = value
+        else:
+            raise ValueError("key must be an int seed or a JAX PRNGKey Array")
 
     @property
     def variables(self):
