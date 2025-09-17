@@ -194,7 +194,6 @@ class HB(BaseModel):
                             g[*features.T],
                             h[*features.T],
                             v[*features.T],
-                            EPS,
                         ),
                         c1[*features.T],
                         c2[*features.T],
