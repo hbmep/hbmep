@@ -12,6 +12,7 @@ from hbmep.model import BaseModel, NonHierarchicalBaseModel
 from hbmep.infer import (
     get_regressors, get_response, get_dependencies, trace, run, predict,
 )
+from hbmep.util import site
 
 __version__ = version("hbmep")
 cpu_count = multiprocessing.cpu_count()
