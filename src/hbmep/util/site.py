@@ -42,6 +42,7 @@ class Site(metaclass=SiteMeta):
     mu = SiteAttribute("µ")
     alpha = SiteAttribute("α")
     beta = SiteAttribute("β")
+    sigma = SiteAttribute("σ")
 
     # Plates
     num_features = SiteAttribute("num_features")
