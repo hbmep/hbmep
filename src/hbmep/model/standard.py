@@ -14,9 +14,9 @@ logger = logging.getLogger(__name__)
 EPS = 1e-3
 
 
-class HB(BaseModel):
+class StandardHB(BaseModel):
     def __init__(self, *args, **kw):
-        super(HB, self).__init__(*args, **kw)
+        super(StandardHB, self).__init__(*args, **kw)
         self.use_mixture = False
 
     def rectified_logistic(self, intensity, features, response=None, **kw):

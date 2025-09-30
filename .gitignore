@@ -33,4 +33,4 @@ docs/**/*.csv
 docs/**/*.npy
 docs/**/*.pdf
 docs/**/*.pkl
-docs/**/generated
+docs/**/*generated

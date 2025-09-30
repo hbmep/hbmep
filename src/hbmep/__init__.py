@@ -15,7 +15,11 @@ from hbmep.dataset import (
     make_prediction_dataset,
 )
 from hbmep.plotter import plotter, plot
-from hbmep.model import BaseModel, NonHierarchicalBaseModel
+from hbmep.model import (
+    BaseModel,
+    NonHierarchicalBaseModel,
+    StandardHB
+)
 from hbmep.infer import (
     get_regressors,
     get_response,
