@@ -4,7 +4,7 @@ from importlib.metadata import version
 
 import numpyro
 
-from hbmep.functional import functional
+from hbmep.functional import functional, smooth_functional
 from hbmep import invert, integrate
 from hbmep.util import site
 from hbmep.dataset import (
