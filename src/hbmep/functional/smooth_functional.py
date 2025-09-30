@@ -1,8 +1,5 @@
 import warnings
 
-import jax
-import jax.numpy as jnp
-
 from hbmep.functional.util import (
     smooth_max,
     linear_transform,
