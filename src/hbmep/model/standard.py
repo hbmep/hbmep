@@ -6,7 +6,7 @@ import jax.numpy as jnp
 import numpyro as pyro
 import numpyro.distributions as dist
 
-from hbmep import functional as F, smooth_functional as SF
+from hbmep import functional as F
 from hbmep.model import BaseModel
 from hbmep.util import site
 
@@ -78,7 +78,7 @@ class HB(BaseModel):
             with pyro.plate(site.num_response, self.num_response):
                 with pyro.plate(site.num_data, num_data):
                     mu, alpha, beta = self.gamma_likelihood(
-                        SF.rectified_logistic,
+                        F.rectified_logistic,
                         intensity,
                         (
                             a[*features.T],

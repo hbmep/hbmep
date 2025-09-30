@@ -38,3 +38,11 @@ issue tracker <https://github.com/hbmep/hbmep/issues>`_.
 
     tutorials/getting_started
     tutorials/mixture_model
+
+.. toctree::
+    :caption: API Reference
+    :maxdepth: 1
+
+    api/functional
+    api/invert
+    api/integrate

@@ -4,6 +4,9 @@ from importlib.metadata import version
 
 import numpyro
 
+from hbmep.functional import functional
+from hbmep import invert, integrate
+from hbmep.util import site
 from hbmep.dataset import (
     load,
     fit_transform,
@@ -21,7 +24,6 @@ from hbmep.infer import (
     run,
     predict,
 )
-from hbmep.util import site
 
 __version__ = version("hbmep")
 logger = logging.getLogger(__name__)
