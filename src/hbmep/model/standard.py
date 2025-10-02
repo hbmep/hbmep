@@ -77,21 +77,21 @@ class StandardHB(BaseModel):
         with pyro.handlers.mask(mask=mask_obs):
             with pyro.plate(site.num_response, self.num_response):
                 with pyro.plate(site.num_data, num_data):
-                    mu, alpha, beta = self.gamma_likelihood(
-                        F.rectified_logistic,
-                        intensity,
-                        (
+                    mu = pyro.deterministic(
+                        site.mu,
+                        F.rectified_logistic(
+                            intensity,
                             a[*features.T],
                             b[*features.T],
                             g[*features.T],
                             h[*features.T],
                             v[*features.T],
                             EPS,
-                        ),
-                        c1[*features.T],
-                        c2[*features.T],
+                        )
                     )
-                    pyro.deterministic(site.mu, mu)
+                    alpha, beta = self.gamma_likelihood(
+                        mu, c1[*features.T], c2[*features.T]
+                    )
 
                     # Mixture distribution
                     if self.use_mixture:
@@ -185,20 +185,17 @@ class StandardHB(BaseModel):
         with pyro.handlers.mask(mask=mask_obs):
             with pyro.plate(site.num_response, self.num_response):
                 with pyro.plate(site.num_data, num_data):
-                    mu, alpha, beta = self.gamma_likelihood(
-                        F.logistic5,
+                    mu = F.logistic5(
                         intensity,
-                        (
-                            a[*features.T],
-                            b[*features.T],
-                            g[*features.T],
-                            h[*features.T],
-                            v[*features.T],
-                        ),
-                        c1[*features.T],
-                        c2[*features.T],
+                        a[*features.T],
+                        b[*features.T],
+                        g[*features.T],
+                        h[*features.T],
+                        v[*features.T],
                     )
-                    pyro.deterministic(site.mu, mu)
+                    alpha, beta = self.gamma_likelihood(
+                        mu, c1[*features.T], c2[*features.T]
+                    )
 
                     # Mixture distribution
                     if self.use_mixture:
