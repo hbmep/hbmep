@@ -26,9 +26,13 @@ OBS_SITES = "obs_sites"
 
 
 class BaseModel():
-    intensity: str = ""
-    features: list[str] = []
-    response: list[str] = []
+    intensity: str
+    features: list[str]
+    response: list[str]
+    num_features: int
+    num_response: int
+    regressors: list[str]
+    variables: dict[str, str | list[str]]
     mcmc_params: dict[str, int | float] = {
         "num_chains": 4,
         "num_warmup": 2000,
@@ -51,14 +55,15 @@ class BaseModel():
         config: dict | None = None
     ):
         self.name: str = "base_model"
+        self.key: random.key = random.key(0)
         self.build_dir: str = ""
-        self.random_state: int = 0
-        self._rng_key: Array = random.key(self.random_state)
+        self._response: list[str] = []
+        self._num_response: int | None = None
         self.sample_sites: list[str] = []
         self.deterministic_sites: list[str] = []
         self.reparam_sites: list[str] = []
         self.obs_sites: list[str] = []
-        self.trace_sites = dict[str, str]
+        self.trace_sites: dict[str, str] = {}
 
         if toml_path is not None:
             try:
@@ -93,19 +98,9 @@ class BaseModel():
         self.obs_sites = obs_sites
         self.trace_sites = sites
 
-    @property
-    def key(self):
-        return self._rng_key
-
-    @key.setter
-    def key(self, value: int | Array):
-        if isinstance(value, int):
-            self.random_state = value
-            self._rng_key = random.key(value)
-        elif isinstance(value, Array):
-            self._rng_key = value
-        else:
-            raise ValueError("key must be an int seed or a JAX PRNGKey Array")
+    def _on_response_changed(self, old: list[str] | None, new: list[str]) -> None:
+        # Subclass hook: react when response is changed
+        ...
 
     @property
     def variables(self):
@@ -137,8 +132,10 @@ class BaseModel():
         if not len(response):
             raise ValueError("Response must have length greater than 0")
 
+        old = self._response
         self._response = response
         self._num_response = None
+        self._on_response_changed(old, response)
 
     @property
     def num_response(self):
@@ -199,20 +196,18 @@ class BaseModel():
         raise NotImplementedError
 
     @staticmethod
-    def gamma_rate(mu, c1, c2):
-        z = 1 / (c2 * mu)
-        z = (1 / c1) + z
-        return z
+    def gamma_likelihood(mu, c1, c2):
+        def body_gamma_rate(mu, c1, c2):
+            z = 1 / (c2 * mu)
+            z = (1 / c1) + z
+            return z
 
-    @staticmethod
-    def gamma_concentration(mu, beta):
-        return beta * mu
+        def body_gamma_concentration(mu, beta):
+            return beta * mu
 
-    def gamma_likelihood(self, fn, x, fn_args, c1, c2):
-        mu = fn(x, *fn_args)
-        beta = self.gamma_rate(mu, c1, c2)
-        alpha = self.gamma_concentration(mu, beta)
-        return mu, alpha, beta
+        beta = body_gamma_rate(mu, c1, c2)
+        alpha = body_gamma_concentration(mu, beta)
+        return alpha, beta
 
     @timing
     def trace(
@@ -243,7 +238,8 @@ class BaseModel():
         if not self.sample_sites:
             model_trace = self.trace(df, key=key, **kw)
             self._update_sites(model_trace)
-        mcmc, posterior = mep.run(
+        logger.info(f"Running...")
+        mcmc = mep.run(
             self.key if key is None else key,
             self._model,
             *self.get_regressors(df),
@@ -254,6 +250,8 @@ class BaseModel():
             init_params=init_params,
             **kw
         )
+        posterior = mcmc.get_samples()
+        posterior = {k: np.array(v) for k, v in posterior.items()}
         return mcmc, posterior
 
     @timing
@@ -344,6 +342,9 @@ class BaseModel():
         output_path: str | None = None,
         **kw
     ):
+        if not output_path and not self.build_dir:
+            logger.info(f"Skipping plotting because output_path not provided.")
+            return
         if output_path is None: output_path = os.path.join(self.build_dir, DATASET_PLOT)
         logger.info("Plotting dataset...")
         logger.info(output_path)
@@ -375,6 +376,9 @@ class BaseModel():
         output_path: str | None = None,
         **kw
     ):
+        if not output_path and not self.build_dir:
+            logger.info(f"Skipping plotting because output_path not provided.")
+            return
         if output_path is None: output_path = os.path.join(self.build_dir, CURVES_PLOT)
         logger.info("Plotting curves...")
         logger.info(output_path)
@@ -412,6 +416,8 @@ class BaseModel():
         output_path: str | None = None,
         **kw
     ):
+        if not output_path and not self.build_dir:
+            logger.info(f"Skipping plotting because output_path not provided.")
         if output_path is None: output_path = os.path.join(self.build_dir, PREDICTIVE_PLOT)
         logger.info("Plotting predictive...")
         logger.info(output_path)
