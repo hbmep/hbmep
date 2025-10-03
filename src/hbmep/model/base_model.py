@@ -164,6 +164,32 @@ class BaseModel():
         ]
         return {attr: getattr(self, attr) for attr in attributes}
 
+    def state_dict(self) -> dict:
+        key_data = random.key_data(self.key)
+        return {
+            "name": self.name,
+            "variables": self.variables,
+            "mcmc_params": self.mcmc_params,
+            "nuts_params": self.nuts_params,
+            "mep_metadata": self.mep_metadata,
+            "key_data": key_data.tolist(),
+            "key_dtype": key_data.dtype,
+            "build_dir": self.build_dir,
+        }
+
+    def load_state_dict(self, state: dict):
+        self.name = state.get("name", "base_model")
+        self._update_config({
+            "variables": state.get("variables", {}),
+            "mcmc": state.get("mcmc_params", {}),
+            "nuts": state.get("nuts_params", {}),
+            "mep_metadata": state.get("mep_metadata", {}),
+        })
+        key_data = state.get("key_data", [0, 0])
+        key_dtype = state.get("key_dtype", jnp.uint32)
+        self.key = random.wrap_key_data(jnp.array(key_data, dtype=key_dtype))
+        self.build_dir = state.get("build_dir", self.build_dir)
+
     def get_regressors(self, df: pd.DataFrame):
         return mep.get_regressors(df, **self.variables)
 
@@ -434,29 +460,3 @@ class BaseModel():
         figures = [u for u, _ in figures]
         make_pdf(figures=figures, output_path=output_path)
         return
-
-    def state_dict(self) -> dict:
-        return {
-            "name": self.name,
-            "variables": self.variables,
-            "mcmc_params": self.mcmc_params,
-            "nuts_params": self.nuts_params,
-            "mep_metadata": self.mep_metadata,
-            "key": tuple(np.asarray(self.key).tolist()),
-            "build_dir": self.build_dir,
-        }
-
-    def load_state_dict(self, state: dict):
-        self._update_config({
-            "variables": state.get("variables", {}),
-            "mcmc": state.get("mcmc_params", {}),
-            "nuts": state.get("nuts_params", {}),
-            "mep_metadata": state.get("mep_metadata", {}),
-        })
-        self.build_dir = state.get("build_dir", self.build_dir)
-        key_arr = np.array(state.get("key", (0, 0)), dtype=np.uint32)
-        self.key = random.key(0)
-        try:
-            self.key = random.PRNGKey(0).at[:].set(key_arr)
-        except Exception:
-            self.key = random.PRNGKey(0)
