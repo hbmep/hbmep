@@ -1,8 +1,17 @@
-import logging
+import os
 import multiprocessing
-from importlib.metadata import version
+cpu_count = multiprocessing.cpu_count()
+os.environ["JAX_PLATFORM_NAME"] = "cpu"
+os.environ.setdefault("XLA_FLAGS", f"--xla_force_host_platform_device_count={cpu_count}")
+
+import jax
+jax.config.update("jax_enable_x64", True)
 
 import numpyro
+numpyro.enable_validation()
+
+from importlib.metadata import version
+__version__ = version("hbmep")
 
 from hbmep.functional import functional, smooth_functional
 from hbmep import invert, integrate
@@ -28,11 +37,3 @@ from hbmep.infer import (
     run,
     predict,
 )
-
-__version__ = version("hbmep")
-logger = logging.getLogger(__name__)
-
-# cpu_count = multiprocessing.cpu_count()
-# numpyro.set_host_device_count(cpu_count)
-numpyro.enable_x64()
-numpyro.enable_validation()
