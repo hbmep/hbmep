@@ -182,6 +182,22 @@ def rectified_linear(x, a, b, g):
     return g + z
 
 
+def slope_at_threshold(b, h, v):
+    """Right-hand derivative of rectified-logistic at x = a."""
+    return (b * h * v) / (h + v)
+
+
+def b_from_slope(s, h, v):
+    """Solve for `b` given right-hand derivative `s` at threshold."""
+    return s * (h + v) / (h * v)
+
+
+def rectified_logistic_with_slope(x, a, b, g, h, v, eps: float = 0.0):
+    """Rectified-logistic reparameterized by right-hand derivative `b` at threshold."""
+    b_ = b_from_slope(b, h, v)
+    return rectified_logistic(x, a, b_, g, h, v, eps)
+
+
 # # TODO: add these
 # def rectified_logistic_inInflectionParam(x, a, b, g, h, v):
 #     """
