@@ -100,9 +100,6 @@ def run(
     if mcmc is None:
         kernel = NUTS(model, **nuts_params)
         mcmc = MCMC(kernel, **mcmc_params)
-    else:
-        if getattr(mcmc, "last_state", None) is not None:
-            mcmc.post_warmup_state = mcmc.last_state
     mcmc.run(
         key,
         intensity,

@@ -43,6 +43,7 @@ class BaseModel():
         "target_accept_prob": 0.8,
         "max_tree_depth": (10, 10),
     }
+    use_mixture: bool = False
     mep_response: list[str] = []
     mep_window: list[float] = [0, 1]
     mep_size_window: list[float] = [0, 1]
@@ -51,11 +52,12 @@ class BaseModel():
     def __init__(
         self,
         *,
+        key: random.key = random.key(0),
         toml_path: str | None = None,
         config: dict | None = None
     ):
         self.name: str = "base_model"
-        self.key: random.key = random.key(0)
+        self.key: random.key = key
         self.build_dir: str = ""
         self._response: list[str] = []
         self._num_response: int | None = None
