@@ -2,7 +2,7 @@ SHELL := bash
 .ONESHELL:
 .SHELLFLAGS := -eu -o pipefail -c
 
-PY ?= python3.11
+PY ?= python3.12
 VENV := .venv
 PIP := $(VENV)/bin/python -m pip
 
