@@ -20,6 +20,7 @@ from hbmep.model import BaseModel
 from hbmep.util import site, make_pdf
 
 EPS = 1e-3
+n_inits = 1
 
 #%%
 # HBMEP Bayesian Model Definition
@@ -119,7 +120,7 @@ def run_single_init(args):
 
 
 
-def fit_rectified_logistic(x, y, n_inits=3):
+def fit_rectified_logistic(x, y, n_inits=n_inits):
     x, y = np.asarray(x, float), np.asarray(y, float)
     m = np.isfinite(x) & np.isfinite(y)
     x, y = x[m], y[m]
@@ -211,7 +212,11 @@ def compare_and_plot(df, pred_df, ls_table,
             mask_data &= (df[c] == v)
             mask_pred &= (pred_df[c] == v)
         gdf = df.loc[mask_data, [intensity_col, response_col]].sort_values(intensity_col)
-        gpred = pred_df.loc[mask_pred, [intensity_col, "mu_post_mean"]].sort_values(intensity_col)
+
+        # *** FIX HERE — use per-muscle posterior mean column ***
+        gpred = pred_df.loc[mask_pred, [intensity_col, f"mu_post_mean_{response_col}"]] \
+                       .sort_values(intensity_col)
+
         ax.scatter(gdf[intensity_col], gdf[response_col], s=14, alpha=0.65, color='k', label="Data")
         if gpred.empty:
             ax.set_title(f"{grp} - No pred_df match")
@@ -223,8 +228,11 @@ def compare_and_plot(df, pred_df, ls_table,
             fit_params = {"params": {k: row.iloc[0][k] for k in ["a", "b", "g", "h", "v", "xmin", "xrng"]}}
             xgrid = np.linspace(gdf[intensity_col].min(), gdf[intensity_col].max(), 200)
             yhat_ls = predict_ls_curve(xgrid, fit_params)
+
+            # *** FIX HERE ***
             xpred = gpred[intensity_col].values
-            ypred_mean = gpred["mu_post_mean"].values
+            ypred_mean = gpred[f"mu_post_mean_{response_col}"].values
+
             yhat_post = np.interp(xgrid, xpred, ypred_mean)
             denom = max(1e-6, np.percentile(np.abs(yhat_ls), 90.0))
             mad = float(np.mean(np.abs(yhat_ls - yhat_post)) / denom)
@@ -239,26 +247,38 @@ def compare_and_plot(df, pred_df, ls_table,
 
 #%%
 # Main Execution
+muscles = ["ADM", "APB", "ECR", "FCR", "Triceps"]
+
 def main():
     csv_path = "/Users/suheylatozan/Desktop/Movement Recovery Lab/sc_ramp.csv"
     df = pd.read_csv(csv_path)
-    df = df.dropna(subset=["sc_current", "FCR", "participant", "recr_curve"]).copy()
+    df = df.dropna(subset=["sc_current", "participant", "recr_curve"]).copy()
     group_cols = ["participant", "recr_curve"]
 
     model = HB()
     model.intensity = "sc_current"
     model.features = group_cols
-    model.response = ["FCR"]
+    model.response = muscles
     model._model = model.hb_rl
     model.use_mixture = True
     model.mcmc_params = dict(num_chains=2, num_warmup=500, num_samples=250)
 
+    # Run HBMEP model
     df_enc, enc = model.load(df)
     mcmc, posterior = model.run(df=df_enc)
     pred_df = model.make_prediction_dataset(df=df_enc, num_points=200)
-    predictive = model.predict(df=pred_df, posterior=posterior, num_samples=500, return_sites=[site.mu])
-    pred_df["mu_post_mean"] = np.asarray(predictive[site.mu]).mean(axis=0)
+    predictive = model.predict(df=pred_df, posterior=posterior,
+                               num_samples=500, return_sites=[site.mu])
 
+    # -------------------------- FIX FOR MULTIPLE MUSCLES --------------------------
+    mu_post = np.asarray(predictive[site.mu])        # (samples, points, muscles)
+    mu_mean = mu_post.mean(axis=0)                   # (points, muscles)
+
+    for i, m in enumerate(muscles):
+        pred_df[f"mu_post_mean_{m}"] = mu_mean[:, i]
+    # -------------------------------------------------------------------------------
+
+    # Decode participants + scramps
     for col in model.features:
         if col in pred_df and col in enc:
             le = enc[col]
@@ -268,21 +288,41 @@ def main():
     print("Decoded participants:", pred_df["participant"].unique())
     print("Decoded recr_curve:", pred_df["recr_curve"].unique())
 
-    ls_table = fit_by_group_ls(df, intensity_col="sc_current", response_col="FCR", group_cols=group_cols)
-
-    fig, report = compare_and_plot(df, pred_df, ls_table)
-
-    #See summary of best fits.
-    ls_table.sort_values("r2", ascending=False).head(10)
-
     output_dir = "/Users/suheylatozan/Desktop/Movement Recovery Lab/hbmep/notebooks/hbmep_outputs"
     os.makedirs(output_dir, exist_ok=True)
-    output_path = os.path.join(output_dir, "paired_curves_parallelization_test_n=3.pdf")
-    make_pdf(figures=[fig], output_path=output_path)
-    print(f"Saved paired comparison PDF to: {output_path}")
+    all_figures = []
+
+    for muscle in muscles:
+        print(f"\n\n==============================")
+        print(f"Processing muscle: {muscle}")
+        print(f"==============================\n")
+
+        # Remove rows with missing muscle values
+        df_m = df.dropna(subset=[muscle]).copy()
+
+        # Compute LS fits
+        ls_table = fit_by_group_ls(df_m,
+                                   intensity_col="sc_current",
+                                   response_col=muscle,
+                                   group_cols=group_cols)
+
+        # Compare HBMEP vs LS for this muscle
+        fig, report = compare_and_plot(df_m, pred_df, ls_table,
+                                       intensity_col="sc_current",
+                                       response_col=muscle,
+                                       group_cols=group_cols)
+
+        # Title the whole figure page
+        fig.suptitle(f"Recruitment Curves — {muscle}", fontsize=18)
+        all_figures.append(fig)
+
+    output_path = os.path.join(output_dir, f"paired_curves_all_muscles_n={n_inits}.pdf")
+    make_pdf(figures=all_figures, output_path=output_path)
+    print(f"\nSaved combined PDF for all muscles to:\n{output_path}\n")
 
 
 if __name__ == "__main__":
     main()
+
 
 
