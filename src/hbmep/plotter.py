@@ -349,7 +349,8 @@ def plot(
 
     colors = kw.pop("response_colors", [])
     if not colors:
-        colors = sns.color_palette(palette="rainbow", n_colors=len(response))
+        colors = sns.color_palette(palette="rainbow", as_cmap=True)(np.linspace(0, 1, len(response))) 
+        colors = list(colors)
     if isinstance(colors, list):
         colors = dict(zip(response, colors))
     missing = [r for r in response if r not in colors]

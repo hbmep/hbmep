@@ -90,20 +90,22 @@ class NonHierarchicalBaseModel(BaseModel):
                 model_trace = mep.trace(
                     self.key if key is None else key,
                     self._model,
-                    *mep.get_regressors(ccdf, self.intensity, []),
-                    *mep.get_response(ccdf, self.response[response_idx]),
+                    *mep.get_regressors(ccdf, intensity=self.intensity, features=[]),
+                    *mep.get_response(ccdf, response=self.response[response_idx]),
                     **kw
                 )
                 return model_trace
-            mcmc, posterior = mep.run(
+            mcmc = mep.run(
                 self.key if key is None else key,
                 self._model,
-                *mep.get_regressors(ccdf, self.intensity, []),
-                *mep.get_response(ccdf, self.response[response_idx]),
+                *mep.get_regressors(ccdf, intensity=self.intensity, features=[]),
+                *mep.get_response(ccdf, response=self.response[response_idx]),
                 nuts_params=self.nuts_params,
                 mcmc_params=self.mcmc_params,
                 **kw
             )
+            posterior = mcmc.get_samples()
+            posterior = {k: np.array(v) for k, v in posterior.items()}
             output_path = os.path.join(
                 temp_folder, f"{response_idx}__{combination_idx}.pkl"
             )
@@ -169,7 +171,7 @@ class NonHierarchicalBaseModel(BaseModel):
             predictive = mep.predict(
                 self.key if key is None else key,
                 self._model,
-                *mep.get_regressors(ccdf, self.intensity, []),
+                *mep.get_regressors(ccdf, intensity=self.intensity, features=[]),
                 posterior={
                     u: v[..., *combinations[combination_idx], response_idx]
                     for u, v in posterior.items() if u in self.sample_sites
