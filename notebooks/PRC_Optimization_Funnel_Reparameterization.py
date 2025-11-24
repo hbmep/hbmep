@@ -23,61 +23,74 @@ from hbmep.util import site, make_pdf
 EPS = 1e-3
 n_inits = 1
 
-
-# HBMEP Bayesian Model Definition
-
-
+#%%
+# New model definition - Reparameterization - Funnel - Complete Pooling
 class HB(BaseModel):
     def __init__(self, *args, **kw):
         super(HB, self).__init__(*args, **kw)
         self.use_mixture = False
 
     def hb_rl(self, intensity, features, response=None, **kw):
+
         num_data = intensity.shape[0]
-        num_features = np.max(features, axis=0) + 1
+
         mask_obs = True
         if response is not None:
             mask_obs = np.invert(np.isnan(response))
 
-        a_loc = pyro.sample(site.a.log, dist.TruncatedNormal(5., 10., low=0))
-        a_scale = pyro.sample(site.a.scale, dist.HalfNormal(10.))
-        b_scale = pyro.sample(site.b.scale, dist.HalfNormal(10.))
-        h_scale = pyro.sample(site.h.scale, dist.HalfNormal(50.))
-        g_scale = pyro.sample(site.g.scale, dist.HalfNormal(5.))
-        v_scale = pyro.sample(site.v.scale, dist.HalfNormal(1.))
-        c1_scale = pyro.sample(site.c1.scale, dist.HalfNormal(5.))
-        c2_scale = pyro.sample(site.c2.scale, dist.HalfNormal(.5))
+        a_loc = pyro.sample(site.a.loc, dist.TruncatedNormal(5.0, 10.0, low=0.0))
 
-        with pyro.plate(site.num_response, self.num_response):
-            with pyro.plate_stack(site.num_features, num_features, rightmost_dim=-2):
-                a = pyro.sample(site.a, dist.TruncatedNormal(a_loc, a_scale, low=0))
+        a_scale  = pyro.sample(site.a.scale,  dist.HalfNormal(10.0))
+        b_scale  = pyro.sample(site.b.scale,  dist.HalfNormal(10.0))
+        g_scale  = pyro.sample(site.g.scale,  dist.HalfNormal(5.0))
+        h_scale  = pyro.sample(site.h.scale,  dist.HalfNormal(50.0))
+        v_scale  = pyro.sample(site.v.scale,  dist.HalfNormal(1.0))
+        c1_scale = pyro.sample(site.c1.scale, dist.HalfNormal(5.0))
+        c2_scale = pyro.sample(site.c2.scale, dist.HalfNormal(0.5))
 
-                b = pyro.deterministic(site.b, b_scale * pyro.sample(site.b.raw, dist.HalfNormal(1)))
-                g = pyro.deterministic(site.g, g_scale * pyro.sample(site.g.raw, dist.HalfNormal(1)))
-                h = pyro.deterministic(site.h, h_scale * pyro.sample(site.h.raw, dist.HalfNormal(1)))
-                v = pyro.deterministic(site.v, v_scale * pyro.sample(site.v.raw, dist.HalfNormal(1)))
-                c1 = pyro.deterministic(site.c1, c1_scale * pyro.sample(site.c1.raw, dist.HalfNormal(1)))
-                c2 = pyro.deterministic(site.c2, c2_scale * pyro.sample(site.c2.raw, dist.HalfNormal(1)))
+        a_raw = pyro.sample(site.a.raw, dist.Normal(0., 1.))
+        a     = pyro.deterministic(site.a, jax.nn.softplus(a_loc + a_scale * a_raw))
+
+        b_raw = pyro.sample(site.b.raw, dist.Normal(0., 1.))
+        b     = pyro.deterministic(site.b, jax.nn.softplus(b_scale * b_raw))
+
+        g_raw = pyro.sample(site.g.raw, dist.Normal(0., 1.))
+        g     = pyro.deterministic(site.g, jax.nn.softplus(g_scale * g_raw))
+
+        h_raw = pyro.sample(site.h.raw, dist.Normal(0., 1.))
+        h     = pyro.deterministic(site.h, jax.nn.softplus(h_scale * h_raw))
+
+        v_raw = pyro.sample(site.v.raw, dist.Normal(0., 1.))
+        v     = pyro.deterministic(site.v, jax.nn.softplus(v_scale * v_raw))
+
+        c1_raw = pyro.sample(site.c1.raw, dist.Normal(0., 1.))
+        c1     = pyro.deterministic(site.c1, jax.nn.softplus(c1_scale * c1_raw))
+
+        c2_raw = pyro.sample(site.c2.raw, dist.Normal(0., 1.))
+        c2     = pyro.deterministic(site.c2, jax.nn.softplus(c2_scale * c2_raw))
 
         if self.use_mixture:
-            q = pyro.sample(site.outlier_prob, dist.Uniform(0., 0.01))
+            q = pyro.sample(site.outlier_prob, dist.Uniform(0.0, 0.01))
 
         with pyro.handlers.mask(mask=mask_obs):
             with pyro.plate(site.num_response, self.num_response):
                 with pyro.plate(site.num_data, num_data):
-                    mu = SF.rectified_logistic(
-                        intensity, a[*features.T], b[*features.T],
-                        g[*features.T], h[*features.T], v[*features.T], EPS
-                    )
-                    # Gamma likelihood from HBMEP model
-                    alpha, beta = self.gamma_likelihood(mu, c1[*features.T], c2[*features.T])
+
+                    mu = SF.rectified_logistic(intensity, a, b, g, h, v, EPS)
+                    mu = jnp.clip(mu, 1e-6, None)
+
+                    alpha, beta = self.gamma_likelihood(mu, c1, c2)
+
                     pyro.deterministic(site.mu, mu)
+
                     pyro.sample(
                         site.obs,
                         dist.Gamma(concentration=alpha, rate=beta),
-                        obs=response
+                        obs=response,
                     )
 
+
+#%%
 # Maximum Likelihood helpers and models
 
 def sigmoid(z):
@@ -586,10 +599,12 @@ def main():
 
     output_path = os.path.join(
         output_dir,
-        f"paired_curves_all_muscles_n={n_inits}_MLE_k_vs_c1c2.pdf"
-    )
+        f"paired_curves_all_muscles_n={n_inits}_MLE_Funnel_Reparameterization_ComPool.pdf"
+        )
     make_pdf(figures=all_figures, output_path=output_path)
-    print(f"\nSaved combined PDF for all muscles (MLE k vs c1c2) to:\n{output_path}\n")
+    print(f"\nSaved combined PDF to:\n{output_path}\n")
+
+
 
 if __name__ == "__main__":
     main()

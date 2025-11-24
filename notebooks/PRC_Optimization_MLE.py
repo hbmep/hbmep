@@ -178,7 +178,7 @@ def fit_rectified_logistic(x, y, n_inits=n_inits):
     ub = np.array([20.0, 500.0, 10.0, 2000.0, 50.0])
 
     # Create multiple starting vectors near the lower bound
-    offsets = np.linspace(0, 0.1, n_inits)
+    offsets = np.linspace(0, 1.0, n_inits)
     init_list = [lb + (ub - lb) * off for off in offsets]
 
     # Prepare arguments for parallel workers
@@ -287,7 +287,8 @@ def compare_and_plot(df, pred_df, ls_table,
 
 #%%
 # Main Execution
-muscles = ["ADM", "APB", "ECR", "FCR", "Triceps"]
+#muscles = ["ADM", "APB", "ECR", "FCR", "Triceps"]
+muscles = ["FCR"]
 
 def main():
     csv_path = "/Users/suheylatozan/Desktop/Movement Recovery Lab/sc_ramp.csv"
@@ -355,7 +356,7 @@ def main():
         fig.suptitle(f"Recruitment Curves — {muscle}", fontsize=18)
         all_figures.append(fig)
 
-    output_path = os.path.join(output_dir, f"paired_curves_all_muscles_n={n_inits}_MLE.pdf")
+    output_path = os.path.join(output_dir, f"paired_curves_all_muscles_n={n_inits}_MLE_IncUB.pdf")
     make_pdf(figures=all_figures, output_path=output_path)
     print(f"\nSaved combined PDF for all muscles (MLE) to:\n{output_path}\n")
 
