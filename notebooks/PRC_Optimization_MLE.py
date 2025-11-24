@@ -50,7 +50,8 @@ class HB(BaseModel):
         with pyro.plate(site.num_response, self.num_response):
             with pyro.plate_stack(site.num_features, num_features, rightmost_dim=-2):
                 a = pyro.sample(site.a, dist.TruncatedNormal(a_loc, a_scale, low=0))
-                b = pyro.deterministic(site.b, b_scale * pyro.sample(site.b.raw, dist.HalfNormal(1)))
+                
+                b = pyro.deterministic(site.b, b_scale * pyro.sample(site.b.raw, dist.HalfNormal(1))) 
                 g = pyro.deterministic(site.g, g_scale * pyro.sample(site.g.raw, dist.HalfNormal(1)))
                 h = pyro.deterministic(site.h, h_scale * pyro.sample(site.h.raw, dist.HalfNormal(1)))
                 v = pyro.deterministic(site.v, v_scale * pyro.sample(site.v.raw, dist.HalfNormal(1)))
@@ -67,7 +68,7 @@ class HB(BaseModel):
                         intensity, a[*features.T], b[*features.T],
                         g[*features.T], h[*features.T], v[*features.T], EPS
                     )
-                    alpha, beta = self.gamma_likelihood(mu, c1[*features.T], c2[*features.T])
+                    alpha, beta = self.gamma_likelihood(mu, c1[*features.T], c2[*features.T]) # Can comment out this function to test with alpha = k, beta = k/mu
                     pyro.deterministic(site.mu, mu)
                     pyro.sample(
                         site.obs,
