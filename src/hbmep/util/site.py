@@ -15,6 +15,10 @@ class SiteAttribute(str):
     def scale(self):
         return SiteAttribute(f"{self}_scale")
 
+    @property
+    def free(self):
+        return SiteAttribute(f"{self}_free")
+
     def __getitem__(self, key):
         # Handle indexing like site.num_features[0]
         if isinstance(key, int) and key >= 0:

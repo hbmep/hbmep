@@ -26,9 +26,9 @@ OBS_SITES = "obs_sites"
 
 
 class BaseModel():
-    intensity: str
-    features: list[str]
-    response: list[str]
+    intensity: str = ""
+    features: list[str] = []
+    response: list[str] = []
     num_features: int
     num_response: int
     regressors: list[str]
@@ -129,7 +129,10 @@ class BaseModel():
         )
 
         if not isListOfStrings:
-            raise ValueError("Response must be a list of strings")
+            if isinstance(response, str):
+                response = [response]
+            else:
+                raise ValueError("Response must be a list of strings")
 
         if not len(response):
             raise ValueError("Response must have length greater than 0")

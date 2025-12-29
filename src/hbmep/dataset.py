@@ -32,7 +32,10 @@ def load(
     response: list[str],
     mask_non_positive: bool = True
 ) -> tuple[pd.DataFrame, dict[str, LabelEncoder]]:
-    assert set([intensity, *features, *response]) <= set(df.columns)
+    present = [*features, *response]
+    if intensity:
+        present.append(intensity)
+    assert set(present) <= set(df.columns)
     # Positive response constraint
     if mask_non_positive:
         non_positive_obs = df[response].values <= 0

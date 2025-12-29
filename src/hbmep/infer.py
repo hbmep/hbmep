@@ -19,8 +19,12 @@ def get_regressors(
     features: list[str],
     response: list[str] | None = None,
 ):
+    if not intensity:
+        intensity = []
+    else:
+        intensity = [intensity]
     return (
-        df[[intensity]].to_numpy(),
+        df[intensity].to_numpy(),
         df[features].to_numpy()
     )
 
