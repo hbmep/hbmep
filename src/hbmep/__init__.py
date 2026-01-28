@@ -15,7 +15,13 @@ __version__ = version("hbmep")
 
 from hbmep.functional import functional, smooth_functional
 from hbmep import invert, integrate
-from hbmep.util import site
+from hbmep.util import (
+    site,
+    timing,
+    enable_logging,
+    _enable_fallback_logging,
+    make_pdf,
+)
 from hbmep.dataset import (
     load,
     fit_transform,
@@ -37,3 +43,5 @@ from hbmep.infer import (
     run,
     predict,
 )
+
+_enable_fallback_logging()

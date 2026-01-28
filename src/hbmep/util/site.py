@@ -19,6 +19,10 @@ class SiteAttribute(str):
     def free(self):
         return SiteAttribute(f"{self}_free")
 
+    @property
+    def plate(self):
+        return SiteAttribute(f"{self}_plate")
+
     def __getitem__(self, key):
         # Handle indexing like site.num_features[0]
         if isinstance(key, int) and key >= 0:
@@ -27,14 +31,20 @@ class SiteAttribute(str):
 
 
 class SiteMeta(type):
-    def __call__(cls, value):
+    def __call__(cls, value) -> SiteAttribute:
         return SiteAttribute(value)
+
+    def __getattr__(cls, name: str) -> SiteAttribute:
+        if name.startswith("_"):
+            raise AttributeError(name)
+        return SiteAttribute(name)
 
 
 class Site(metaclass=SiteMeta):
     # Priors
     a = SiteAttribute("a")
     b = SiteAttribute("b")
+    s = SiteAttribute("s")
     g = SiteAttribute("g")
     h = SiteAttribute("h")
     v = SiteAttribute("v")
