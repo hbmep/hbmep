@@ -43,46 +43,75 @@ def get_mep_data(
     mep_size_window: list[float] | None = None,
     **kw
 ):
+    idx = [r for r in range(mep_array.shape[-1])]
     if (
         not (response is None or mep_response is None)
         and mep_response != response
     ):
         idx = [r for r, res in enumerate(mep_response) if res in response]
-    else:
-        idx = [r for r in range(mep_array.shape[-1])]
     mep_array = mep_array[..., idx]
 
-    if mep_size_window is None: mep_size_window = mep_window
+    if mep_size_window is None:
+        mep_size_window = mep_window
+
     assert (
         (mep_size_window[0] >= mep_window[0])
         and (mep_size_window[1] <= mep_window[1])
     )
 
     mep_time = np.linspace(*mep_window, mep_array.shape[1])
-    idx = (mep_time > mep_size_window[0]) & (mep_time < mep_size_window[1])
-    mep_array = mep_array[:, idx, ...]
-    mep_time = mep_time[idx]
-    return mep_array, mep_time
+    mep_size_time = (mep_time > mep_size_window[0]) & (mep_time < mep_size_window[1])
+    return mep_time, mep_size_time
 
 
 def mep_plotter(
     mep_array: np.ndarray,
     intensity: np.ndarray,
     mep_time: np.ndarray | None = None,
+    mep_size_time: np.ndarray | None = None,
     mep_adjust: list[float] = 1,
+    mep_xoffset: list[float] | None = None,
+    mep_yoffset: list[float] | None = None,
     ax: plt.Axes | None = None,
     **kwargs
 ):
-    if ax is None: _, ax = plt.subplots(1, 1)
-    if mep_time is None: mep_time = np.linspace(0, 1, mep_array.shape[1])
-    max_amplitude = np.nanmax(mep_array, keepdims=True)
+    if ax is None:
+        _, ax = plt.subplots(1, 1)
+
+    if mep_time is None:
+        mep_time = np.linspace(0, 1, mep_array.shape[1])
+    
+    if mep_size_time is None:
+        mep_size_time = True
+    
+    if mep_xoffset is None:
+        mep_xoffset = [0, 0]
+
+    if mep_yoffset is None:
+        mep_yoffset = [0, 0]
+
+    max_amplitude = np.nanmax(mep_array[:, mep_size_time], keepdims=True)
     mep_array /= max_amplitude
     mep_array *= mep_adjust
+
     for i in range(mep_array.shape[0]):
         x = mep_array[i, :]
         x = x + intensity[i]
         if not np.isnan(x).all():
             ax.plot(x, mep_time, **kwargs)
+    
+    lo, hi = (
+        intensity.min() + mep_xoffset[0],
+        intensity.max() + mep_xoffset[1]
+    )
+    ax.set_xlim(lo, hi)
+
+    lo, hi = mep_time[mep_size_time].min(), mep_time[mep_size_time].max()
+    ax.axhline(lo, color="r", zorder=int(1e9))
+    ax.axhline(hi, color="r", zorder=int(1e9))
+    ylims = lo + mep_yoffset[0], hi + mep_yoffset[1]
+    ax.set_ylim(*ylims)
+
     return ax
 
 
@@ -93,7 +122,10 @@ def plotter(
     response: list[str],
     mep_array: np.ndarray | None = None,
     mep_time: np.ndarray | None = None,
+    mep_size_time: np.ndarray | None = None,
     mep_adjust: float = 1.,
+    mep_xoffset: list[float] | None = None,
+    mep_yoffset: list[float] | None = None,
     prediction_df: pd.DataFrame | None = None,
     prediction: np.ndarray | None = None,
     prediction_hdi: np.ndarray | None = None,
@@ -123,6 +155,8 @@ def plotter(
             threshold_hdi = hpdi(threshold, axis=0, prob=threshold_prob)
         point_thresh = threshold.mean(axis=0)
 
+    share_index = 0
+
     # Iterate over responses
     num_response = len(response)
     counter = 0
@@ -140,14 +174,16 @@ def plotter(
                 mep_array=mep_array[..., r],
                 intensity=df[intensity],
                 mep_time=mep_time,
+                mep_size_time=mep_size_time,
                 mep_adjust=mep_adjust,
+                mep_xoffset=mep_xoffset,
+                mep_yoffset=mep_yoffset,
                 ax=ax,
-                color=colors[r],
+                color=colors[response[r]],
                 alpha=.4,
             )
             ax.set_xlabel("")
             ax.set_ylabel("")
-            ax.sharex(axes[0])
             if counter > 0 and ax.get_legend():
                 ax.get_legend().remove()
             counter += 1
@@ -169,10 +205,11 @@ def plotter(
         ax.set_ylabel(response[r])
         lo, hi = df[intensity].min(), df[intensity].max()
         ax.set_xlim(left=lo - xoffset, right=hi + xoffset)
-        ax.sharex(axes[0])
+        ax.sharex(axes[share_index])
         if yscale is not None:
             ax.set_yscale(yscale)
             ax.yaxis.set_minor_formatter(mticker.NullFormatter())
+        ax.set_xlabel("")
         counter += 1
 
         # MEP size scatter plot and fitted curve
@@ -369,12 +406,15 @@ def plot(
     mep_window = kw.pop("mep_window", [0, 1])
     mep_size_window = kw.pop("mep_size_window", None)
     mep_adjust = kw.pop("mep_adjust", 1.)
+    mep_xoffset = kw.pop('mep_xoffset', [0, 0])
+    mep_yoffset = kw.pop('mep_yoffset', [0, 0])
 
     num_cols = 1
     mep_time = None
+    mep_size_time = None
     if mep_array is not None:
         assert mep_array.shape[0] == df.shape[0]
-        mep_array, mep_time = get_mep_data(
+        mep_time, mep_size_time = get_mep_data(
             mep_array,
             response=response,
             mep_response=mep_response,
@@ -462,7 +502,10 @@ def plot(
                 response=response,
                 mep_array=ccmep_array,
                 mep_time=mep_time,
+                mep_size_time=mep_size_time,
                 mep_adjust=mep_adjust,
+                mep_xoffset=mep_xoffset,
+                mep_yoffset=mep_yoffset,
                 prediction_df=ccpred_df,
                 prediction=ccpred,
                 prediction_hdi=ccpred_hdi,

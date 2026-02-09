@@ -48,6 +48,8 @@ class BaseModel():
     mep_window: list[float] = [0, 1]
     mep_size_window: list[float] = [0, 1]
     mep_adjust: float = 1.
+    mep_xoffset: list[float] = [1, 1]
+    mep_yoffset: list[float] = [1, 1]
 
     def __init__(
         self,
@@ -83,7 +85,7 @@ class BaseModel():
             self.mcmc_params[key] = value
         for key, value in config.get("nuts", {}).items():
             self.nuts_params[key] = value
-        for key, value in config.get("mep_metadata", {}).items():
+        for key, value in config.get("mep_data", {}).items():
             setattr(self, key, value)
 
     def _update_sites(self, model_trace):
@@ -150,12 +152,14 @@ class BaseModel():
         return self._num_response
 
     @property
-    def mep_metadata(self):
+    def mep_data(self):
         attributes = [
             "mep_response",
             "mep_window",
             "mep_size_window",
-            "mep_adjust"
+            "mep_adjust",
+            "mep_xoffset",
+            "mep_yoffset",
         ]
         return {attr: getattr(self, attr) for attr in attributes}
 
@@ -174,6 +178,9 @@ class BaseModel():
 
     def get_response(self, df: pd.DataFrame):
         return mep.get_response(df, **self.variables)
+
+    def get_features(self, df: pd.DataFrame):
+        return df[self.features].apply(tuple, axis=1)
 
     @timing
     def load(
@@ -358,7 +365,7 @@ class BaseModel():
             **self.variables,
             encoder=encoder,
             mep_array=mep_array,
-            **self.mep_metadata,
+            **self.mep_data,
             **kw
         )
         figures = [u for u, _ in figures]
@@ -397,7 +404,7 @@ class BaseModel():
             **self.variables,
             encoder=encoder,
             mep_array=mep_array,
-            **self.mep_metadata,
+            **self.mep_data,
             prediction_df=prediction_df,
             prediction=predictive[prediction_var],
             prediction_prob=prediction_prob,
@@ -447,7 +454,7 @@ class BaseModel():
             "variables": self.variables,
             "mcmc_params": self.mcmc_params,
             "nuts_params": self.nuts_params,
-            "mep_metadata": self.mep_metadata,
+            "mep_data": self.mep_data,
             "key_data": key_data.tolist(),
             "key_dtype": str(key_data.dtype.name),
             "build_dir": self.build_dir,
@@ -459,7 +466,7 @@ class BaseModel():
             "variables": state.get("variables", {}),
             "mcmc": state.get("mcmc_params", {}),
             "nuts": state.get("nuts_params", {}),
-            "mep_metadata": state.get("mep_metadata", {}),
+            "mep_data": state.get("mep_data", {}),
         })
         key_data = state.get("key_data", [0, 0])
         key_dtype = jnp.dtype(state.get("key_dtype", jnp.uint32))
