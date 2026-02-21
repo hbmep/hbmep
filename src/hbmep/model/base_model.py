@@ -76,7 +76,8 @@ class BaseModel():
             except Exception as e:
                 raise ValueError(f"Failed to load TOML file: {e}")
 
-        if config is not None: self._update_config(config)
+        if config is not None:
+            self._update_config(config)
 
     def _update_config(self, config: dict):
         for key, value in config.get("variables", {}).items():
@@ -273,13 +274,15 @@ class BaseModel():
         num_points: int = 100,
         min_intensity: float | None = None,
         max_intensity: float | None = None,
+        scale: str = "linear"
     ):
         return mep.make_prediction_dataset(
             df,
             **self.variables,
             num_points=num_points,
             min_intensity=min_intensity,
-            max_intensity=max_intensity
+            max_intensity=max_intensity,
+            scale=scale
         )
 
     @timing

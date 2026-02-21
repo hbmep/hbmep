@@ -65,14 +65,12 @@ def enable_logging(output, *, level=logging.INFO, format=FORMAT):
     if output_dir and not os.path.exists(output_dir):
         os.makedirs(output_dir, exist_ok=True)
 
-    log_fp = open(output_file, mode="w", buffering=1)
-    sys.stderr = _TeeStream(sys.stderr, log_fp)
     logging.basicConfig(
         format=format,
         level=level,
         handlers=[
             logging.FileHandler(output_file, mode="w"),
-            logging.StreamHandler(),
+            logging.StreamHandler(stream=sys.__stderr__),
         ],
         force=True
     )
