@@ -1,4 +1,5 @@
 import logging
+from functools import partial
 from collections import defaultdict
 
 import pandas as pd
@@ -87,6 +88,7 @@ def make_prediction_dataset(
     min_intensity: float | None = None,
     max_intensity: float | None = None,
     response: list[str] | None = None,
+    scale: str = "linear",
 ) -> pd.DataFrame:
     df_features = make_features(df, features=features)
     prediction_df = (
@@ -102,9 +104,25 @@ def make_prediction_dataset(
     if max_intensity is not None:
         prediction_df["max"] = max_intensity
 
+    if scale == "linear":
+        space_fn = np.linspace
+        transform_fn = lambda x: x
+    elif scale == "ln":
+        space_fn = partial(np.logspace, base=np.e)
+        transform_fn = np.log(x)
+    elif scale.startswith("log"):
+        base = int(scale[3:])
+        space_fn = partial(np.logspace, base=base)
+        transform_fn = lambda x: np.log(x) / np.log(base)
+    else:
+        raise NotImplementedError(f"Scale {scale} not implemented")
+
     prediction_df[intensity] = (
         prediction_df[["min", "max"]].apply(tuple, axis=1)
-        .apply(lambda x: np.linspace(x[0], x[1], num_points))
+        .apply(
+            lambda x:
+            space_fn(transform_fn(x[0]), transform_fn(x[1]), num_points)
+        )
     )
     prediction_df = prediction_df.explode(column=intensity)
     if len(features):
