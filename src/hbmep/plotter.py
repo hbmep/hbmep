@@ -140,7 +140,7 @@ def plotter(
     yscale: str | None = None,
     **kw
 ):
-    xoffset = kw.pop("xoffset", 0.5)
+    xoffset = kw.pop("xoffset", [-0.5, 0.5])
     curve_kwargs = kw.pop("curve_kwargs", CURVE_KW)
     threshold_kwargs = kw.pop("threshold_kwargs", THRESHOLD_KW)
 
@@ -204,13 +204,12 @@ def plotter(
         ax.set_xlabel(intensity)
         ax.set_ylabel(response[r])
         lo, hi = df[intensity].min(), df[intensity].max()
-        ax.set_xlim(left=lo - xoffset, right=hi + xoffset)
+        ax.set_xlim(left=lo + xoffset[0], right=hi + xoffset[1])
         ax.sharex(axes[share_index])
         if yscale is not None:
             ax.set_yscale(yscale)
             ax.yaxis.set_minor_formatter(mticker.NullFormatter())
         ax.set_xlabel("")
-        counter += 1
 
         # MEP size scatter plot and fitted curve
         if prediction_df is not None:
@@ -242,13 +241,12 @@ def plotter(
                     sns.kdeplot(x=threshold[:, r], ax=ax, **threshold_kwargs)
                 ax.set_xlabel("")
                 ax.set_ylabel("")
-                ax.sharex(axes[counter - 1])
-                ax.sharey(axes[counter - 1])
                 ax.tick_params(axis="x", rotation=90)
                 if yscale is not None:
                     ax.set_yscale(yscale)
                     ax.yaxis.set_minor_formatter(mticker.NullFormatter())
-            counter += 1
+
+        counter += 1
 
         # Threshold kde
         if threshold is not None:
@@ -430,7 +428,6 @@ def plot(
         if prediction_prob and prediction_hdi is None:
             prediction_hdi = hpdi(prediction, prob=prediction_prob)
         prediction = prediction.mean(axis=0, keepdims=True)
-        num_cols += 1
 
     if threshold is not None:
         if not len(features): threshold = threshold[:, None, ...]
