@@ -238,7 +238,14 @@ def plotter(
                     **curve_kwargs
                 )
                 if threshold is not None:
-                    sns.kdeplot(x=threshold[:, r], ax=ax, **threshold_kwargs)
+                    ax2 = ax.twinx()
+                    sns.kdeplot(x=threshold[:, r], ax=ax2, **threshold_kwargs)
+                    ax2.set_ylim(0, ax2.get_ylim()[1])
+                    ax2.set_yticks([])
+                    ax2.set_ylabel("")
+                    for spine in ax2.spines.values():
+                        spine.set_visible(False)
+                    ax2.patch.set_alpha(0)
                 ax.set_xlabel("")
                 ax.set_ylabel("")
                 ax.tick_params(axis="x", rotation=90)
