@@ -13,8 +13,7 @@ numpyro.enable_validation()
 from importlib.metadata import version
 __version__ = version("hbmep")
 
-from hbmep.functional import functional, smooth_functional
-from hbmep import invert, integrate
+from hbmep.functional import functional, inverse, integrate
 from hbmep.util import (
     site,
     timing,

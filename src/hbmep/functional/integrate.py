@@ -8,7 +8,7 @@ def rectified_logistic(x, a, b, g, h, v):
 
     def body_integrate(x):
         z = b * (x - a) - jnp.log(h) + jnp.log(v)
-        z = jnp.log(1 + jnp.exp(z))
+        z = jnp.log1p(jnp.exp(z))
         z *= (h + v) / b
         z += (g - v) * x
         return z
