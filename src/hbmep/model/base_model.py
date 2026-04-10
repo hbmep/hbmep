@@ -461,6 +461,10 @@ class BaseModel():
             "key_data": key_data.tolist(),
             "key_dtype": str(key_data.dtype.name),
             "build_dir": self.build_dir,
+            "model_name": (
+                None if getattr(self, "_model", None) is None
+                else self._model.__name__
+            ),
         }
 
     def load_state_dict(self, state: dict):
@@ -475,3 +479,7 @@ class BaseModel():
         key_dtype = jnp.dtype(state.get("key_dtype", jnp.uint32))
         self.key = random.wrap_key_data(jnp.array(key_data, dtype=key_dtype))
         self.build_dir = state.get("build_dir", self.build_dir)
+        model_name = state.get("model_name", None)
+        if model_name is not None:
+            self._model = getattr(self, model_name)
+        return

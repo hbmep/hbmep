@@ -120,7 +120,7 @@ def generate_response_colors(n: int, palette="rainbow", low=0, high=1):
     return sns.color_palette(palette=palette, as_cmap=True)(np.linspace(low, high, n))
 
 
-def make_pdf(figures: list[Figure], output_path: str):
+def make_pdf(figures: list[Figure], output_path: str, dpi=100):
     """
     Save a list of matplotlib figures to a multi-page PDF.
 
@@ -131,7 +131,7 @@ def make_pdf(figures: list[Figure], output_path: str):
     logger.info(f"Saving pdf...")
     with PdfPages(output_path) as pdf:
         for fig in figures:
-            pdf.savefig(fig, bbox_inches='tight')
+            pdf.savefig(fig, bbox_inches='tight', dpi=dpi)
             plt.close(fig)
     logger.info(f"Saved to {output_path}")
     return

@@ -109,7 +109,7 @@ def make_prediction_dataset(
         transform_fn = lambda x: x
     elif scale == "ln":
         space_fn = partial(np.logspace, base=np.e)
-        transform_fn = np.log(x)
+        transform_fn = lambda x: np.log(x)
     elif scale.startswith("log"):
         base = int(scale[3:])
         space_fn = partial(np.logspace, base=base)
