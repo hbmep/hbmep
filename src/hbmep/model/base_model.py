@@ -225,10 +225,13 @@ class BaseModel():
     @timing
     def trace(
         self,
-        df: pd.DataFrame,
+        df: pd.DataFrame | None = None,
         key: Array | None = None,
         **kw
     ):
+        if df is None:
+            row = [0.0] + [0] * self.num_features + [1.0] * self.num_response
+            df = pd.DataFrame([row], columns=self.regressors + self.response)
         trace = mep.trace(
             self.key if key is None else key,
             self._model,
