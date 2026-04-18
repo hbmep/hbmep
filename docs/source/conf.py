@@ -17,7 +17,6 @@ release = __version__
 extensions = [
     'myst_nb',
     'sphinx_copybutton',
-    # Docstrings
     "sphinx.ext.autodoc",
     "sphinx.ext.autosummary",
     "sphinx.ext.mathjax",
@@ -26,7 +25,6 @@ extensions = [
 ]
 autosummary_generate = True
 autodoc_default_options = {
-    "members": True,
     "undoc-members": False,
     "show-inheritance": True,
 }
@@ -37,7 +35,6 @@ templates_path = ['_templates']
 exclude_patterns = []
 
 """ Options for HTML output """
-# HTML theme
 html_theme = "sphinx_book_theme"
 html_context = {
     "default_mode": "dark"

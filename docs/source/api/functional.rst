@@ -1,13 +1,7 @@
 hbmep.functional
 ==================
 
-.. currentmodule:: hbmep.functional
-
-.. autosummary::
-   :toctree: generated
-   :nosignatures:
-
-   rectified_logistic
-   logistic5
-   logistic4
-   rectified_linear
+.. autofunction:: hbmep.functional.rectified_logistic
+.. autofunction:: hbmep.functional.logistic5
+.. autofunction:: hbmep.functional.logistic4
+.. autofunction:: hbmep.functional.rectified_linear

@@ -13,18 +13,17 @@ def rectified_logistic(x, a, b, g, h, v, eps: float = 0.0):
     Rectified-logistic function.
 
     .. math::
-
         \mathcal{f}\left(x; a, b, g, h, v\right)
         \;=\; g \;+\; \max\left\{0, \;-v + \frac{h + v}{1 + \left(\frac{h}{v}\right)e^{-b\left(x-a\right)}} \right\}
 
     If ``eps > 0``, replace the outer :math:`\max(0,\cdot)` with a smooth
-    surrogate :math:`\text{smoothmax}(\cdot,\varepsilon)` with bandwidth :math:`\varepsilon`, given by
+    maximum :math:`\text{smoothmax}(\cdot,\varepsilon)` with bandwidth :math:`\varepsilon`,
+    given by
 
     .. math::
 
         \text{smoothmax}(t; \varepsilon) \;=\;
         t \;+\; \frac{\varepsilon}{\ln 2}\cdot \ln\left(1 + e^{-(t\ln 2)/\varepsilon}\right)
-
 
     Parameters
     ----------
@@ -35,14 +34,14 @@ def rectified_logistic(x, a, b, g, h, v, eps: float = 0.0):
     b : Array or float
         Controls growth rate.
     g : Array or float
-        Lower offset (baseline).
+        Lower offset, or baseline.
     h : Array or float
-        Vertical distance to upper asymptote from offset (upper asymptote is :math:`g+h`).
+        Vertical distance to upper asymptote from offset. Upper asymptote is :math:`g+h`.
     v : Array or float
-        Controls the location of inflection point (>0).
+        Controls the location of inflection point.
     eps : float, optional
-        If > 0, use smooth maximum for the rectifier with bandwidth
-        :math:`\varepsilon`; default 0.0 (hard ReLU).
+        If eps > 0, use smooth maximum for the rectifier with bandwidth
+        :math:`\varepsilon`; default to 0 (hard ReLU).
 
     Returns
     -------
@@ -51,10 +50,10 @@ def rectified_logistic(x, a, b, g, h, v, eps: float = 0.0):
 
     Notes
     -----
-    - With ``eps == 0`` the function is non-differentiable at points where
+    - With ``eps = 0`` the function is non-differentiable at 
       :math:`x=a`; with ``eps > 0`` it is everywhere smooth.
     - This is equivalent to applying a rectifier to a shifted and scaled
-      logistic body.
+      logistic function.
     """
     z = logistic_transform(x, a, b, h, v)
     eps = jnp.asarray(eps, dtype=z.dtype)
@@ -69,7 +68,7 @@ def rectified_logistic(x, a, b, g, h, v, eps: float = 0.0):
 
 def logistic5(x, a, b, g, h, v):
     r"""
-    Logistic-5 (5-parameter logistic, with asymmetry :math:`v>0`).
+    Logistic-5 function.
 
     .. math::
 
@@ -85,11 +84,11 @@ def logistic5(x, a, b, g, h, v):
     b : Array or float
         Controls growth rate.
     g : Array or float
-        Lower asymptote (offset, baseline).
+        Lower offset, or baseline.
     h : Array or float
-        Vertical distance to upper asymptote from offset (upper asymptote is :math:`g+h`).
+        Vertical distance to upper asymptote from offset. Upper asymptote is :math:`g+h`.
     v : Array or float
-        Asymmetry (>0). :math:`v=1` reduces to the 4-parameter logistic.
+        Controls asymmetry. :math:`v=1` reduces to the 4-parameter logistic.
 
     Returns
     -------
@@ -121,9 +120,9 @@ def logistic4(x, a, b, g, h):
     b : Array or float
         Controls growth rate.
     g : Array or float
-        Lower asymptote (offset, baseline).
+        Lower offset, or baseline.
     h : Array or float
-        Vertical distance to upper asymptote from offset (upper asymptote is :math:`g+h`).
+        Vertical distance to upper asymptote from offset. Upper asymptote is :math:`g+h`.
 
     Returns
     -------
@@ -145,7 +144,13 @@ def rectified_linear(x, a, b, g):
         f(x; a,b,g) \;=\; g \;+\; \max\left\{0,\; b\left(x - a\right)\right\}
 
     If ``eps > 0``, replace the outer :math:`\max(0,\cdot)` with a smooth
-    surrogate, same as in :func:`hbmep.functional.rectified_logistic`.
+    maximum :math:`\text{smoothmax}(\cdot,\varepsilon)` with bandwidth :math:`\varepsilon`,
+    given by
+
+    .. math::
+
+        \text{smoothmax}(t; \varepsilon) \;=\;
+        t \;+\; \frac{\varepsilon}{\ln 2}\cdot \ln\left(1 + e^{-(t\ln 2)/\varepsilon}\right)
 
     Parameters
     ----------
@@ -154,9 +159,9 @@ def rectified_linear(x, a, b, g):
     a : Array or float
         Threshold parameter.
     b : Array or float
-        Slope of the linear part.
+        Controls growth rate.
     g : Array or float
-        Baseline offset.
+        Lower offset, or baseline.
     eps : float, optional
         If > 0, use smooth maximum for the rectifier with bandwidth
         :math:`\varepsilon`; default 0.0 (hard ReLU).
@@ -168,7 +173,7 @@ def rectified_linear(x, a, b, g):
 
     Notes
     -----
-    - With ``eps == 0`` the function is non-differentiable at :math:`x=a`;
+    - With ``eps = 0`` the function is non-differentiable at :math:`x=a`;
       with ``eps > 0`` it is everywhere smooth.
     """
     z = linear_transform(x, a, b)
@@ -196,21 +201,3 @@ def rectified_logistic_with_slope(x, a, b, g, h, v, eps: float = 0.0):
     """Rectified-logistic reparameterized by right-hand derivative `b` at threshold."""
     b_ = b_from_slope(b, h, v)
     return rectified_logistic(x, a, b_, g, h, v, eps)
-
-
-# # TODO: add these
-# def rectified_logistic_inInflectionParam(x, a, b, g, h, v):
-#     """
-#     Rectified-logistic function in inflection parameterization
-#     """
-#     a = get_threshold(a, b, g, h, v)
-#     return rectified_logistic(x, a, b, g, h, v)
-
-
-# def grad(fn, x, *args):
-#     """ Compute the gradient of a function """
-#     args = jnp.broadcast_arrays(x, *args)
-#     grad_fn = jax.grad(fn)
-#     for _ in range(x.ndim):
-#         grad_fn = jax.vmap(grad_fn)
-#     return grad_fn(*args)

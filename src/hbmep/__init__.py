@@ -28,11 +28,11 @@ from hbmep.dataset import (
     make_features,
     make_prediction_dataset,
 )
-from hbmep.plotter import plotter, plot
+from hbmep.plotter import plot
 from hbmep.model import (
     BaseModel,
     NonHierarchicalBaseModel,
-    StandardHB
+    StandardHB,
 )
 from hbmep.infer import (
     get_regressors,

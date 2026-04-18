@@ -4,7 +4,12 @@ import jax.numpy as jnp
 
 def rectified_logistic(y, a, b, g, h, v):
     r"""
-    Inverse of rectified-logistic function
+    Returns :math:`x` such that :math:`f(x) = y`, where :math:`f` is the rectified-logistic function.
+
+    Notes
+    -----
+    - If :math:`y < g`, returns NaN.
+    - If :math:`y = g`, returns :math:`a`.
     """
     y = jnp.where(y < g, jnp.nan, y)
     z = (jnp.log(h) - jnp.log(v)) / b
@@ -15,7 +20,7 @@ def rectified_logistic(y, a, b, g, h, v):
 
 def logistic5(y, a, b, g, h, v):
     r"""
-    Inverse of logistic-5 function
+    Returns :math:`x` such that :math:`f(x) = y`, where :math:`f` is the logistic-5 function.
     """
     z = jnp.power((y - g) / h, v)
     z = jax.scipy.special.logit(z) + jnp.log(-1 + jnp.power(2, v))
@@ -25,7 +30,7 @@ def logistic5(y, a, b, g, h, v):
 
 def logistic4(y, a, b, g, h):
     r"""
-    Inverse of logistic-4 function
+    Returns :math:`x` such that :math:`f(x) = y`, where :math:`f` is the logistic-4 function.
     """
     z = (y - g) / h
     z = jax.scipy.special.logit(z)
