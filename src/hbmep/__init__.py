@@ -14,13 +14,6 @@ from importlib.metadata import version
 __version__ = version("hbmep")
 
 from hbmep.functional import functional, inverse, integrate
-from hbmep.util import (
-    site,
-    timing,
-    enable_logging,
-    _enable_fallback_logging,
-    make_pdf,
-)
 from hbmep.dataset import (
     load,
     fit_transform,
@@ -29,11 +22,6 @@ from hbmep.dataset import (
     make_prediction_dataset,
 )
 from hbmep.plotter import plot
-from hbmep.model import (
-    BaseModel,
-    NonHierarchicalBaseModel,
-    StandardHB,
-)
 from hbmep.infer import (
     get_regressors,
     get_response,
@@ -41,6 +29,19 @@ from hbmep.infer import (
     trace,
     run,
     predict,
+)
+from hbmep.model import (
+    BaseModel,
+    NonHierarchicalBaseModel,
+    StandardHB,
+)
+from hbmep.model.util import save, load
+from hbmep.util import (
+    site,
+    timing,
+    enable_logging,
+    _enable_fallback_logging,
+    make_pdf,
 )
 
 _enable_fallback_logging()

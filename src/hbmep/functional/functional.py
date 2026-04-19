@@ -50,7 +50,7 @@ def rectified_logistic(x, a, b, g, h, v, eps: float = 0.0):
 
     Notes
     -----
-    - With ``eps = 0`` the function is non-differentiable at 
+    - With ``eps = 0`` the function is non-differentiable at
       :math:`x=a`; with ``eps > 0`` it is everywhere smooth.
     - This is equivalent to applying a rectifier to a shifted and scaled
       logistic function.
@@ -140,7 +140,7 @@ def rectified_linear(x, a, b, g):
     Rectified-linear function.
 
     .. math::
-        
+
         f(x; a,b,g) \;=\; g \;+\; \max\left\{0,\; b\left(x - a\right)\right\}
 
     If ``eps > 0``, replace the outer :math:`\max(0,\cdot)` with a smooth

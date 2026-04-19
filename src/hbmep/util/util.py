@@ -18,14 +18,21 @@ FORMAT = "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
 class _TeeStream:
     def __init__(self, a, b):
         self.a, self.b = a, b
+
     def write(self, s):
-        self.a.write(s); self.a.flush()
-        self.b.write(s); self.b.flush()
+        self.a.write(s)
+        self.a.flush()
+        self.b.write(s)
+        self.b.flush()
         return len(s)
+
     def flush(self):
-        self.a.flush(); self.b.flush()
+        self.a.flush()
+        self.b.flush()
+
     def isatty(self):
         return getattr(self.a, "isatty", lambda: False)()
+
     def __getattr__(self, name):
         return getattr(self.a, name)
 

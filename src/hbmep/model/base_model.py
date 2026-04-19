@@ -31,15 +31,27 @@ CURVES_PLOT = "curves.pdf"
 
 
 class BaseModel():
+    """
+    Base class for hbMEP models.
+
+    This class provides core functionality for loading and processing datasets,
+    running inference (MCMC) to estimate curves, generating predictions,
+    and plotting datasets and estimated curves.
+
+    Notes
+    -----
+    - Subclasses must implement the `_model` method, which defines
+      the probabilistic model.
+    """
     def __init__(
         self,
         *,
-        key: random.key = random.key(0),
+        key: Array | None = None,
         toml_path: str | None = None,
         config: dict | None = None
     ):
+        self.key = random.key(0) if key is None else key
         self.name: str = "base_model"
-        self.key: random.key = key
         self.build_dir: str = ""
         self.use_mixture: bool = False
 
@@ -441,14 +453,15 @@ class BaseModel():
     def state_dict(self) -> dict:
         key_data = random.key_data(self.key)
         return {
+            "key_data": key_data.tolist(),
+            "key_dtype": str(key_data.dtype.name),
             "name": self.name,
+            "build_dir": self.build_dir,
+            "use_mixture": self.use_mixture,
             "variables": self.variables,
             "mcmc_params": self.mcmc_params,
             "nuts_params": self.nuts_params,
             "mep_data": self.mep_data,
-            "key_data": key_data.tolist(),
-            "key_dtype": str(key_data.dtype.name),
-            "build_dir": self.build_dir,
             "model_name": (
                 None if getattr(self, "_model", None) is None
                 else self._model.__name__
@@ -456,17 +469,18 @@ class BaseModel():
         }
 
     def load_state_dict(self, state: dict):
+        key_data = state.get("key_data", [0, 0])
+        key_dtype = jnp.dtype(state.get("key_dtype", jnp.uint32))
+        self.key = random.wrap_key_data(jnp.array(key_data, dtype=key_dtype))
         self.name = state.get("name", "base_model")
+        self.build_dir = state.get("build_dir", self.build_dir)
+        self.use_mixture = state.get("use_mixture", self.use_mixture)
         self._update_config({
             "variables": state.get("variables", {}),
             "mcmc": state.get("mcmc_params", {}),
             "nuts": state.get("nuts_params", {}),
             "mep_data": state.get("mep_data", {}),
         })
-        key_data = state.get("key_data", [0, 0])
-        key_dtype = jnp.dtype(state.get("key_dtype", jnp.uint32))
-        self.key = random.wrap_key_data(jnp.array(key_data, dtype=key_dtype))
-        self.build_dir = state.get("build_dir", self.build_dir)
         model_name = state.get("model_name", None)
         if model_name is not None:
             if not hasattr(self, model_name):

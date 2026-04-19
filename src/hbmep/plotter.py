@@ -443,7 +443,7 @@ def plot(
                         pred_idx,
                     )
                     if curve_chunk is not None:
-                        curve_chunk = curve_chunk[..., j:j+1]
+                        curve_chunk = curve_chunk[..., [j]]
                 else:
                     curve_chunk = None
 
@@ -454,7 +454,7 @@ def plot(
                         pred_idx,
                     )
                     if hdi_chunk is not None:
-                        hdi_chunk = hdi_chunk[..., j:j+1]
+                        hdi_chunk = hdi_chunk[..., [j]]
                 else:
                     hdi_chunk = None
 
@@ -465,7 +465,7 @@ def plot(
                     num_features=len(features),
                 )
                 if threshold_chunk is not None:
-                    threshold_chunk = threshold_chunk[..., j:j+1]
+                    threshold_chunk = threshold_chunk[..., [j]]
 
                 # Traces panel
                 if show_traces:

@@ -40,7 +40,8 @@ issue tracker <https://github.com/hbmep/hbmep/issues>`_.
     :maxdepth: 1
 
     tutorials/getting_started
-    tutorials/mixture_model
+    tutorials/mixture_extension
+    tutorials/using_logistic5
 
 .. toctree::
     :caption: API Reference

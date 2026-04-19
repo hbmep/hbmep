@@ -23,6 +23,9 @@ extensions = [
     "sphinx.ext.viewcode",
     "sphinx.ext.napoleon",
 ]
+myst_enable_extensions = [
+    "dollarmath",
+]
 autosummary_generate = True
 autodoc_default_options = {
     "undoc-members": False,

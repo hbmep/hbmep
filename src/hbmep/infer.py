@@ -60,7 +60,7 @@ def trace(key: random.key, model: Callable, *args, **kw):
     :param random.key key: Random number generator for sampling.
     :param Callable key: Numpyro model.
     :param args: Arguments passed to the `model`.
-    :param kw: Keyword arguments passed to the `model`. 
+    :param kw: Keyword arguments passed to the `model`.
     """
     with pyro.handlers.seed(rng_seed=key):
         trace = pyro.handlers.trace(model).get_trace(*args, **kw)
@@ -85,7 +85,7 @@ def run(
 
     :param random.key key: Random number generator for sampling.
     :param Callable model: numpyro model.
-    :param intensity: np.ndarray | jnp.ndarray: 
+    :param intensity: np.ndarray | jnp.ndarray:
         Intensity array of shape (N, 1), N = number of observations.
     :param features: np.ndarray | jnp.ndarray:
         Features array of shape (N, F), F = number of feature variables.
@@ -131,7 +131,7 @@ def predict(
 
     :param random.key key: Random number generator for sampling.
     :param Callable model: numpyro model.
-    :param intensity: np.ndarray | jnp.ndarray: 
+    :param intensity: np.ndarray | jnp.ndarray:
         Intensity array of shape (N, 1), N = number of observations.
     :param features: np.ndarray | jnp.ndarray:
         Features array of shape (N, F), F = number of feature variables.
