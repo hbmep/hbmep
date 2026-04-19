@@ -4,11 +4,11 @@ Installation
 =================================
 .. note::
 
-    hbMEP installation requrires Python>=3.11. Replace ``python`` with a compatible version, for e.g., ``python3.11``
+    hbMEP requires Python >= 3.11. We recommend using Python 3.11, so replace ``python`` with ``python3.11``.
 
 On Linux / MacOS
 ----------------
-The recommended way to install hbMEP is to create a new virtual environment and install the package in it with `pip <http://www.pip-installer.org/>`_. This way, you can avoid conflicts with other packages that you may have installed in your system.
+The recommended way to install hbMEP is to create a new virtual environment and install the package in it with `pip <https://pip.pypa.io/>`_. This way, you can avoid conflicts with other packages that you may have installed on your system.
 
 .. code-block:: bash
 
@@ -28,7 +28,7 @@ If you don't have a compatible version of Python installed, you can use `conda <
     source .venv/bin/activate
     pip install hbmep
 
-Now, the Python interpreter should be located at ``.venv/bin/python``. You can use this to run your scripts that make use of hbMEP.
+Now, the Python interpreter should be located at ``.venv/bin/python``. You can use this to run scripts that make use of hbMEP.
 
 On Windows
 ----------------
