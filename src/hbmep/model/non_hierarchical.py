@@ -10,7 +10,13 @@ import numpy as np
 from numpyro.infer import MCMC
 from joblib import Parallel, delayed
 
-import hbmep as mep
+from hbmep.infer import (
+    trace as _trace,
+    get_regressors as _get_regressors,
+    get_response as _get_response,
+    run as _run,
+    predict as _predict,
+)
 from hbmep.model import BaseModel
 from hbmep.util import timing
 
@@ -49,13 +55,13 @@ class NonHierarchicalBaseModel(BaseModel):
                 if combined_samples is None:
                     combined_samples = {
                         u: np.full((v.shape[0], *max_features, self.num_response, *v.shape[2:]), np.nan)
-                        if u in self.sample_sites + self.reparam_sites
+                        if u in self.sample_sites
                         else np.full((v.shape[0], df_features.shape[0], self.num_response, *v.shape[2:]), np.nan)
                         for u, v in samples.items()
                     }
 
                 for u in combined_samples.keys():
-                    if u in self.sample_sites + self.reparam_sites:
+                    if u in self.sample_sites:
                         combined_samples[u][:, *combination, response_idx, ...] = samples[u]
                     else:
                         idx = df_features.isin([combination])
@@ -87,23 +93,25 @@ class NonHierarchicalBaseModel(BaseModel):
                 .copy()
             )
             if trace:
-                model_trace = mep.trace(
+                model_trace = _trace(
                     self.key if key is None else key,
                     self._model,
-                    *mep.get_regressors(ccdf, self.intensity, []),
-                    *mep.get_response(ccdf, self.response[response_idx]),
+                    *_get_regressors(ccdf, intensity=self.intensity, features=[]),
+                    *_get_response(ccdf, response=self.response[response_idx]),
                     **kw
                 )
                 return model_trace
-            mcmc, posterior = mep.run(
+            mcmc = _run(
                 self.key if key is None else key,
                 self._model,
-                *mep.get_regressors(ccdf, self.intensity, []),
-                *mep.get_response(ccdf, self.response[response_idx]),
+                *_get_regressors(ccdf, intensity=self.intensity, features=[]),
+                *_get_response(ccdf, response=self.response[response_idx]),
                 nuts_params=self.nuts_params,
                 mcmc_params=self.mcmc_params,
                 **kw
             )
+            posterior = mcmc.get_samples()
+            posterior = {k: np.array(v) for k, v in posterior.items()}
             output_path = os.path.join(
                 temp_folder, f"{response_idx}__{combination_idx}.pkl"
             )
@@ -166,10 +174,10 @@ class NonHierarchicalBaseModel(BaseModel):
                 .reset_index(drop=True)
                 .copy()
             )
-            predictive = mep.predict(
+            predictive = _predict(
                 self.key if key is None else key,
                 self._model,
-                *mep.get_regressors(ccdf, self.intensity, []),
+                *_get_regressors(ccdf, intensity=self.intensity, features=[]),
                 posterior={
                     u: v[..., *combinations[combination_idx], response_idx]
                     for u, v in posterior.items() if u in self.sample_sites

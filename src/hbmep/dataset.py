@@ -1,4 +1,5 @@
 import logging
+from functools import partial
 from collections import defaultdict
 
 import pandas as pd
@@ -10,7 +11,10 @@ logger = logging.getLogger(__name__)
 
 def fit_transform(
     df: pd.DataFrame,
-    features: list[str]
+    *,
+    features: list[str],
+    intensity: str | None = None,
+    response: list[str] | None = None
 ) -> tuple[pd.DataFrame, dict[str, LabelEncoder]]:
     df = df.copy()
     encoder = defaultdict(LabelEncoder)
@@ -23,13 +27,16 @@ def fit_transform(
 
 def load(
     df: pd.DataFrame,
+    *,
     intensity: str,
     features: list[str],
     response: list[str],
     mask_non_positive: bool = True
 ) -> tuple[pd.DataFrame, dict[str, LabelEncoder]]:
-    assert set([intensity, *features, *response]) <= set(df.columns)
-
+    present = [*features, *response]
+    if intensity:
+        present.append(intensity)
+    assert set(present) <= set(df.columns)
     # Positive response constraint
     if mask_non_positive:
         non_positive_obs = df[response].values <= 0
@@ -38,19 +45,21 @@ def load(
             df = df.copy()
             df[response] = np.where(non_positive_obs, np.nan, df[response].values)
             logger.info(f"Masked {num_non_positive_obs} non-positive observations")
-
-    df, encoder = fit_transform(df, features)
+    df, encoder = fit_transform(df, features=features)
     return df, encoder
 
 
 def inverse_transform(
     df: pd.DataFrame,
+    *,
     encoder: dict[str, LabelEncoder],
-    features: list[str] | None = None,
-    *kw
+    features: list[str],
+    intensity: str | None = None,
+    response: list[str] | None = None
 ) -> pd.DataFrame:
     df = df.copy()
-    if features is None: features = list(encoder.keys())
+    if features is None:
+        features = list(encoder.keys())
     df[features] = (
         df[features]
         .apply(lambda x: encoder[x.name].inverse_transform(x))
@@ -58,7 +67,13 @@ def inverse_transform(
     return df
 
 
-def make_features(df: pd.DataFrame, features: list[str], *kw):
+def make_features(
+    df: pd.DataFrame,
+    *,
+    features: list[str],
+    intensity: str | None = None,
+    response: list[str] | None = None
+):
     zeros = pd.Series([(0,)] * df.shape[0])
     df_features = df[features].apply(tuple, axis=1) if len(features) else zeros
     return df_features
@@ -72,9 +87,10 @@ def make_prediction_dataset(
     num_points: int = 100,
     min_intensity: float | None = None,
     max_intensity: float | None = None,
-    **kw
+    response: list[str] | None = None,
+    scale: str = "linear",
 ) -> pd.DataFrame:
-    df_features = make_features(df, features)
+    df_features = make_features(df, features=features)
     prediction_df = (
         df.groupby(df_features)
         .agg({intensity: ["min", "max"]})
@@ -83,15 +99,34 @@ def make_prediction_dataset(
     prediction_df.columns = prediction_df.columns.map(lambda x: x[1])
     prediction_df = prediction_df.reset_index().copy()
 
-    if min_intensity is not None: prediction_df["min"] = min_intensity
-    if max_intensity is not None: prediction_df["max"] = max_intensity
+    if min_intensity is not None:
+        prediction_df["min"] = min_intensity
+    if max_intensity is not None:
+        prediction_df["max"] = max_intensity
+
+    if scale == "linear":
+        space_fn = np.linspace
+        transform_fn = lambda x: x
+    elif scale == "ln":
+        space_fn = partial(np.logspace, base=np.e)
+        transform_fn = lambda x: np.log(x)
+    elif scale.startswith("log"):
+        base = int(scale[3:])
+        space_fn = partial(np.logspace, base=base)
+        transform_fn = lambda x: np.log(x) / np.log(base)
+    else:
+        raise NotImplementedError(f"Scale {scale} not implemented")
 
     prediction_df[intensity] = (
         prediction_df[["min", "max"]].apply(tuple, axis=1)
-        .apply(lambda x: np.linspace(x[0], x[1], num_points))
+        .apply(
+            lambda x:
+            space_fn(transform_fn(x[0]), transform_fn(x[1]), num_points)
+        )
     )
     prediction_df = prediction_df.explode(column=intensity)
-    if len(features): prediction_df[features] = prediction_df["index"].apply(pd.Series)
+    if len(features):
+        prediction_df[features] = prediction_df["index"].apply(pd.Series)
     prediction_df = prediction_df[[intensity] + features].copy()
     prediction_df[intensity] = prediction_df[intensity].astype(float)
     prediction_df = prediction_df.reset_index(drop=True).copy()

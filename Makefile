@@ -6,7 +6,7 @@ PY ?= python3.11
 VENV := .venv
 PIP := $(VENV)/bin/python -m pip
 
-.PHONY: base env dev docs
+.PHONY: base env dev docs clean-docs
 
 base:
 	rm -rf $(VENV) build
@@ -23,6 +23,10 @@ dev: base
 	@echo "Installing package for development..."
 	$(PIP) install -e ".[dev]"
 
-docs:
+clean-docs:
+	@echo "Cleaning docs output..."
+	rm -rf docs/build docs/source/api/generated docs/source/tutorials/generated
+
+docs: clean-docs
 	@echo "Building docs with sphinx-autobuild..."
 	$(VENV)/bin/sphinx-autobuild docs/source docs/build/html

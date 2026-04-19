@@ -33,3 +33,10 @@ docs/**/*.csv
 docs/**/*.npy
 docs/**/*.pdf
 docs/**/*.pkl
+docs/**/hbmep-**
+
+# Bash scripts
+src/**/*.sh
+src/**/out.py
+docs/**/*.sh
+docs/**/out.txt
