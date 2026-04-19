@@ -13,7 +13,7 @@ Read the docs at [hbmep.github.io/hbmep/](https://hbmep.github.io/hbmep/)
 
 ## Citation
 
-Please cite [Tyagi et al., 2024](https://arxiv.org/abs/2407.08709) if you find this code useful in your research. The BibTeX entry for the paper is:
+Please cite [Tyagi et al., 2025](https://doi.org/10.1016/j.brs.2025.09.008) if you find this code useful in your research. The BibTeX entry for the paper is:
 
 ```
 @article{tyagi_hierarchical_2025,
