@@ -1,0 +1,748 @@
+
+<!DOCTYPE html>
+
+
+<html lang="en" data-content_root="../" data-theme="dark">
+
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <title>Mixture Extension &#8212; hbmep v0.8.0</title>
+  
+  
+  
+  <script data-cfasync="false">
+    document.documentElement.dataset.mode = localStorage.getItem("mode") || "dark";
+    document.documentElement.dataset.theme = localStorage.getItem("theme") || "dark";
+  </script>
+  <!--
+    this give us a css class that will be invisible only if js is disabled
+  -->
+  <noscript>
+    <style>
+      .pst-js-only { display: none !important; }
+
+    </style>
+  </noscript>
+  
+  <!-- Loaded before other Sphinx assets -->
+  <link href="../_static/styles/theme.css?digest=7f76b32a3354e82990f2" rel="stylesheet" />
+<link href="../_static/styles/pydata-sphinx-theme.css?digest=7f76b32a3354e82990f2" rel="stylesheet" />
+
+    <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=8f2a1f02" />
+    <link rel="stylesheet" type="text/css" href="../_static/styles/sphinx-book-theme.css?v=a3416100" />
+    <link rel="stylesheet" type="text/css" href="../_static/mystnb.4510f1fc1dee50b3e5859aac5469c37c29e427902b24a333a5f9fcb2f0b3ac41.css" />
+    <link rel="stylesheet" type="text/css" href="../_static/copybutton.css?v=76b2166b" />
+  
+  <!-- So that users can add custom icons -->
+  <script defer src="../_static/scripts/fontawesome.js?digest=7f76b32a3354e82990f2"></script>
+  <!-- Pre-loaded scripts that we'll load fully later -->
+  <link rel="preload" as="script" href="../_static/scripts/bootstrap.js?digest=7f76b32a3354e82990f2" />
+<link rel="preload" as="script" href="../_static/scripts/pydata-sphinx-theme.js?digest=7f76b32a3354e82990f2" />
+
+    <script src="../_static/documentation_options.js?v=d6acfc83"></script>
+    <script src="../_static/doctools.js?v=9a2dae69"></script>
+    <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../_static/clipboard.min.js?v=a7894cd8"></script>
+    <script src="../_static/copybutton.js?v=f281be69"></script>
+    <script src="../_static/scripts/sphinx-book-theme.js?v=887ef09a"></script>
+    <script>DOCUMENTATION_OPTIONS.pagename = 'tutorials/mixture_extension';</script>
+    <script>DOCUMENTATION_OPTIONS.search_as_you_type = false;</script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="Using Logistic-5" href="using_logistic5.html" />
+    <link rel="prev" title="Getting Started" href="getting_started.html" />
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <meta name="docsearch:language" content="en"/>
+  <meta name="docsearch:version" content="0.8.0" />
+  
+    
+    <script src="../_static/searchtools.js"></script>
+    <script src="../_static/language_data.js"></script>
+    <script src="../searchindex.js"></script>
+  
+  </head>
+  <body data-default-mode="dark">
+  
+  
+  <div id="pst-skip-link" class="skip-link d-print-none"><a href="#main-content">Skip to main content</a></div>
+
+  
+  <div id="pst-scroll-pixel-helper"></div>
+  
+  <button type="button" class="btn rounded-pill" id="pst-back-to-top">
+    <i class="fa-solid fa-arrow-up"></i>Back to top</button>
+
+  
+  <dialog id="pst-search-dialog">
+    
+<form class="bd-search d-flex align-items-center"
+      action="../search.html"
+      method="get">
+  <i class="fa-solid fa-magnifying-glass"></i>
+  <input type="search"
+         class="form-control"
+         name="q"
+         placeholder="Search..."
+         aria-label="Search..."
+         autocomplete="off"
+         autocorrect="off"
+         autocapitalize="off"
+         spellcheck="false"/>
+  <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd>K</kbd></span>
+</form>
+  </dialog>
+
+  <div class="pst-async-banner-revealer d-none">
+  <aside id="bd-header-version-warning" class="d-none d-print-none" aria-label="Version warning"></aside>
+</div>
+
+  
+    <header id="pst-header" class="bd-header navbar navbar-expand-lg bd-navbar d-print-none">
+    </header>
+  
+
+  <div class="bd-container">
+    <div class="bd-container__inner bd-page-width">
+      
+      
+      
+      <dialog id="pst-primary-sidebar-modal"></dialog>
+      <div id="pst-primary-sidebar" class="bd-sidebar-primary bd-sidebar">
+        
+
+  
+  <div class="sidebar-header-items sidebar-primary__section">
+    
+    
+    
+    
+  </div>
+  
+    <div class="sidebar-primary-items__start sidebar-primary__section">
+        <div class="sidebar-primary-item">
+
+  
+    
+  
+
+<a class="navbar-brand logo" href="../index.html">
+  
+  
+  
+  
+  
+  
+    <p class="title logo__title">hbmep v0.8.0</p>
+  
+</a></div>
+        <div class="sidebar-primary-item">
+
+<button class="btn search-button-field search-button__button pst-js-only" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+ <i class="fa-solid fa-magnifying-glass"></i>
+ <span class="search-button__default-text">Search</span>
+ <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+</button></div>
+        <div class="sidebar-primary-item"><nav class="bd-links bd-docs-nav" aria-label="Main">
+    <div class="bd-toc-item navbar-nav active">
+        <p aria-level="2" class="caption" role="heading"><span class="caption-text">User Guide</span></p>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="../user/installation.html">Installation</a></li>
+</ul>
+<p aria-level="2" class="caption" role="heading"><span class="caption-text">Tutorials</span></p>
+<ul class="current nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="getting_started.html">Getting Started</a></li>
+<li class="toctree-l1 current active"><a class="current reference internal" href="#">Mixture Extension</a></li>
+<li class="toctree-l1"><a class="reference internal" href="using_logistic5.html">Using Logistic-5</a></li>
+</ul>
+<p aria-level="2" class="caption" role="heading"><span class="caption-text">API Reference</span></p>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="../api/functional.html">hbmep.functional</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../api/inverse.html">hbmep.inverse</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../api/integrate.html">hbmep.integrate</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../api/base_model.html">hbmep.BaseModel</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../api/standard.html">hbmep.StandardHB</a></li>
+</ul>
+
+    </div>
+</nav></div>
+    </div>
+  
+  
+  <div class="sidebar-primary-items__end sidebar-primary__section">
+      <div class="sidebar-primary-item">
+<div id="ethical-ad-placement"
+      class="flat"
+      data-ea-publisher="readthedocs"
+      data-ea-type="readthedocs-sidebar"
+      data-ea-manual="true">
+</div></div>
+  </div>
+
+
+      </div>
+      
+      <main id="main-content" class="bd-main" role="main">
+        
+        
+
+<div class="sbt-scroll-pixel-helper"></div>
+
+          <div class="bd-content">
+            <div class="bd-article-container">
+              
+              <div class="bd-header-article d-print-none">
+<div class="header-article-items header-article__inner">
+  
+    <div class="header-article-items__start">
+      
+        <div class="header-article-item"><button class="sidebar-toggle primary-toggle btn btn-sm" title="Toggle primary sidebar" data-bs-placement="bottom" data-bs-toggle="tooltip">
+  <span class="fa-solid fa-bars"></span>
+</button></div>
+      
+    </div>
+  
+  
+    <div class="header-article-items__end">
+      
+        <div class="header-article-item">
+
+<div class="article-header-buttons">
+
+
+
+
+
+<div class="dropdown dropdown-source-buttons">
+  <button class="btn dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false" aria-label="Source repositories">
+    <i class="fab fa-github"></i>
+  </button>
+  <ul class="dropdown-menu">
+      
+      
+      
+      <li><a href="https://github.com/hbmep/hbmep" target="_blank"
+   class="btn btn-sm btn-source-repository-button dropdown-item"
+   title="Source repository"
+   data-bs-placement="left" data-bs-toggle="tooltip"
+>
+  
+
+<span class="btn__icon-container">
+  <i class="fab fa-github"></i>
+  </span>
+<span class="btn__text-container">Repository</span>
+</a>
+</li>
+      
+      
+      
+      
+      <li><a href="https://github.com/hbmep/hbmep/edit/main/docs/tutorials/mixture_extension.ipynb" target="_blank"
+   class="btn btn-sm btn-source-edit-button dropdown-item"
+   title="Suggest edit"
+   data-bs-placement="left" data-bs-toggle="tooltip"
+>
+  
+
+<span class="btn__icon-container">
+  <i class="fas fa-pencil-alt"></i>
+  </span>
+<span class="btn__text-container">Suggest edit</span>
+</a>
+</li>
+      
+      
+      
+      
+      <li><a href="https://github.com/hbmep/hbmep/issues/new?title=Issue%20on%20page%20%2Ftutorials/mixture_extension.html&body=Your%20issue%20content%20here." target="_blank"
+   class="btn btn-sm btn-source-issues-button dropdown-item"
+   title="Open an issue"
+   data-bs-placement="left" data-bs-toggle="tooltip"
+>
+  
+
+<span class="btn__icon-container">
+  <i class="fas fa-lightbulb"></i>
+  </span>
+<span class="btn__text-container">Open issue</span>
+</a>
+</li>
+      
+  </ul>
+</div>
+
+
+
+
+
+
+<div class="dropdown dropdown-download-buttons">
+  <button class="btn dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false" aria-label="Download this page">
+    <i class="fas fa-download"></i>
+  </button>
+  <ul class="dropdown-menu">
+      
+      
+      
+      <li><a href="../_sources/tutorials/mixture_extension.ipynb" target="_blank"
+   class="btn btn-sm btn-download-source-button dropdown-item"
+   title="Download source file"
+   data-bs-placement="left" data-bs-toggle="tooltip"
+>
+  
+
+<span class="btn__icon-container">
+  <i class="fas fa-file"></i>
+  </span>
+<span class="btn__text-container">.ipynb</span>
+</a>
+</li>
+      
+      
+      
+      
+      <li>
+<button onclick="window.print()"
+  class="btn btn-sm btn-download-pdf-button dropdown-item"
+  title="Print to PDF"
+  data-bs-placement="left" data-bs-toggle="tooltip"
+>
+  
+
+<span class="btn__icon-container">
+  <i class="fas fa-file-pdf"></i>
+  </span>
+<span class="btn__text-container">.pdf</span>
+</button>
+</li>
+      
+  </ul>
+</div>
+
+
+
+
+<button onclick="toggleFullScreen()"
+  class="btn btn-sm btn-fullscreen-button"
+  title="Fullscreen mode"
+  data-bs-placement="bottom" data-bs-toggle="tooltip"
+>
+  
+
+<span class="btn__icon-container">
+  <i class="fas fa-expand"></i>
+  </span>
+
+</button>
+
+
+
+<button class="btn btn-sm nav-link pst-navbar-icon theme-switch-button pst-js-only" aria-label="Color mode" data-bs-title="Color mode"  data-bs-placement="bottom" data-bs-toggle="tooltip">
+  <i class="theme-switch fa-solid fa-sun                fa-lg" data-mode="light" title="Light"></i>
+  <i class="theme-switch fa-solid fa-moon               fa-lg" data-mode="dark"  title="Dark"></i>
+  <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg" data-mode="auto"  title="System Settings"></i>
+</button>
+
+
+<button class="btn btn-sm pst-navbar-icon search-button search-button__button pst-js-only" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+    <i class="fa-solid fa-magnifying-glass fa-lg"></i>
+</button>
+<button class="sidebar-toggle secondary-toggle btn btn-sm" title="Toggle secondary sidebar" data-bs-placement="bottom" data-bs-toggle="tooltip">
+    <span class="fa-solid fa-list"></span>
+</button>
+</div></div>
+      
+    </div>
+  
+</div>
+</div>
+              
+              
+
+<div id="jb-print-docs-body" class="onlyprint">
+    <h1>Mixture Extension</h1>
+    <!-- Table of contents -->
+    <div id="print-main-content">
+        <div id="jb-print-toc">
+            
+            <div>
+                <h2> Contents </h2>
+            </div>
+            <nav aria-label="Page">
+                <ul class="pst-show_toc_level nav section-nav flex-column">
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#build-the-model">Build the model</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#running-the-model">Running the model</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#visualizing-the-curves">Visualizing the curves</a></li>
+</ul>
+            </nav>
+        </div>
+    </div>
+</div>
+
+              
+                
+<div id="searchbox"></div>
+                <article class="bd-article">
+                  
+  <section class="tex2jax_ignore mathjax_ignore" id="mixture-extension">
+<span id="id1"></span><h1>Mixture Extension<a class="headerlink" href="#mixture-extension" title="Link to this heading">#</a></h1>
+<p>We use the same dataset from <a class="reference internal" href="getting_started.html#getting-started"><span class="std std-ref">Getting Started</span></a> with a mixture model.</p>
+<div class="cell tag_remove-output docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">os</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">pandas</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">pd</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">hbmep</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">mep</span>
+
+<span class="n">url</span> <span class="o">=</span> <span class="s2">&quot;https://raw.githubusercontent.com/hbmep/hbmep/refs/heads/docs-data/data/mock_data.csv&quot;</span>
+<span class="n">df</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">read_csv</span><span class="p">(</span><span class="n">url</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+</div>
+<section id="build-the-model">
+<h2>Build the model<a class="headerlink" href="#build-the-model" title="Link to this heading">#</a></h2>
+<div class="cell tag_remove-output docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">model</span> <span class="o">=</span> <span class="n">mep</span><span class="o">.</span><span class="n">StandardHB</span><span class="p">()</span>
+
+<span class="c1"># Point to the respective columns in dataframe</span>
+<span class="n">model</span><span class="o">.</span><span class="n">intensity</span> <span class="o">=</span> <span class="s2">&quot;TMSIntensity&quot;</span>
+<span class="n">model</span><span class="o">.</span><span class="n">features</span> <span class="o">=</span> <span class="p">[</span><span class="s2">&quot;participant&quot;</span><span class="p">]</span>
+<span class="n">model</span><span class="o">.</span><span class="n">response</span> <span class="o">=</span> <span class="p">[</span><span class="s2">&quot;PKPK_ECR&quot;</span><span class="p">,</span> <span class="s2">&quot;PKPK_FCR&quot;</span><span class="p">]</span>
+
+<span class="c1"># Set the function</span>
+<span class="n">model</span><span class="o">.</span><span class="n">_model</span> <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">rectified_logistic</span>
+
+<span class="c1"># Enable mixture</span>
+<span class="n">model</span><span class="o">.</span><span class="n">use_mixture</span> <span class="o">=</span> <span class="kc">True</span>
+</pre></div>
+</div>
+</div>
+</div>
+</section>
+<section id="running-the-model">
+<h2>Running the model<a class="headerlink" href="#running-the-model" title="Link to this heading">#</a></h2>
+<div class="cell tag_hide-output docutils container">
+<div class="cell_input above-output-prompt docutils container">
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="c1"># Process the dataframe</span>
+<span class="n">df</span><span class="p">,</span> <span class="n">encoder</span> <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="n">df</span><span class="p">)</span>
+
+<span class="c1"># Run</span>
+<span class="n">mcmc</span><span class="p">,</span> <span class="n">posterior</span> <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">run</span><span class="p">(</span><span class="n">df</span><span class="o">=</span><span class="n">df</span><span class="p">)</span>
+
+<span class="c1"># Check convergence diagnostics</span>
+<span class="n">summary_df</span> <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">summary</span><span class="p">(</span><span class="n">posterior</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">summary_df</span><span class="o">.</span><span class="n">to_string</span><span class="p">())</span>
+</pre></div>
+</div>
+</div>
+<details class="hide below-input">
+<summary aria-label="Toggle hidden content">
+<span class="collapsed">Show code cell output</span>
+<span class="expanded">Hide code cell output</span>
+</summary>
+<div class="cell_output docutils container">
+<div class="output stderr highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>2026-04-19 01:42:22,859 - hbmep.util.util - INFO - func:load took: 0.00 sec
+</pre></div>
+</div>
+<div class="output stderr highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>2026-04-19 01:42:24,347 - hbmep.util.util - INFO - func:trace took: 1.49 sec
+2026-04-19 01:42:24,348 - hbmep.model.base_model - INFO - Running...
+Compiling.. :   0%|          | 0/3000 [00:00&lt;?, ?it/s]
+
+
+
+
+
+Running chain 0:   0%|          | 0/3000 [00:02&lt;?, ?it/s]
+
+
+Running chain 0:   5%|▌         | 150/3000 [00:06&lt;01:26, 33.12it/s]
+
+
+
+Running chain 0:  10%|█         | 300/3000 [00:07&lt;00:45, 59.55it/s]
+
+
+Running chain 0:  15%|█▌        | 450/3000 [00:08&lt;00:29, 86.69it/s]
+
+
+Running chain 0:  20%|██        | 600/3000 [00:09&lt;00:22, 106.45it/s]
+
+
+Running chain 0:  25%|██▌       | 750/3000 [00:10&lt;00:17, 126.00it/s]
+
+
+Running chain 0:  30%|███       | 900/3000 [00:11&lt;00:15, 137.69it/s]
+
+
+Running chain 0:  35%|███▌      | 1050/3000 [00:12&lt;00:13, 140.77it/s]
+
+
+Running chain 0:  40%|████      | 1200/3000 [00:13&lt;00:11, 156.83it/s]
+
+
+Running chain 0:  45%|████▌     | 1350/3000 [00:13&lt;00:09, 166.06it/s]
+
+
+Running chain 0:  50%|█████     | 1500/3000 [00:14&lt;00:08, 179.40it/s]
+
+
+Running chain 0:  55%|█████▌    | 1650/3000 [00:15&lt;00:07, 192.78it/s]
+
+
+Running chain 0:  60%|██████    | 1800/3000 [00:15&lt;00:06, 196.39it/s]
+Running chain 0:  65%|██████▌   | 1950/3000 [00:16&lt;00:05, 198.03it/s]
+
+
+
+
+Running chain 0:  70%|███████   | 2100/3000 [00:17&lt;00:05, 179.16it/s]
+
+
+Running chain 0:  75%|███████▌  | 2250/3000 [00:18&lt;00:04, 172.73it/s]
+
+
+Running chain 0:  80%|████████  | 2400/3000 [00:19&lt;00:03, 166.17it/s]
+
+
+Running chain 0:  85%|████████▌ | 2550/3000 [00:20&lt;00:02, 160.66it/s]
+
+
+Running chain 0:  90%|█████████ | 2700/3000 [00:21&lt;00:01, 160.84it/s]
+
+
+Running chain 0:  95%|█████████▌| 2850/3000 [00:22&lt;00:00, 161.45it/s]
+Running chain 2: 100%|██████████| 3000/3000 [00:23&lt;00:00, 129.53it/s]
+
+
+Running chain 1: 100%|██████████| 3000/3000 [00:23&lt;00:00, 128.80it/s]
+Running chain 0: 100%|██████████| 3000/3000 [00:23&lt;00:00, 128.44it/s]
+
+
+Running chain 3: 100%|██████████| 3000/3000 [00:24&lt;00:00, 124.44it/s]
+2026-04-19 01:42:48,815 - hbmep.util.util - INFO - func:run took: 25.96 sec
+2026-04-19 01:42:48,946 - hbmep.util.util - INFO - func:summary took: 0.13 sec
+</pre></div>
+</div>
+<div class="output stream highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>                mean     sd  hdi_2.5%  hdi_97.5%  mcse_mean  mcse_sd  ess_bulk  ess_tail  r_hat
+a_loc         36.150  6.068    25.128     48.455      0.194    0.451    2277.0     886.0   1.00
+a_scale       11.756  7.281     4.030     24.846      0.251    0.513    1463.0     985.0   1.00
+b_scale        0.153  0.078     0.056      0.294      0.002    0.007    1143.0    1598.0   1.00
+g_scale        0.013  0.005     0.006      0.023      0.000    0.000    1181.0     859.0   1.00
+h_scale        0.262  0.115     0.115      0.470      0.004    0.009    1008.0    1011.0   1.00
+v_scale        5.042  3.110     0.442     11.166      0.053    0.050    2678.0    2471.0   1.00
+c₁_scale       4.655  3.019     0.234     10.467      0.045    0.047    3548.0    2424.0   1.00
+c₂_scale       0.169  0.062     0.078      0.292      0.002    0.002    1326.0    1684.0   1.00
+a[0, 0]       31.858  0.471    30.688     32.625      0.017    0.020    1723.0     996.0   1.00
+a[0, 1]       31.061  0.504    30.042     32.028      0.008    0.009    4120.0    2551.0   1.00
+a[1, 0]       45.421  0.981    43.263     46.484      0.053    0.130     650.0     386.0   1.00
+a[1, 1]       47.813  0.955    46.476     49.770      0.022    0.013    2335.0    3086.0   1.00
+a[2, 0]       31.598  0.535    30.769     32.587      0.011    0.006    2624.0    3408.0   1.00
+a[2, 1]       32.339  0.820    30.791     33.541      0.025    0.083    2490.0    2105.0   1.00
+b_raw[0, 0]    1.202  0.485     0.336      2.124      0.012    0.008    1455.0    1850.0   1.00
+b_raw[0, 1]    0.517  0.249     0.130      1.022      0.006    0.005    1325.0    1758.0   1.00
+b_raw[1, 0]    0.726  0.396     0.141      1.540      0.015    0.014     728.0    1103.0   1.00
+b_raw[1, 1]    0.740  0.385     0.098      1.473      0.009    0.007    1550.0    1881.0   1.00
+b_raw[2, 0]    1.065  0.439     0.336      1.971      0.011    0.008    1371.0    1661.0   1.00
+b_raw[2, 1]    0.432  0.261     0.046      0.938      0.006    0.006    1596.0    2317.0   1.00
+g_raw[0, 0]    1.200  0.367     0.548      1.939      0.010    0.007    1192.0     839.0   1.00
+g_raw[0, 1]    1.143  0.349     0.483      1.812      0.010    0.007    1189.0     841.0   1.00
+g_raw[1, 0]    0.754  0.231     0.332      1.214      0.006    0.005    1178.0     846.0   1.00
+g_raw[1, 1]    0.657  0.202     0.268      1.036      0.006    0.004    1170.0     935.0   1.00
+g_raw[2, 0]    0.582  0.183     0.243      0.945      0.005    0.004    1234.0     881.0   1.00
+g_raw[2, 1]    0.715  0.229     0.316      1.190      0.006    0.004    1209.0     911.0   1.00
+h_raw[0, 0]    1.048  0.350     0.390      1.727      0.011    0.006    1016.0     931.0   1.01
+h_raw[0, 1]    0.834  0.285     0.319      1.418      0.009    0.005    1034.0    1021.0   1.00
+h_raw[1, 0]    0.800  0.287     0.291      1.378      0.009    0.006     993.0    1021.0   1.01
+h_raw[1, 1]    0.584  0.216     0.188      0.993      0.006    0.005    1093.0    1005.0   1.00
+h_raw[2, 0]    0.834  0.286     0.333      1.411      0.009    0.005    1053.0    1129.0   1.00
+h_raw[2, 1]    0.959  0.402     0.291      1.765      0.009    0.007    1616.0    1352.0   1.00
+v_raw[0, 0]    0.966  0.605     0.059      2.132      0.010    0.010    2774.0    1720.0   1.00
+v_raw[0, 1]    0.927  0.591     0.042      2.028      0.008    0.010    3639.0    2305.0   1.00
+v_raw[1, 0]    0.642  0.596     0.000      1.787      0.015    0.009     638.0     513.0   1.00
+v_raw[1, 1]    0.831  0.592     0.009      2.000      0.009    0.010    2853.0    1652.0   1.00
+v_raw[2, 0]    0.862  0.584     0.013      1.976      0.009    0.009    2890.0    1813.0   1.00
+v_raw[2, 1]    0.749  0.602     0.001      1.912      0.010    0.010    1885.0    1299.0   1.00
+c₁_raw[0, 0]   0.874  0.589     0.021      2.004      0.008    0.009    3370.0    1762.0   1.00
+c₁_raw[0, 1]   0.828  0.588     0.014      1.972      0.009    0.009    3159.0    2005.0   1.00
+c₁_raw[1, 0]   0.773  0.607     0.001      1.956      0.009    0.010    2484.0    1406.0   1.00
+c₁_raw[1, 1]   0.839  0.595     0.007      1.983      0.009    0.009    3337.0    1781.0   1.00
+c₁_raw[2, 0]   0.793  0.587     0.006      1.904      0.009    0.009    3171.0    1890.0   1.00
+c₁_raw[2, 1]   0.845  0.603     0.013      2.007      0.009    0.009    3311.0    2107.0   1.00
+c₂_raw[0, 0]   0.469  0.172     0.175      0.821      0.005    0.003    1317.0    1624.0   1.00
+c₂_raw[0, 1]   0.491  0.180     0.172      0.834      0.004    0.003    1502.0    2252.0   1.00
+c₂_raw[1, 0]   0.462  0.178     0.165      0.821      0.004    0.003    1457.0    2020.0   1.00
+c₂_raw[1, 1]   0.614  0.238     0.216      1.097      0.006    0.004    1636.0    2131.0   1.00
+c₂_raw[2, 0]   0.895  0.316     0.342      1.534      0.008    0.005    1478.0    2160.0   1.00
+c₂_raw[2, 1]   1.699  0.530     0.682      2.725      0.014    0.008    1372.0    1848.0   1.00
+p_outlier      0.009  0.001     0.007      0.010      0.000    0.000    3303.0    1848.0   1.00
+</pre></div>
+</div>
+</div>
+</details>
+</div>
+</section>
+<section id="visualizing-the-curves">
+<h2>Visualizing the curves<a class="headerlink" href="#visualizing-the-curves" title="Link to this heading">#</a></h2>
+<div class="cell tag_remove-output docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="c1"># Create prediction dataframe</span>
+<span class="n">prediction_df</span> <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">make_prediction_dataset</span><span class="p">(</span><span class="n">df</span><span class="o">=</span><span class="n">df</span><span class="p">,</span> <span class="n">num_points</span><span class="o">=</span><span class="mi">1000</span><span class="p">)</span>
+
+<span class="c1"># Use the model to predict on the prediction dataframe</span>
+<span class="n">predictive</span> <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">predict</span><span class="p">(</span><span class="n">df</span><span class="o">=</span><span class="n">prediction_df</span><span class="p">,</span> <span class="n">posterior</span><span class="o">=</span><span class="n">posterior</span><span class="p">)</span>
+
+<span class="c1"># Create the output directory</span>
+<span class="n">current_dir</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">getcwd</span><span class="p">()</span>
+<span class="n">output_dir</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">current_dir</span><span class="p">,</span> <span class="s2">&quot;hbmep-mixture-extension&quot;</span><span class="p">)</span>
+<span class="n">os</span><span class="o">.</span><span class="n">makedirs</span><span class="p">(</span><span class="n">output_dir</span><span class="p">,</span> <span class="n">exist_ok</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+
+<span class="c1"># Plot estimated curves</span>
+<span class="n">output_path</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">output_dir</span><span class="p">,</span> <span class="s2">&quot;curves.pdf&quot;</span><span class="p">)</span>
+<span class="n">model</span><span class="o">.</span><span class="n">plot_curves</span><span class="p">(</span>
+    <span class="n">df</span><span class="o">=</span><span class="n">df</span><span class="p">,</span>
+    <span class="n">prediction_df</span><span class="o">=</span><span class="n">prediction_df</span><span class="p">,</span>
+    <span class="n">predictive</span><span class="o">=</span><span class="n">predictive</span><span class="p">,</span>
+    <span class="n">posterior</span><span class="o">=</span><span class="n">posterior</span><span class="p">,</span>
+    <span class="n">encoder</span><span class="o">=</span><span class="n">encoder</span><span class="p">,</span>
+    <span class="n">output_path</span><span class="o">=</span><span class="n">output_path</span>
+<span class="p">)</span>
+</pre></div>
+</div>
+</div>
+</div>
+<div class="cell tag_remove-input docutils container">
+<div class="cell_output docutils container">
+<img alt="../_images/22c4824d79f3d3fbfab5f3d9f8f2143bad4fd88b9688e53aefcecefec3b8220c.png" src="../_images/22c4824d79f3d3fbfab5f3d9f8f2143bad4fd88b9688e53aefcecefec3b8220c.png" />
+</div>
+</div>
+<p>We see that the curve for participant P1 and muscle FCR is no longer biased by those few data points, compared to <a class="reference internal" href="getting_started.html#getting-started"><span class="std std-ref">Getting Started</span></a>. This becomes even clearer when we plot the HDIs around the curves below.</p>
+<div class="cell tag_remove-output docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="c1"># Plot observations HDI</span>
+<span class="n">output_path</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">output_dir</span><span class="p">,</span> <span class="s2">&quot;obs_hdi.pdf&quot;</span><span class="p">)</span>
+<span class="n">model</span><span class="o">.</span><span class="n">plot_curves</span><span class="p">(</span>
+    <span class="n">df</span><span class="o">=</span><span class="n">df</span><span class="p">,</span>
+    <span class="n">prediction_df</span><span class="o">=</span><span class="n">prediction_df</span><span class="p">,</span>
+    <span class="n">predictive</span><span class="o">=</span><span class="n">predictive</span><span class="p">,</span>
+    <span class="n">posterior</span><span class="o">=</span><span class="n">posterior</span><span class="p">,</span>
+    <span class="n">encoder</span><span class="o">=</span><span class="n">encoder</span><span class="p">,</span>
+    <span class="n">output_path</span><span class="o">=</span><span class="s2">&quot;mixture_obs_hdi.pdf&quot;</span><span class="p">,</span>
+    <span class="n">predictive_hdi_var</span><span class="o">=</span><span class="n">mep</span><span class="o">.</span><span class="n">site</span><span class="o">.</span><span class="n">obs</span><span class="p">,</span>
+    <span class="n">predictive_hdi_prob</span><span class="o">=</span><span class="mf">0.95</span>
+<span class="p">)</span>
+</pre></div>
+</div>
+</div>
+</div>
+<div class="cell tag_remove-input docutils container">
+<div class="cell_output docutils container">
+<img alt="../_images/32379daf109a0c41921ca963c7441965f96a64232844bbb8157a4784c096ba5b.png" src="../_images/32379daf109a0c41921ca963c7441965f96a64232844bbb8157a4784c096ba5b.png" />
+</div>
+</div>
+</section>
+</section>
+
+
+                </article>
+              
+
+              
+              
+              
+              
+                <footer class="prev-next-footer d-print-none">
+                  
+<div class="prev-next-area">
+    <a class="left-prev"
+       href="getting_started.html"
+       title="previous page">
+      <i class="fa-solid fa-angle-left"></i>
+      <div class="prev-next-info">
+        <p class="prev-next-subtitle">previous</p>
+        <p class="prev-next-title">Getting Started</p>
+      </div>
+    </a>
+    <a class="right-next"
+       href="using_logistic5.html"
+       title="next page">
+      <div class="prev-next-info">
+        <p class="prev-next-subtitle">next</p>
+        <p class="prev-next-title">Using Logistic-5</p>
+      </div>
+      <i class="fa-solid fa-angle-right"></i>
+    </a>
+</div>
+                </footer>
+              
+            </div>
+            
+            
+              
+                <dialog id="pst-secondary-sidebar-modal"></dialog>
+                <div id="pst-secondary-sidebar" class="bd-sidebar-secondary bd-toc"><div class="sidebar-secondary-items sidebar-secondary__inner">
+
+
+  <div class="sidebar-secondary-item">
+  <div class="page-toc tocsection onthispage">
+    <i class="fa-solid fa-list"></i> Contents
+  </div>
+  <nav class="bd-toc-nav page-toc">
+    <ul class="pst-show_toc_level nav section-nav flex-column">
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#build-the-model">Build the model</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#running-the-model">Running the model</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#visualizing-the-curves">Visualizing the curves</a></li>
+</ul>
+  </nav></div>
+
+</div></div>
+              
+            
+          </div>
+          <footer class="bd-footer-content">
+            
+<div class="bd-footer-content__inner container">
+  
+  <div class="footer-item">
+    
+  </div>
+  
+  <div class="footer-item">
+    
+
+  <p class="copyright">
+    
+      © Copyright 2023-2026, hbmep authors.
+      <br/>
+    
+  </p>
+
+  </div>
+  
+  <div class="footer-item">
+    
+  </div>
+  
+  <div class="footer-item">
+    
+  </div>
+  
+</div>
+          </footer>
+        
+
+      </main>
+    </div>
+  </div>
+  
+  <!-- Scripts loaded after <body> so the DOM is not blocked -->
+  <script defer src="../_static/scripts/bootstrap.js?digest=7f76b32a3354e82990f2"></script>
+<script defer src="../_static/scripts/pydata-sphinx-theme.js?digest=7f76b32a3354e82990f2"></script>
+
+  <footer class="bd-footer">
+  </footer>
+  </body>
+</html>
