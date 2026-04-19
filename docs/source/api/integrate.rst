@@ -1,4 +1,4 @@
 hbmep.integrate
 ==================
 
-.. autofunction:: hbmep.integrate.rectified_logistic
+.. autofunction:: hbmep.functional.integrate.rectified_logistic
