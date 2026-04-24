@@ -109,8 +109,11 @@ class BaseModel():
     def _update_sites(self, model_trace):
         site_types = {name: node["type"] for name, node in model_trace.items()}
         self.sample_sites = [
-            name for name, typ in site_types.items()
-            if typ == "sample" and site.obs not in name.split("_")
+            name for name, typ in site_types.items() if (
+                typ == "sample"
+                and site.obs not in name.split("_")
+                and name not in {site.outlier_prob}
+            )
         ]
         self.deterministic_sites = [
             name for name, typ in site_types.items()
