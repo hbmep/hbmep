@@ -7,6 +7,7 @@ from sklearn.preprocessing import LabelEncoder
 
 import matplotlib.pyplot as plt
 import matplotlib.ticker as mticker
+from mpl_toolkits.axes_grid1.inset_locator import inset_axes
 import seaborn as sns
 
 from hbmep.dataset import make_features
@@ -14,7 +15,7 @@ from hbmep.util import site, invert_combination
 
 logger = logging.getLogger(__name__)
 
-CURVE_KW = {"label": "Curve", "color": "k", "alpha": 0.9, "linewidth": 1.5}
+CURVE_KW = {"color": "k", "alpha": 0.9, "linewidth": 1.5}
 THRESHOLD_KW = {"color": "green", "alpha": 0.4, "linewidth": 1.2}
 THRESHOLD_LINE_KW = {"linestyle": "--", "alpha": 0.7, "linewidth": 1.2}
 HDI_LINE_KW = {"linestyle": "--", "color": "black", "alpha": 0.4, "linewidth": 1.0}
@@ -237,7 +238,26 @@ def _plot_main_panel(
         point_thresh = threshold_chunk.mean(axis=0)
         if np.ndim(point_thresh) > 0:
             point_thresh = point_thresh[0]
-        ax2 = ax.twinx()
+        ax2 = inset_axes(
+            ax,
+            width="100%",
+            height="70%",
+            loc="lower left",
+            bbox_to_anchor=(0, 0, 1, 1),
+            bbox_transform=ax.transAxes,
+            borderpad=0,
+        )
+        ax2.sharex(ax)
+        ax.set_zorder(1)
+        ax2.set_zorder(3)
+        ax2.set_facecolor("none")
+        ax2.spines[['right', 'left', 'top', 'bottom']].set_visible(False)
+        ax2.tick_params(
+            axis="both",
+            which="both",
+            left=False, right=False, top=False, bottom=False,
+            labelbottom=False, labelleft=False,
+        )
         sns.kdeplot(
             x=(
                 threshold_chunk[:, 0] if threshold_chunk.ndim == 2
@@ -248,10 +268,8 @@ def _plot_main_panel(
         )
         ax2.set_ylim(0, ax2.get_ylim()[1])
         ax2.set_yticks([])
+        ax2.set_xlabel("")
         ax2.set_ylabel("")
-        for spine in ax2.spines.values():
-            spine.set_visible(False)
-        ax2.patch.set_alpha(0)
 
 
 def _plot_threshold_panel(
@@ -533,7 +551,7 @@ def plot(
                 try:
                     ccinverse = invert_combination(combination, features, encoder)
                     ccinverse = ", ".join(map(str, ccinverse))
-                    annotation_inverse = f"\n{ccinverse}"
+                    annotation_inverse = f" | {ccinverse}"
                 except Exception:
                     pass
 
@@ -549,8 +567,8 @@ def plot(
                     lo, hi = ax.get_ylim()
                     ymin = min(ymin, lo)
                     ymax = max(ymax, hi)
-                for ax in row_main_axes[1:]:
-                    ax.sharey(row_main_axes[0])
+                # for ax in row_main_axes[1:]:
+                #     ax.sharey(row_main_axes[0])
                 row_main_axes[0].set_ylim(ymin, ymax)
 
             counter += 1
