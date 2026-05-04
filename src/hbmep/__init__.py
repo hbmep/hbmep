@@ -15,7 +15,7 @@ __version__ = version("hbmep")
 
 from hbmep.functional import functional, inverse, integrate
 from hbmep.dataset import (
-    load,
+    process,
     fit_transform,
     inverse_transform,
     make_features,

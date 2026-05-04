@@ -25,7 +25,7 @@ def fit_transform(
     return df, encoder
 
 
-def load(
+def process(
     df: pd.DataFrame,
     *,
     intensity: str,

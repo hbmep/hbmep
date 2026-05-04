@@ -10,7 +10,7 @@ from numpyro.infer import MCMC
 from sklearn.preprocessing import LabelEncoder
 
 from hbmep.dataset import (
-    load as _load,
+    process as _process,
     make_prediction_dataset as _make_prediction_dataset
 )
 from hbmep.plotter import plot as _plot
@@ -206,7 +206,7 @@ class BaseModel():
         return df[self.features].apply(tuple, axis=1)
 
     @timing
-    def load(
+    def process(
         self,
         df: pd.DataFrame,
         mask_non_positive: bool = True
@@ -221,7 +221,7 @@ class BaseModel():
                     )
                 )
                 logger.info(f"Concatenated {feature} to {self.features[i]}")
-        df, encoder = _load(
+        df, encoder = _process(
             df,
             **self.variables,
             mask_non_positive=mask_non_positive
