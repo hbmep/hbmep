@@ -23,8 +23,8 @@ MCMC_FILE = "mcmc.pkl"
 def save(
     *,
     model_state: dict | None = None,
-    df: pd.DataFrame | None = None,
     posterior: dict[str, np.ndarray] | None = None,
+    df: pd.DataFrame | None = None,
     encoder: dict[str, LabelEncoder] | None = None,
     mcmc: MCMC | None = None,
     output_dir: str | None = None,
@@ -36,10 +36,10 @@ def save(
     ----------
     model_state
         Output of `model.state_dict()`.
-    df
-        Dataframe to save.
     posterior
         Posterior samples as a dict of arrays.
+    df
+        Dataframe to save.
     encoder
         Feature encoders returned by `model.load(...)`.
     mcmc
@@ -126,16 +126,16 @@ def save(
 
 
 def load(
-    *,
     model_dir: str,
+    *,
     memmap_draw: int | None = None,
     data_file: str = DATA_FILE,
     model_state_file: str = MODEL_STATE_FILE,
     mcmc_file: str = MCMC_FILE,
 ) -> tuple[
     dict | None,
-    pd.DataFrame | None,
     dict[str, np.ndarray],
+    pd.DataFrame | None,
     dict[str, LabelEncoder] | None,
     MCMC | None,
 ]:
@@ -220,6 +220,7 @@ def load(
                 posterior[key] = np.load(src, mmap_mode=None)
             else:
                 mm = np.load(src, mmap_mode="r")
-                posterior[key] = mm[memmap_draw:memmap_draw + 1]
+                posterior[key] = mm[memmap_draw:memmap_draw + 1].copy()
+                del mm
 
-    return model_state, df, posterior, encoder, mcmc
+    return model_state, posterior, df, encoder, mcmc
