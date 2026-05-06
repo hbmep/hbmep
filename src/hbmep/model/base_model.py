@@ -492,4 +492,4 @@ class BaseModel():
                     f"method '{model_name}' needed to restore _model."
                 )
             self._model = getattr(self, model_name)
-        return
+        return self
