@@ -550,8 +550,9 @@ def plot(
             if encoder is not None:
                 try:
                     ccinverse = invert_combination(combination, features, encoder)
-                    ccinverse = ", ".join(map(str, ccinverse))
-                    annotation_inverse = f" | {ccinverse}"
+                    ccinverse = ", ".join(map(str, ccinverse)).strip()
+                    sep = " | " if len(ccinverse) <= 22 else " |\n"
+                    annotation_inverse = f"{sep}{ccinverse}"
                 except Exception:
                     pass
 
@@ -559,7 +560,7 @@ def plot(
                 base = j * kc
                 main_col = base + 1 if show_traces else base
                 ax = axes[row * kr, main_col]
-                ax.set_title(f"({annotation}, {j})" + annotation_inverse)
+                ax.set_title(f"({annotation}, {j})" + annotation_inverse, fontsize=8)
 
             if len(row_main_axes) > 1:
                 ymin, ymax = np.inf, -np.inf

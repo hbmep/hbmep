@@ -73,8 +73,8 @@ def run(
     intensity: np.ndarray | jnp.ndarray,
     features: np.ndarray | jnp.ndarray,
     response: np.ndarray | jnp.ndarray,
-    nuts_params: dict | None = None,
-    mcmc_params: dict | None = None,
+    nuts_kw: dict | None = None,
+    mcmc_kw: dict | None = None,
     mcmc: MCMC | None = None,
     extra_fields: list | tuple = (),
     init_params=None,
@@ -91,19 +91,19 @@ def run(
         Features array of shape (N, F), F = number of feature variables.
     :param response: np.ndarray | jnp.ndarray:
         Response array of shape (N, R), R = number of response variables.
-    :param nuts_params: dict | None:
+    :param nuts_kw: dict | None:
         Keyword arguments passed to numpyro.infer.NUTS. Defaults to {}.
-    :param mcmc_params: dict | None:
+    :param mcmc_kw: dict | None:
         Keyword arguments passed to numpyro.infer.MCMC. Defaults to {}.
     :param extra_fields: list | tuple
     :param init_params
     :param kw: Keyword arguments passed to the `model`.
     """
-    nuts_params = nuts_params or {}
-    mcmc_params = mcmc_params or {}
+    nuts_kw = nuts_kw or {}
+    mcmc_kw = mcmc_kw or {}
     if mcmc is None:
-        kernel = NUTS(model, **nuts_params)
-        mcmc = MCMC(kernel, **mcmc_params)
+        kernel = NUTS(model, **nuts_kw)
+        mcmc = MCMC(kernel, **mcmc_kw)
     mcmc.run(
         key,
         intensity,

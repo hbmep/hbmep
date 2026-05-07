@@ -30,7 +30,7 @@ DATASET_PLOT = "dataset.pdf"
 CURVES_PLOT = "curves.pdf"
 
 
-class BaseModel():
+class BaseModel:
     """
     Base class for hbMEP models.
 
@@ -60,13 +60,13 @@ class BaseModel():
         self._response: list[str] = []
         self._num_response: int | None = None
 
-        self.mcmc_params: dict[str, int | float] = {
+        self.mcmc_kw: dict[str, int | float] = {
             "num_chains": 4,
             "num_warmup": 2000,
             "num_samples": 1000,
             "thinning": 1,
         }
-        self.nuts_params: dict[str, int | float] = {
+        self.nuts_kw: dict[str, int | float] = {
             "target_accept_prob": 0.8,
             "max_tree_depth": (10, 10),
         }
@@ -98,10 +98,10 @@ class BaseModel():
     def _update_config(self, config: dict):
         for key, value in config.get("variables", {}).items():
             setattr(self, key, value)
-        for key, value in config.get("mcmc", {}).items():
-            self.mcmc_params[key] = value
-        for key, value in config.get("nuts", {}).items():
-            self.nuts_params[key] = value
+        for key, value in config.get("mcmc_kw", {}).items():
+            self.mcmc_kw[key] = value
+        for key, value in config.get("nuts_kw", {}).items():
+            self.nuts_kw[key] = value
         for key, value in config.get("mep_data", {}).items():
             setattr(self, key, value)
         return
@@ -248,13 +248,10 @@ class BaseModel():
     @timing
     def trace(
         self,
-        df: pd.DataFrame | None = None,
+        df: pd.DataFrame,
         key: Array | None = None,
         **kw
     ):
-        if df is None:
-            row = [0.0] + [0] * self.num_features + [1.0] * self.num_response
-            df = pd.DataFrame([row], columns=self.regressors + self.response)
         trace = _trace(
             self.key if key is None else key,
             self._model,
@@ -283,8 +280,8 @@ class BaseModel():
             self._model,
             *self.get_regressors(df),
             *self.get_response(df),
-            nuts_params=self.nuts_params,
-            mcmc_params=self.mcmc_params,
+            nuts_kw=self.nuts_kw,
+            mcmc_kw=self.mcmc_kw,
             extra_fields=extra_fields,
             init_params=init_params,
             **kw
@@ -350,7 +347,7 @@ class BaseModel():
                 else self.sample_sites + self.deterministic_sites
             )
         var_names = [u for u in var_names if u in samples.keys()]
-        num_chains = self.mcmc_params["num_chains"]
+        num_chains = self.mcmc_kw["num_chains"]
         reshaped = {
             u: v.reshape(num_chains, -1, *v.shape[1:])
             for u, v in samples.items()
@@ -462,8 +459,8 @@ class BaseModel():
             "build_dir": self.build_dir,
             "use_mixture": self.use_mixture,
             "variables": self.variables,
-            "mcmc_params": self.mcmc_params,
-            "nuts_params": self.nuts_params,
+            "mcmc_kw": self.mcmc_kw,
+            "nuts_kw": self.nuts_kw,
             "mep_data": self.mep_data,
             "model_name": (
                 None if getattr(self, "_model", None) is None
@@ -480,8 +477,8 @@ class BaseModel():
         self.use_mixture = state.get("use_mixture", self.use_mixture)
         self._update_config({
             "variables": state.get("variables", {}),
-            "mcmc": state.get("mcmc_params", {}),
-            "nuts": state.get("nuts_params", {}),
+            "mcmc_kw": state.get("mcmc_kw", {}),
+            "nuts_kw": state.get("nuts_kw", {}),
             "mep_data": state.get("mep_data", {}),
         })
         model_name = state.get("model_name", None)
