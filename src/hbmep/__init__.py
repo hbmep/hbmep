@@ -36,6 +36,11 @@ from hbmep.model import (
     StandardHB,
 )
 from hbmep.model.util import save, load
+from hbmep import metrics
+from hbmep.device import (
+    use_gpu,
+    execute_on_gpu,
+)
 from hbmep.util import (
     site,
     timing,
