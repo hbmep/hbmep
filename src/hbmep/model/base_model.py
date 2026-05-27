@@ -78,10 +78,10 @@ class BaseModel:
         self.mep_xoffset: list[float] = [1, 1]
         self.mep_yoffset: list[float] = [1, 1]
 
-        self.sample_sites: list[str] = []
-        self.deterministic_sites: list[str] = []
-        self.obs_sites: list[str] = []
         self.trace_sites: dict[str, str] = {}
+        self._sample_sites: list[str] = []
+        self._deterministic_sites: list[str] = []
+        self._obs_sites: list[str] = []
 
         if toml_path is not None:
             try:
@@ -108,22 +108,22 @@ class BaseModel:
 
     def _update_sites(self, model_trace):
         site_types = {name: node["type"] for name, node in model_trace.items()}
-        self.sample_sites = [
+        self.trace_sites = site_types
+        self._sample_sites = [
             name for name, typ in site_types.items() if (
                 typ == "sample"
                 and site.obs not in name.split("_")
                 and name not in {site.outlier_prob}
             )
         ]
-        self.deterministic_sites = [
+        self._deterministic_sites = [
             name for name, typ in site_types.items()
             if typ == "deterministic"
         ]
-        self.obs_sites = [
+        self._obs_sites = [
             name for name in site_types.keys()
             if site.obs in name.split("_")
         ]
-        self.trace_sites = site_types
         return
 
     def _on_response_changed(self, old: list[str] | None, new: list[str]) -> None:
@@ -186,6 +186,18 @@ class BaseModel:
             "mep_yoffset",
         ]
         return {attr: getattr(self, attr) for attr in attributes}
+
+    @property
+    def sample_sites(self):
+        return self._sample_sites
+
+    @property
+    def deterministic_sites(self):
+        return self._deterministic_sites
+
+    @property
+    def obs_sites(self):
+        return self._obs_sites
 
     @property
     def sites(self):
@@ -271,7 +283,7 @@ class BaseModel:
         key: Array | None = None,
         **kw
     ) -> tuple[MCMC, dict]:
-        if not self.sample_sites:
+        if not self._sample_sites:
             model_trace = self.trace(df, key=key, **kw)
             self._update_sites(model_trace)
         logger.info(f"Running...")

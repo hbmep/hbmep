@@ -47,6 +47,7 @@ from hbmep.util import (
     enable_logging,
     _enable_fallback_logging,
     make_pdf,
+    run_batched,
 )
 
 _enable_fallback_logging()

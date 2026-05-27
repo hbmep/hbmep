@@ -3,6 +3,7 @@ import sys
 import logging
 from time import time
 from functools import wraps
+from collections.abc import Iterable, Callable
 
 import seaborn as sns
 import numpy as np
@@ -10,31 +11,10 @@ import matplotlib.pyplot as plt
 from matplotlib.figure import Figure
 from matplotlib.backends.backend_pdf import PdfPages
 from sklearn.preprocessing import LabelEncoder
+from joblib import Parallel, delayed
 
 logger = logging.getLogger(__name__)
 FORMAT = "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
-
-
-class _TeeStream:
-    def __init__(self, a, b):
-        self.a, self.b = a, b
-
-    def write(self, s):
-        self.a.write(s)
-        self.a.flush()
-        self.b.write(s)
-        self.b.flush()
-        return len(s)
-
-    def flush(self):
-        self.a.flush()
-        self.b.flush()
-
-    def isatty(self):
-        return getattr(self.a, "isatty", lambda: False)()
-
-    def __getattr__(self, name):
-        return getattr(self.a, name)
 
 
 def timing(f):
@@ -64,52 +44,34 @@ def timing(f):
     return wrap
 
 
-def enable_logging(output, *, level=logging.INFO, format=FORMAT):
-    root, ext = os.path.splitext(output)
-    output_file = os.path.join(output, "logs.log") if not ext else output
+def enable_logging(output=None, *, level=logging.INFO, format=FORMAT):
+    handlers = [
+        logging.StreamHandler(stream=sys.__stderr__),
+    ]
 
-    output_dir = os.path.dirname(output_file)
-    if output_dir and not os.path.exists(output_dir):
-        os.makedirs(output_dir, exist_ok=True)
+    output_file = None
+
+    if output is not None:
+        root, ext = os.path.splitext(output)
+        output_file = os.path.join(output, "logs.log") if not ext else output
+
+        output_dir = os.path.dirname(output_file)
+        if output_dir and not os.path.exists(output_dir):
+            os.makedirs(output_dir, exist_ok=True)
+
+        handlers = [logging.FileHandler(output_file, mode="w")] + handlers
 
     logging.basicConfig(
         format=format,
         level=level,
-        handlers=[
-            logging.FileHandler(output_file, mode="w"),
-            logging.StreamHandler(stream=sys.__stderr__),
-        ],
+        handlers=handlers,
         force=True
     )
-    logger.info(f"Logging to {output_file}")
 
+    if output_file is not None:
+        logger.info(f"Logging to {output_file}")
 
-def abstractvariables(*args):
-    """Decorator to enforce required subclass attributes."""
-    def decorator(cls):
-        original_init = cls.__init__
-
-        def wrapped_init(self, *init_args, **init_kwargs):
-            # Call the original constructor
-            original_init(self, *init_args, **init_kwargs)
-
-            # Check that required attributes are defined in the subclass
-            for attr, message in args:
-                if not hasattr(self, attr):
-                    raise NotImplementedError(f"Descendants must set variable `{attr}`. {message}")
-
-        cls.__init__ = wrapped_init
-        return cls
-
-    return decorator
-
-
-def floor(x: float, base: float = 10):
-    return base * np.floor(x / base)
-
-
-def ceil(x: float, base: float = 10):
-    return base * np.ceil(x / base)
+    return
 
 
 def invert_combination(
@@ -144,24 +106,6 @@ def make_pdf(figures: list[Figure], output_path: str, dpi=100):
     return
 
 
-class _HBMEPFallbackHandler(logging.StreamHandler):
-    """
-    Emits log records ONLY if they would otherwise be dropped (no handler in the
-    logger chain would handle them at this level).
-
-    This lets the library be verbose by default without double-printing when the
-    user configures logging.
-    """
-    def emit(self, record: logging.LogRecord) -> None:
-        if os.environ.get("HBMEP_DISABLE_FALLBACK_LOGGING") == "1":
-            return
-
-        if _record_would_be_handled_elsewhere(record, self):
-            return
-
-        super().emit(record)
-
-
 def _record_would_be_handled_elsewhere(
     record: logging.LogRecord,
     this_handler: logging.Handler
@@ -185,6 +129,24 @@ def _record_would_be_handled_elsewhere(
     return False
 
 
+class _HBMEPFallbackHandler(logging.StreamHandler):
+    """
+    Emits log records ONLY if they would otherwise be dropped (no handler in the
+    logger chain would handle them at this level).
+
+    This lets the library be verbose by default without double-printing when the
+    user configures logging.
+    """
+    def emit(self, record: logging.LogRecord) -> None:
+        if os.environ.get("HBMEP_DISABLE_FALLBACK_LOGGING") == "1":
+            return
+
+        if _record_would_be_handled_elsewhere(record, self):
+            return
+
+        super().emit(record)
+
+
 def _enable_fallback_logging(*, level=logging.INFO, format=FORMAT, stream=None):
     """
     Install a fallback console handler for the hbmep logger so INFO logs show up
@@ -200,3 +162,43 @@ def _enable_fallback_logging(*, level=logging.INFO, format=FORMAT, stream=None):
     handler.setLevel(level)
     handler.setFormatter(logging.Formatter(format))
     base.addHandler(handler)
+
+
+def run_batched(
+    fn: Callable,
+    tasks: Iterable,
+    *,
+    batch_size: int = 8,
+    n_jobs: int | None = None,
+    skip_none: bool = True,
+    verbose: bool = True,
+):
+    """
+    Run fn(*task) for tasks in parallel batches.
+    """
+    tasks = list(tasks)
+
+    if n_jobs is None:
+        n_jobs = -1
+
+    out = []
+
+    for start in range(0, len(tasks), batch_size):
+        stop = min(start + batch_size, len(tasks))
+
+        if verbose:
+            print(f"Processing batch {start} to {stop}...")
+
+        results = Parallel(n_jobs=n_jobs)(
+            delayed(fn)(*task)
+            for task in tasks[start:stop]
+        )
+
+        for r in results:
+            if skip_none and r is None:
+                continue
+            out.append(r)
+
+        del results
+
+    return out
