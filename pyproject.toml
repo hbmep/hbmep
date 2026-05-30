@@ -56,10 +56,10 @@ dev = [
     "sphinx-copybutton==0.5.2",
     "myst_nb==1.1.0"
 ]
-gpu-cuda12 = ["jax[cuda12]>=0.4.24"]
+cuda12 = ["jax[cuda12]>=0.4.24"]
 
 [tool.pytest.ini_options]
-minversion = 6.0
+minversion = "6.0"
 addopts = "-v --color=yes --junit-xml=out/junit/junit.xml --pycodestyle src --cov --cov-report term-missing --doctest-modules"
 junit_family = "xunit2"
 testpaths = ["tests"]

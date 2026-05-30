@@ -30,7 +30,7 @@ def save(
     output_dir: str | None = None,
 ) -> None:
     """
-    Save hbMEP outputs to a directory.
+    Save hbMEP output to a directory.
 
     Parameters
     ----------
@@ -140,7 +140,7 @@ def load(
     MCMC | None,
 ]:
     """
-    Load outputs saved with `save(...)`.
+    Load output saved with `save(...)`.
 
     Parameters
     ----------

@@ -127,3 +127,119 @@ def crps_unbiased(true, samples, *, axis=-1, batch_size=256):
         )
 
     return jnp.concatenate(vals).reshape(out_shape)
+
+
+def wasserstein1(samples1, samples2, *, weights1=None, weights2=None):
+    """
+    Weighted 1D Wasserstein-1 distance between two empirical distributions.
+
+    Parameters
+    ----------
+    samples1, samples2 : Array
+        Samples representing two empirical distributions.
+    weights1, weights2 : Array, optional
+        Nonnegative weights associated with `samples1`
+        and `samples2`. If omitted, uniform weights are used.
+
+    Returns
+    -------
+    Array
+        Wasserstein-1 distance.
+    """
+    samples1 = jnp.asarray(samples1)
+    samples2 = jnp.asarray(samples2)
+
+    if weights1 is None:
+        weights1 = jnp.ones_like(samples1) / samples1.size
+    else:
+        weights1 = jnp.asarray(weights1)
+        weights1 = weights1 / jnp.sum(weights1)
+
+    if weights2 is None:
+        weights2 = jnp.ones_like(samples2) / samples2.size
+    else:
+        weights2 = jnp.asarray(weights2)
+        weights2 = weights2 / jnp.sum(weights2)
+
+    idx1 = jnp.argsort(samples1)
+    idx2 = jnp.argsort(samples2)
+
+    samples1 = samples1[idx1]
+    samples2 = samples2[idx2]
+
+    weights1 = weights1[idx1]
+    weights2 = weights2[idx2]
+
+    z = jnp.sort(jnp.concatenate([samples1, samples2]))
+    dz = jnp.diff(z)
+
+    cdf1 = jnp.cumsum(weights1)
+    cdf2 = jnp.cumsum(weights2)
+
+    n1 = jnp.searchsorted(samples1, z[:-1], side="right")
+    n2 = jnp.searchsorted(samples2, z[:-1], side="right")
+
+    f1 = jnp.where(n1 > 0, cdf1[n1 - 1], 0.0)
+    f2 = jnp.where(n2 > 0, cdf2[n2 - 1], 0.0)
+
+    return jnp.sum(jnp.abs(f1 - f2) * dz)
+
+
+def wasserstein2(samples1, samples2, *, weights1=None, weights2=None):
+    """
+    Weighted 1D Wasserstein-2 distance between two empirical distributions.
+
+    Parameters
+    ----------
+    samples1, samples2 : Array
+        Samples representing two empirical distributions.
+    weights1, weights2 : Array, optional
+        Nonnegative probability weights associated with `samples1`
+        and `samples2`. If omitted, uniform weights are used.
+
+    Returns
+    -------
+    Array
+        Wasserstein-2 distance.
+    """
+    samples1 = jnp.asarray(samples1)
+    samples2 = jnp.asarray(samples2)
+
+    if weights1 is None:
+        weights1 = jnp.ones_like(samples1) / samples1.size
+    else:
+        weights1 = jnp.asarray(weights1)
+        weights1 = weights1 / jnp.sum(weights1)
+
+    if weights2 is None:
+        weights2 = jnp.ones_like(samples2) / samples2.size
+    else:
+        weights2 = jnp.asarray(weights2)
+        weights2 = weights2 / jnp.sum(weights2)
+
+    idx1 = jnp.argsort(samples1)
+    idx2 = jnp.argsort(samples2)
+
+    samples1 = samples1[idx1]
+    samples2 = samples2[idx2]
+
+    weights1 = weights1[idx1]
+    weights2 = weights2[idx2]
+
+    cdf1 = jnp.cumsum(weights1)
+    cdf2 = jnp.cumsum(weights2)
+
+    u = jnp.sort(jnp.concatenate([cdf1, cdf2]))
+    u0 = jnp.concatenate([jnp.array([0.0], dtype=u.dtype), u[:-1]])
+    du = u - u0
+
+    i1 = jnp.searchsorted(cdf1, u0, side="right")
+    i2 = jnp.searchsorted(cdf2, u0, side="right")
+
+    i1 = jnp.clip(i1, 0, samples1.shape[0] - 1)
+    i2 = jnp.clip(i2, 0, samples2.shape[0] - 1)
+
+    q1 = samples1[i1]
+    q2 = samples2[i2]
+
+    return jnp.sqrt(jnp.sum((q1 - q2) ** 2 * du))

@@ -306,6 +306,7 @@ class BaseModel:
     def make_prediction_dataset(
         self,
         df: pd.DataFrame,
+        *,
         num_points: int = 100,
         min_intensity: float | None = None,
         max_intensity: float | None = None,
@@ -324,6 +325,7 @@ class BaseModel:
     def predict(
         self,
         df: pd.DataFrame,
+        *,
         posterior: dict | None = None,
         num_samples: int = 100,
         return_sites: list[str] | None = None,
@@ -387,8 +389,8 @@ class BaseModel:
     @timing
     def plot(
         self,
-        df: pd.DataFrame,
         *,
+        df: pd.DataFrame,
         encoder: dict[str, LabelEncoder] | None = None,
         mep_array: np.ndarray | None = None,
         output_path: str | None = None,
@@ -418,8 +420,8 @@ class BaseModel:
     @timing
     def plot_curves(
         self,
-        df: pd.DataFrame,
         *,
+        df: pd.DataFrame,
         prediction_df: pd.DataFrame,
         predictive: dict,
         posterior: dict | None = None,

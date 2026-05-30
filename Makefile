@@ -5,8 +5,9 @@ SHELL := bash
 PY ?= python3.11
 VENV := .venv
 PIP := $(VENV)/bin/python -m pip
+PIP_NO_CACHE := --no-cache-dir
 
-.PHONY: base env dev docs clean-docs
+.PHONY: base env env-cuda12 dev dev-cuda12 clean-docs docs
 
 base:
 	rm -rf $(VENV) build
@@ -17,11 +18,19 @@ base:
 
 env: base
 	@echo "Installing package..."
-	$(PIP) install .
+	$(PIP) install $(PIP_NO_CACHE) .
+
+env-cuda12: base
+	@echo "Installing package..."
+	$(PIP) install $(PIP_NO_CACHE) ".[cuda12]"
 
 dev: base
 	@echo "Installing package for development..."
-	$(PIP) install -e ".[dev]"
+	$(PIP) install $(PIP_NO_CACHE) -e ".[dev]"
+
+dev-cuda12: base
+	@echo "Installing package for development..."
+	$(PIP) install $(PIP_NO_CACHE) -e ".[dev,cuda12]"
 
 clean-docs:
 	@echo "Cleaning docs output..."
