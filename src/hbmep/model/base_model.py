@@ -389,8 +389,8 @@ class BaseModel:
     @timing
     def plot(
         self,
-        *,
         df: pd.DataFrame,
+        *,
         encoder: dict[str, LabelEncoder] | None = None,
         mep_array: np.ndarray | None = None,
         output_path: str | None = None,
