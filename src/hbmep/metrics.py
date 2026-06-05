@@ -1,7 +1,7 @@
 from jax import numpy as jnp, vmap
 
 
-def lp_risk(true, samples, *, p=1, axis=-1, root=False, ignore_nan=True):
+def lp_risk(true, samples, *, weights=None, p=1, axis=-1, root=False, ignore_nan=True):
     """
     Compute posterior expected Lp risk error.
 
@@ -42,8 +42,25 @@ def lp_risk(true, samples, *, p=1, axis=-1, root=False, ignore_nan=True):
         true = jnp.expand_dims(true, axis)  # add dimension 1 to the left of axis
 
     err = jnp.abs(samples - true) ** p
-    mean_fn = jnp.nanmean if ignore_nan else jnp.mean
-    out = mean_fn(err, axis=axis)
+
+    if weights is None:
+        mean_fn = jnp.nanmean if ignore_nan else jnp.mean
+        out = mean_fn(err, axis=axis)
+    else:
+        weights = jnp.asarray(weights)
+        weights = weights / jnp.sum(weights)
+
+        shape = [1] * samples.ndim
+        shape[axis] = weights.shape[0]
+        weights = weights.reshape(shape)
+
+        if ignore_nan:
+            mask = ~jnp.isnan(err)
+            num = jnp.nansum(weights * err, axis=axis)
+            den = jnp.sum(jnp.where(mask, weights, 0.0), axis=axis)
+            out = num / den
+        else:
+            out = jnp.sum(weights * err, axis=axis)
 
     if root:
         out = out ** (1 / p)
