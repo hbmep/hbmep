@@ -140,7 +140,7 @@ def load(
     MCMC | None,
 ]:
     """
-    Load output saved with `save(...)`.
+    Load hbMEP output saved with `save(...)`.
 
     Parameters
     ----------

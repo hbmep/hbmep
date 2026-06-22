@@ -1,7 +1,7 @@
 import os
 import sys
 import logging
-from time import time
+from time import time, perf_counter
 from functools import wraps
 from collections.abc import Iterable, Callable
 
@@ -183,21 +183,39 @@ def run_batched(
 
     out = []
 
+    t0 = perf_counter()
+
     for start in range(0, len(tasks), batch_size):
         stop = min(start + batch_size, len(tasks))
 
         if verbose:
             print(f"Processing batch {start} to {stop}...")
 
-        results = Parallel(n_jobs=n_jobs)(
-            delayed(fn)(*task)
-            for task in tasks[start:stop]
-        )
+        batch = tasks[start:stop]
+        batch_t0 = perf_counter()
+
+        if (n_jobs == 1) or (batch_size == 1):
+            results = [fn(*task) for task in batch]
+        else:
+            results = Parallel(n_jobs=n_jobs)(
+                delayed(fn)(*task)
+                for task in batch
+            )
 
         for r in results:
             if skip_none and r is None:
                 continue
             out.append(r)
+
+        batch_dt = perf_counter() - batch_t0
+
+        if verbose:
+            total_dt = perf_counter() - t0
+            print(
+                f"Finished batch {start}:{stop} "
+                f"in {batch_dt:.2f}s "
+                f"(total {total_dt:.2f}s)"
+            )
 
         del results
 
