@@ -1,5 +1,5 @@
 cff-version: 1.2.0
-message: "If you use this software, please cite the following paper."
+message: "If you find this code useful in your research, please cite the following paper."
 title: "hbMEP"
 preferred-citation:
   type: article

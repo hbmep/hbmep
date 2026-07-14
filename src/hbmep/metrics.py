@@ -68,6 +68,35 @@ def lp_risk(true, samples, *, weights=None, p=1, axis=-1, root=False, ignore_nan
     return out
 
 
+def relative_lp_risk(
+    true,
+    samples,
+    *,
+    weights=None,
+    p=1,
+    axis=-1,
+    root=False,
+    ignore_nan=True,
+):
+    samples = jnp.asarray(samples)
+    true = jnp.asarray(true)
+
+    axis = axis % samples.ndim
+
+    if true.ndim == samples.ndim - 1:
+        true = jnp.expand_dims(true, axis)  # add dimension 1 to the left of axis
+
+    return lp_risk(
+        true=1.,
+        samples=samples / true,
+        weights=weights,
+        p=p,
+        axis=axis,
+        root=root,
+        ignore_nan=ignore_nan,
+    )
+
+
 def crps_unbiased(true, samples, *, axis=-1, batch_size=256):
     """
     Unbiased Monte Carlo estimator of CRPS.
