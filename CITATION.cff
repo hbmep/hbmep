@@ -1,0 +1,26 @@
+cff-version: 1.2.0
+message: "If you use this software, please cite the following paper."
+title: "hbMEP"
+preferred-citation:
+  type: article
+  title: "Hierarchical Bayesian estimation of motor-evoked potential recruitment curves yields accurate and robust estimates"
+  authors:
+    - family-names: Tyagi
+      given-names: Vishweshwar
+    - family-names: Murray
+      given-names: Lynda M.
+    - family-names: Asan
+      given-names: Ahmet S.
+    - family-names: Mandigo
+      given-names: Christopher
+    - family-names: Virk
+      given-names: Michael S.
+    - family-names: Harel
+      given-names: Noam Y.
+    - family-names: Carmel
+      given-names: Jason B.
+    - family-names: McIntosh
+      given-names: James R.
+  journal: "Brain Stimulation"
+  year: 2025
+  doi: "10.1016/j.brs.2025.09.008"
