@@ -2,7 +2,7 @@ from jax import numpy as jnp, vmap
 
 
 def lp_risk(true, samples, *, weights=None, p=1, axis=-1, root=False, ignore_nan=True):
-    """
+    r"""
     Compute posterior expected Lp risk error.
 
     Parameters
@@ -11,7 +11,7 @@ def lp_risk(true, samples, *, weights=None, p=1, axis=-1, root=False, ignore_nan
         True values, broadcast-compatible with `samples`, with posterior
         sample axis either present as size 1 or absent.
     samples: Array
-        Posterior samples. `axis` is the posterior sample axis.
+        Posterior samples.
     p : int | float
         Power of the Lp loss.
     axis : int
@@ -98,7 +98,7 @@ def relative_lp_risk(
 
 
 def crps_unbiased(true, samples, *, axis=-1, batch_size=256):
-    """
+    r"""
     Unbiased Monte Carlo estimator of CRPS.
 
     Parameters
@@ -107,7 +107,7 @@ def crps_unbiased(true, samples, *, axis=-1, batch_size=256):
         True values, broadcast-compatible with `samples`, with posterior
         sample axis either present as size 1 or absent.
     samples : Array
-        Posterior samples. `axis` is the posterior sample axis.
+        Posterior samples.
     axis : int
         Posterior sample axis.
     batch_size : int
@@ -121,7 +121,7 @@ def crps_unbiased(true, samples, *, axis=-1, batch_size=256):
 
     Notes
     -----
-    - Computes :math:`\mathbb{E}[|X - y|] - \\frac{1}{2}\mathbb{E}[|X - X'|]`
+    - Computes :math:`\mathbb{E}[|X - y|] - \frac{1}{2}\mathbb{E}[|X - X'|]`
       using the unbiased finite-sample estimator.
     """
     samples = jnp.asarray(samples)
@@ -146,7 +146,7 @@ def crps_unbiased(true, samples, *, axis=-1, batch_size=256):
     N = samples_flat.shape[0]
 
     def crps_unbiased_one(true, samples):
-        """
+        r"""
         true : ()
         samples : (S,)
         """
@@ -176,7 +176,7 @@ def crps_unbiased(true, samples, *, axis=-1, batch_size=256):
 
 
 def wasserstein1(samples1, samples2, *, weights1=None, weights2=None):
-    """
+    r"""
     Weighted 1D Wasserstein-1 distance between two empirical distributions.
 
     Parameters
@@ -232,7 +232,7 @@ def wasserstein1(samples1, samples2, *, weights1=None, weights2=None):
 
 
 def wasserstein2(samples1, samples2, *, weights1=None, weights2=None):
-    """
+    r"""
     Weighted 1D Wasserstein-2 distance between two empirical distributions.
 
     Parameters

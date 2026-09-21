@@ -6,8 +6,9 @@ PY ?= python3.11
 VENV := .venv
 PIP := $(VENV)/bin/python -m pip
 PIP_NO_CACHE := --no-cache-dir
+PORT ?= 8000
 
-.PHONY: base env env-cuda12 dev dev-cuda12 clean-docs docs
+.PHONY: base env env-cuda12 dev dev-cuda12 clean-docs notebooks docs
 
 base:
 	rm -rf $(VENV) build
@@ -36,6 +37,18 @@ clean-docs:
 	@echo "Cleaning docs output..."
 	rm -rf docs/build docs/source/api/generated docs/source/tutorials/generated
 
+notebooks:
+	@echo "Running tutorial notebooks..."
+	find docs/source/tutorials -name '*.ipynb' -print0 | \
+	while IFS= read -r -d '' notebook; do \
+		$(VENV)/bin/jupyter nbconvert \
+			--execute \
+			--to notebook \
+			--inplace \
+			--ExecutePreprocessor.timeout=-1 \
+			"$$notebook"; \
+	done
+
 docs: clean-docs
 	@echo "Building docs with sphinx-autobuild..."
-	$(VENV)/bin/sphinx-autobuild docs/source docs/build/html
+	$(VENV)/bin/sphinx-autobuild --port $(PORT) docs/source docs/build/html

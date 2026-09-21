@@ -5,7 +5,7 @@ import jax
 DEV_CPU = jax.devices("cpu")[0]
 try:
     gpu = jax.devices("gpu")[0]
-except:
+except Exception:
     gpu = DEV_CPU
 DEV_GPU = gpu
 
@@ -30,7 +30,7 @@ def execute_on_gpu(func):
     Returns
     -------
     wrapper : callable
-        Decorated function that will run always on GPU even if the default 
+        Decorated function that will run always on GPU even if the default
         backend is set to CPU.
     """
     @wraps(func)
