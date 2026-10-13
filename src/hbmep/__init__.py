@@ -15,7 +15,7 @@ __version__ = version("hbmep")
 
 from hbmep.functional import functional, inverse, integrate
 from hbmep.dataset import (
-    load,
+    process,
     fit_transform,
     inverse_transform,
     make_features,
@@ -36,12 +36,18 @@ from hbmep.model import (
     StandardHB,
 )
 from hbmep.model.util import save, load
+from hbmep import metrics
+from hbmep.device import (
+    use_gpu,
+    execute_on_gpu,
+)
 from hbmep.util import (
     site,
     timing,
     enable_logging,
     _enable_fallback_logging,
     make_pdf,
+    run_batched,
 )
 
 _enable_fallback_logging()

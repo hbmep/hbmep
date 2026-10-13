@@ -10,7 +10,7 @@ from numpyro.infer import MCMC
 from sklearn.preprocessing import LabelEncoder
 
 from hbmep.dataset import (
-    load as _load,
+    process as _process,
     make_prediction_dataset as _make_prediction_dataset
 )
 from hbmep.plotter import plot as _plot
@@ -30,7 +30,7 @@ DATASET_PLOT = "dataset.pdf"
 CURVES_PLOT = "curves.pdf"
 
 
-class BaseModel():
+class BaseModel:
     """
     Base class for hbMEP models.
 
@@ -60,13 +60,13 @@ class BaseModel():
         self._response: list[str] = []
         self._num_response: int | None = None
 
-        self.mcmc_params: dict[str, int | float] = {
+        self.mcmc_kw: dict[str, int | float] = {
             "num_chains": 4,
             "num_warmup": 2000,
             "num_samples": 1000,
             "thinning": 1,
         }
-        self.nuts_params: dict[str, int | float] = {
+        self.nuts_kw: dict[str, int | float] = {
             "target_accept_prob": 0.8,
             "max_tree_depth": (10, 10),
         }
@@ -78,10 +78,10 @@ class BaseModel():
         self.mep_xoffset: list[float] = [1, 1]
         self.mep_yoffset: list[float] = [1, 1]
 
-        self.sample_sites: list[str] = []
-        self.deterministic_sites: list[str] = []
-        self.obs_sites: list[str] = []
         self.trace_sites: dict[str, str] = {}
+        self._sample_sites: list[str] = []
+        self._deterministic_sites: list[str] = []
+        self._obs_sites: list[str] = []
 
         if toml_path is not None:
             try:
@@ -98,29 +98,32 @@ class BaseModel():
     def _update_config(self, config: dict):
         for key, value in config.get("variables", {}).items():
             setattr(self, key, value)
-        for key, value in config.get("mcmc", {}).items():
-            self.mcmc_params[key] = value
-        for key, value in config.get("nuts", {}).items():
-            self.nuts_params[key] = value
+        for key, value in config.get("mcmc_kw", {}).items():
+            self.mcmc_kw[key] = value
+        for key, value in config.get("nuts_kw", {}).items():
+            self.nuts_kw[key] = value
         for key, value in config.get("mep_data", {}).items():
             setattr(self, key, value)
         return
 
     def _update_sites(self, model_trace):
         site_types = {name: node["type"] for name, node in model_trace.items()}
-        self.sample_sites = [
-            name for name, typ in site_types.items()
-            if typ == "sample" and site.obs not in name.split("_")
+        self.trace_sites = site_types
+        self._sample_sites = [
+            name for name, typ in site_types.items() if (
+                typ == "sample"
+                and site.obs not in name.split("_")
+                and name not in {site.outlier_prob}
+            )
         ]
-        self.deterministic_sites = [
+        self._deterministic_sites = [
             name for name, typ in site_types.items()
             if typ == "deterministic"
         ]
-        self.obs_sites = [
+        self._obs_sites = [
             name for name in site_types.keys()
             if site.obs in name.split("_")
         ]
-        self.trace_sites = site_types
         return
 
     def _on_response_changed(self, old: list[str] | None, new: list[str]) -> None:
@@ -185,6 +188,18 @@ class BaseModel():
         return {attr: getattr(self, attr) for attr in attributes}
 
     @property
+    def sample_sites(self):
+        return self._sample_sites
+
+    @property
+    def deterministic_sites(self):
+        return self._deterministic_sites
+
+    @property
+    def obs_sites(self):
+        return self._obs_sites
+
+    @property
     def sites(self):
         attributes = [
             "sample_sites",
@@ -203,7 +218,7 @@ class BaseModel():
         return df[self.features].apply(tuple, axis=1)
 
     @timing
-    def load(
+    def process(
         self,
         df: pd.DataFrame,
         mask_non_positive: bool = True
@@ -218,7 +233,7 @@ class BaseModel():
                     )
                 )
                 logger.info(f"Concatenated {feature} to {self.features[i]}")
-        df, encoder = _load(
+        df, encoder = _process(
             df,
             **self.variables,
             mask_non_positive=mask_non_positive
@@ -245,13 +260,10 @@ class BaseModel():
     @timing
     def trace(
         self,
-        df: pd.DataFrame | None = None,
+        df: pd.DataFrame,
         key: Array | None = None,
         **kw
     ):
-        if df is None:
-            row = [0.0] + [0] * self.num_features + [1.0] * self.num_response
-            df = pd.DataFrame([row], columns=self.regressors + self.response)
         trace = _trace(
             self.key if key is None else key,
             self._model,
@@ -271,7 +283,7 @@ class BaseModel():
         key: Array | None = None,
         **kw
     ) -> tuple[MCMC, dict]:
-        if not self.sample_sites:
+        if not self._sample_sites:
             model_trace = self.trace(df, key=key, **kw)
             self._update_sites(model_trace)
         logger.info(f"Running...")
@@ -280,8 +292,8 @@ class BaseModel():
             self._model,
             *self.get_regressors(df),
             *self.get_response(df),
-            nuts_params=self.nuts_params,
-            mcmc_params=self.mcmc_params,
+            nuts_kw=self.nuts_kw,
+            mcmc_kw=self.mcmc_kw,
             extra_fields=extra_fields,
             init_params=init_params,
             **kw
@@ -294,6 +306,7 @@ class BaseModel():
     def make_prediction_dataset(
         self,
         df: pd.DataFrame,
+        *,
         num_points: int = 100,
         min_intensity: float | None = None,
         max_intensity: float | None = None,
@@ -312,6 +325,7 @@ class BaseModel():
     def predict(
         self,
         df: pd.DataFrame,
+        *,
         posterior: dict | None = None,
         num_samples: int = 100,
         return_sites: list[str] | None = None,
@@ -347,7 +361,7 @@ class BaseModel():
                 else self.sample_sites + self.deterministic_sites
             )
         var_names = [u for u in var_names if u in samples.keys()]
-        num_chains = self.mcmc_params["num_chains"]
+        num_chains = self.mcmc_kw["num_chains"]
         reshaped = {
             u: v.reshape(num_chains, -1, *v.shape[1:])
             for u, v in samples.items()
@@ -406,8 +420,8 @@ class BaseModel():
     @timing
     def plot_curves(
         self,
-        df: pd.DataFrame,
         *,
+        df: pd.DataFrame,
         prediction_df: pd.DataFrame,
         predictive: dict,
         posterior: dict | None = None,
@@ -459,8 +473,8 @@ class BaseModel():
             "build_dir": self.build_dir,
             "use_mixture": self.use_mixture,
             "variables": self.variables,
-            "mcmc_params": self.mcmc_params,
-            "nuts_params": self.nuts_params,
+            "mcmc_kw": self.mcmc_kw,
+            "nuts_kw": self.nuts_kw,
             "mep_data": self.mep_data,
             "model_name": (
                 None if getattr(self, "_model", None) is None
@@ -477,8 +491,8 @@ class BaseModel():
         self.use_mixture = state.get("use_mixture", self.use_mixture)
         self._update_config({
             "variables": state.get("variables", {}),
-            "mcmc": state.get("mcmc_params", {}),
-            "nuts": state.get("nuts_params", {}),
+            "mcmc_kw": state.get("mcmc_kw", {}),
+            "nuts_kw": state.get("nuts_kw", {}),
             "mep_data": state.get("mep_data", {}),
         })
         model_name = state.get("model_name", None)
@@ -489,4 +503,4 @@ class BaseModel():
                     f"method '{model_name}' needed to restore _model."
                 )
             self._model = getattr(self, model_name)
-        return
+        return self

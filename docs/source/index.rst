@@ -52,3 +52,4 @@ issue tracker <https://github.com/hbmep/hbmep/issues>`_.
     api/integrate
     api/base_model
     api/standard
+    api/metrics
