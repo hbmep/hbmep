@@ -54,6 +54,8 @@ class BaseModel:
         self.name: str = "base_model"
         self.build_dir: str = ""
         self.use_mixture: bool = False
+        self.use_ima: bool = False
+        self.ima_params: dict = {}
 
         self.intensity: str = ""
         self.features: list[str] = []
@@ -472,6 +474,8 @@ class BaseModel:
             "name": self.name,
             "build_dir": self.build_dir,
             "use_mixture": self.use_mixture,
+            "use_ima": self.use_ima,
+            "ima_params": self.ima_params,
             "variables": self.variables,
             "mcmc_kw": self.mcmc_kw,
             "nuts_kw": self.nuts_kw,
@@ -489,6 +493,8 @@ class BaseModel:
         self.name = state.get("name", "base_model")
         self.build_dir = state.get("build_dir", self.build_dir)
         self.use_mixture = state.get("use_mixture", self.use_mixture)
+        self.use_ima = state.get("use_ima", getattr(self, "use_ima", False))
+        self.ima_params = state.get("ima_params", getattr(self, "ima_params", {}))
         self._update_config({
             "variables": state.get("variables", {}),
             "mcmc_kw": state.get("mcmc_kw", {}),

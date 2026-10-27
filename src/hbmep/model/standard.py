@@ -44,6 +44,8 @@ class StandardHB(BaseModel):
     def __init__(self, *args, **kw):
         super(StandardHB, self).__init__(*args, **kw)
         self.use_mixture = False
+        self.use_ima = False
+        self.ima_params = {}
 
     def _model(self, *args, **kw):
         return self.rectified_logistic(*args, **kw)
